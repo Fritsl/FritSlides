@@ -5,9 +5,15 @@ import connectPg from "connect-pg-simple";
 import { db } from "./db";
 import { eq, and, desc, asc, isNull, sql } from "drizzle-orm";
 import { client } from "./db";
+import pg from "pg";
 
 const MemoryStore = createMemoryStore(session);
 const PostgresSessionStore = connectPg(session);
+
+// Create a standard pg Pool for the session store
+const pgPool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 export interface IStorage {
   // User operations
@@ -40,7 +46,7 @@ export class DatabaseStorage implements IStorage {
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({
-      pool: client,
+      pool: pgPool, // Use standard pg Pool
       createTableIfMissing: true
     });
   }

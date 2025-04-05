@@ -29,8 +29,14 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  // Make sure session secret is set
+  if (!process.env.SESSION_SECRET) {
+    // For development only, in production this should be a strong secret
+    process.env.SESSION_SECRET = "notesystem-secret-key";
+  }
+  
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "notesystem-secret-key",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
