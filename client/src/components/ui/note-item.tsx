@@ -20,6 +20,7 @@ import {
   Image,
   Save,
   X,
+  Loader2,
 } from "lucide-react";
 
 interface NoteItemProps {
