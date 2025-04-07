@@ -34,8 +34,8 @@ export interface IStorage {
   createNote(note: InsertNote): Promise<Note>;
   updateNote(id: number, note: UpdateNote): Promise<Note | undefined>;
   deleteNote(id: number): Promise<boolean>;
-  updateNoteOrder(id: number, order: number): Promise<boolean>;
-  updateNoteParent(id: number, parentId: number | null, order?: number): Promise<boolean>;
+  updateNoteOrder(id: number, order: number | string): Promise<boolean>;
+  updateNoteParent(id: number, parentId: number | null, order?: number | string): Promise<boolean>;
   normalizeNoteOrders(parentId: number | null): Promise<boolean>;
   
   // Session store
@@ -194,7 +194,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateNoteOrder(id: number, order: number): Promise<boolean> {
+  async updateNoteOrder(id: number, order: number | string): Promise<boolean> {
     try {
       // First get the note to update to access its properties
       const [noteToUpdate] = await db
@@ -204,10 +204,13 @@ export class DatabaseStorage implements IStorage {
         
       if (!noteToUpdate) return false;
       
+      // Ensure order is always an integer (Math.round handles negatives properly too)
+      const intOrder = Math.round(Number(order));
+      
       // Update the note with the new order
       const [updatedNote] = await db
         .update(notes)
-        .set({ order, updatedAt: new Date() })
+        .set({ order: intOrder, updatedAt: new Date() })
         .where(eq(notes.id, id))
         .returning();
       
@@ -223,7 +226,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async updateNoteParent(id: number, parentId: number | null, order?: number): Promise<boolean> {
+  async updateNoteParent(id: number, parentId: number | null, order?: number | string): Promise<boolean> {
     try {
       // Get the note we're updating to get its project ID and current parent
       const [noteToUpdate] = await db
@@ -240,7 +243,8 @@ export class DatabaseStorage implements IStorage {
       let newOrder: number;
       
       if (order !== undefined) {
-        newOrder = order; // Use the provided order
+        // Ensure integer order
+        newOrder = Math.round(Number(order)); 
       } else {
         // Calculate a new order at the end
         const [maxOrderResult] = await db
@@ -497,7 +501,7 @@ export class MemStorage implements IStorage {
     return result;
   }
 
-  async updateNoteOrder(id: number, order: number): Promise<boolean> {
+  async updateNoteOrder(id: number, order: number | string): Promise<boolean> {
     try {
       const note = this.notes.get(id);
       if (!note) return false;
@@ -505,8 +509,11 @@ export class MemStorage implements IStorage {
       // Store the parent for normalization
       const parentId = note.parentId;
       
+      // Ensure order is always an integer
+      const intOrder = Math.round(Number(order));
+      
       // Update the note
-      const updatedNote = { ...note, order, updatedAt: new Date() };
+      const updatedNote = { ...note, order: intOrder, updatedAt: new Date() };
       this.notes.set(id, updatedNote);
       
       // Normalize orders of all siblings
@@ -519,7 +526,7 @@ export class MemStorage implements IStorage {
     }
   }
 
-  async updateNoteParent(id: number, parentId: number | null, order?: number): Promise<boolean> {
+  async updateNoteParent(id: number, parentId: number | null, order?: number | string): Promise<boolean> {
     try {
       const note = this.notes.get(id);
       if (!note) return false;
@@ -530,7 +537,8 @@ export class MemStorage implements IStorage {
       let newOrder: number;
       
       if (order !== undefined) {
-        newOrder = order; // Use the provided order
+        // Ensure integer order
+        newOrder = Math.round(Number(order));
       } else {
         // Find max order value for new siblings to place this note at the end
         const newSiblings = Array.from(this.notes.values()).filter(
