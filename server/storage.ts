@@ -533,11 +533,11 @@ export class MemStorage implements IStorage {
       // Store the parent for normalization
       const parentId = note.parentId;
       
-      // Ensure order is always an integer
-      const intOrder = Math.round(Number(order));
+      // Use the order value directly now that we're using numeric type
+      const numericOrder = Number(order);
       
       // Update the note
-      const updatedNote = { ...note, order: intOrder, updatedAt: new Date() };
+      const updatedNote = { ...note, order: numericOrder, updatedAt: new Date() };
       this.notes.set(id, updatedNote);
       
       // Normalize orders of all siblings
@@ -561,8 +561,8 @@ export class MemStorage implements IStorage {
       let newOrder: number;
       
       if (order !== undefined) {
-        // Ensure integer order
-        newOrder = Math.round(Number(order));
+        // Use the order value directly (can be fractional now)
+        newOrder = Number(order);
       } else {
         // Find max order value for new siblings to place this note at the end
         const newSiblings = Array.from(this.notes.values()).filter(
@@ -616,7 +616,7 @@ export class MemStorage implements IStorage {
       notesWithSameParent.forEach((note, index) => {
         this.notes.set(note.id, {
           ...note,
-          order: index,
+          order: index,  // We can use integer values for normalized ordering
           updatedAt: new Date()
         });
       });
