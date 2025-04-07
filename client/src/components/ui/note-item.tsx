@@ -422,59 +422,55 @@ export default function NoteItem({
       // We are in edit mode, note that we want to stay here
       console.log(`[Note ${note.id}] Currently in edit mode - will preserve this state`);
       
-      // Update form data with new values from the server that might have changed
-      // but preserve user changes that haven't been saved yet
-      setFormData(prev => {
-        // Only update non-edited fields, or fields relevant to structure
-        // We don't want to overwrite what the user is currently editing!
-        return {
-          ...prev,
-          // We'll preserve most fields as they are (user's current edits)
-          // But update any structural fields that might have changed:
-          projectId: note.projectId,
-          parentId: note.parentId,
-          order: note.order,
-        };
-      });
-    } else if (isEditingRef.current && !userExitedEditModeRef.current) {
-      // If we were editing but now aren't, AND this wasn't a deliberate exit,
-      // this means state was lost in a re-render
-      console.log(`[Note ${note.id}] Edit mode was lost during re-render - restoring it`);
-      
-      // Restore edit mode
-      setTimeout(() => {
-        setIsEditing(true);
-      }, 0);
-    } else if (userExitedEditModeRef.current) {
-      // If user deliberately exited edit mode, respect that decision
-      console.log(`[Note ${note.id}] Respecting user's decision to exit edit mode`);
-      // Reset the flag for next time
-      userExitedEditModeRef.current = false;
+      // Update form data with the latest from the server
+      // Only if we don't have any client changes (which would be lost)
+      if (formData.content === note.content) {
+        setFormData({
+          content: note.content,
+          url: note.url || "",
+          linkText: note.linkText || "",
+          youtubeLink: note.youtubeLink || "",
+          time: note.time || "",
+          images: note.images || [],
+        });
+      }
+    } 
+    // Important case: we were in edit mode but aren't anymore due to a server update
+    else if (isEditingRef.current && !isEditing && !userExitedEditModeRef.current) {
+      // We were editing, but a server update changed that - restore edit mode
+      console.log(`[Note ${note.id}] Edit mode was lost due to server update - restoring`);
+      setIsEditing(true);
     }
     
-    // Update ref to current value for next render
+    // Update our reference values for next comparison
     isEditingRef.current = isEditing;
     
-  }, [note, isEditing, isNewlyCreated]); // Include isEditing and isNewlyCreated in deps list
+    // Reset the user exited flag once we've used it
+    if (userExitedEditModeRef.current) {
+      userExitedEditModeRef.current = false;
+    }
+  }, [note, isEditing, isNewlyCreated]);
   
-  // Check if note has additional content
+  // Identify if note has additional content
   const hasUrl = !!note.url;
   const hasYouTube = !!note.youtubeLink;
   const hasImages = note.images && note.images.length > 0;
   
-  // Determine if we should show field indicators based on content
-  const hasAdditionalContent = hasUrl || hasYouTube || note.time || hasImages;
+  // Detect if the form has additional content to highlight the toggle button
+  const hasAdditionalContent = 
+    !!formData.url || 
+    !!formData.youtubeLink || 
+    !!formData.time || 
+    (formData.images && formData.images.length > 0);
+  
+  // Apply opacity to indicate dragging
+  const opacity = isDragging ? 0.4 : 1;
   
   return (
-    <div
-      ref={dragPreview}
-      className={`note-item transition-opacity ${isDragging ? "opacity-30" : ""}`}
-      data-note-id={note.id}
-    >
-      <div className="flex items-start group mb-1">
-        <div className="flex-1">
+    <div ref={dragPreview} style={{ opacity }} className={`note-item pb-1.5 relative ${isDragging ? 'is-dragging' : ''} ${!isEditing ? 'cursor-grab' : ''}`}>
+      <div ref={noteRef}>
+        <div className={`ml-${level * 3}`}>
           <div
-            ref={noteRef}
             style={{ 
               backgroundColor: isEditing 
                 ? getLevelColor(level).light 
@@ -482,6 +478,7 @@ export default function NoteItem({
               color: "white" 
             }}
             className={`relative rounded-md p-3 shadow-sm border border-transparent ${isEditing ? "border-primary shadow" : "hover:border-neutral-subtle"} group ${getDragIndicatorClass()}`}
+            ref={!isEditing ? drag : undefined}
             onMouseDown={isEditing ? (e) => e.stopPropagation() : undefined}
           >
             {isEditing ? (
@@ -695,9 +692,6 @@ export default function NoteItem({
               // Normal mode
               <div>
                 <div className="flex items-start">
-                  <div ref={drag} className="cursor-grab pr-2 pt-1 opacity-0 group-hover:opacity-100">
-                    <GripVertical className="h-4 w-4 text-white opacity-70" />
-                  </div>
                   <div className="flex-1">
                     <p className={`text-white ${
                       level === 0 ? 'text-xl font-bold' : 
@@ -750,82 +744,87 @@ export default function NoteItem({
                     </button>
                   </div>
                 </div>
-                <div className="flex mt-2 space-x-1 opacity-0 group-hover:opacity-100">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="p-1 h-auto text-blue-200 hover:bg-blue-900/40 hover:text-blue-100"
-                    onClick={() => setIsEditing(true)}
-                    title="Edit note"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="p-1 h-auto text-green-200 hover:bg-green-900/40 hover:text-green-100"
-                    onClick={() => {
-                      // Set both flags: newNoteCreated for backward compatibility,
-                      // and we'll rely on the lastCreatedNoteId that will be set
-                      // in the onSuccess callback in useNotes hook
-                      localStorage.setItem('newNoteCreated', 'true');
-                      
-                      (createNote.mutate as any)({
-                        projectId: note.projectId,
-                        parentId: note.parentId,
-                        content: "",
-                        order: (Number(note.order) + 1).toString(),
-                        url: "",
-                        linkText: "",
-                        youtubeLink: "",
-                        time: "",
-                        images: []
-                      });
-                    }}
-                    title="Add note below"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="p-1 h-auto text-yellow-200 hover:bg-yellow-900/40 hover:text-yellow-100"
-                    onClick={() => {
-                      // Set both flags: newNoteCreated for backward compatibility,
-                      // and we'll rely on the lastCreatedNoteId that will be set
-                      // in the onSuccess callback in useNotes hook
-                      localStorage.setItem('newNoteCreated', 'true');
-                      
-                      (createNote.mutate as any)({
-                        projectId: note.projectId,
-                        parentId: note.id,
-                        content: "",
-                        order: "0",
-                        url: "",
-                        linkText: "",
-                        youtubeLink: "",
-                        time: "",
-                        images: []
-                      });
-                      
-                      // Ensure the parent is expanded
-                      if (!isExpanded) {
-                        toggleExpand();
-                      }
-                    }}
-                    title="Add child note"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="p-1 h-auto text-red-200 hover:bg-red-900/40 hover:text-red-100"
-                    onClick={() => setIsDeleteDialogOpen(true)}
-                    title="Delete note"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div className="flex justify-between items-center mt-2">
+                  <div className="flex space-x-1 opacity-0 group-hover:opacity-100">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="p-1 h-auto text-blue-200 hover:bg-blue-900/40 hover:text-blue-100"
+                      onClick={() => setIsEditing(true)}
+                      title="Edit note"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="p-1 h-auto text-green-200 hover:bg-green-900/40 hover:text-green-100"
+                      onClick={() => {
+                        // Set both flags: newNoteCreated for backward compatibility,
+                        // and we'll rely on the lastCreatedNoteId that will be set
+                        // in the onSuccess callback in useNotes hook
+                        localStorage.setItem('newNoteCreated', 'true');
+                        
+                        (createNote.mutate as any)({
+                          projectId: note.projectId,
+                          parentId: note.parentId,
+                          content: "",
+                          order: (Number(note.order) + 1).toString(),
+                          url: "",
+                          linkText: "",
+                          youtubeLink: "",
+                          time: "",
+                          images: []
+                        });
+                      }}
+                      title="Add note below"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="p-1 h-auto text-yellow-200 hover:bg-yellow-900/40 hover:text-yellow-100"
+                      onClick={() => {
+                        // Set both flags: newNoteCreated for backward compatibility,
+                        // and we'll rely on the lastCreatedNoteId that will be set
+                        // in the onSuccess callback in useNotes hook
+                        localStorage.setItem('newNoteCreated', 'true');
+                        
+                        (createNote.mutate as any)({
+                          projectId: note.projectId,
+                          parentId: note.id,
+                          content: "",
+                          order: "0",
+                          url: "",
+                          linkText: "",
+                          youtubeLink: "",
+                          time: "",
+                          images: []
+                        });
+                        
+                        // Ensure the parent is expanded
+                        if (!isExpanded) {
+                          toggleExpand();
+                        }
+                      }}
+                      title="Add child note"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="p-1 h-auto text-red-200 hover:bg-red-900/40 hover:text-red-100"
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      title="Delete note"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="opacity-0 group-hover:opacity-70 text-white/60" title="Drag to reorder">
+                    <GripVertical className="h-3 w-3" />
+                  </div>
                 </div>
               </div>
             )}
