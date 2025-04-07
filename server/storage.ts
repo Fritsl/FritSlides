@@ -162,13 +162,14 @@ export class DatabaseStorage implements IStorage {
       }
       
       // Find all descendant notes recursively using a CTE query
+      // Using quotes to ensure proper column casing
       await db.execute(sql`
         WITH RECURSIVE descendants AS (
-          SELECT id FROM notes WHERE id = ${id}
+          SELECT "id" FROM notes WHERE "id" = ${id}
           UNION
-          SELECT n.id FROM notes n, descendants d WHERE n.parentId = d.id
+          SELECT n."id" FROM notes n, descendants d WHERE n."parentId" = d."id"
         )
-        DELETE FROM notes WHERE id IN (SELECT id FROM descendants)
+        DELETE FROM notes WHERE "id" IN (SELECT "id" FROM descendants)
       `);
       
       return true;
