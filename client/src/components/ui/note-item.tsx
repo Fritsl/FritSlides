@@ -63,8 +63,6 @@ export default function NoteItem({
   const [deleteChildren, setDeleteChildren] = useState(false);
   const [dragPosition, setDragPosition] = useState<'before' | 'after' | 'child' | 'first-child' | null>(null);
   const noteRef = useRef<HTMLDivElement>(null);
-  const topDropRef = useRef<HTMLDivElement>(null);
-  const bottomDropRef = useRef<HTMLDivElement>(null);
   const contentInputRef = useRef<HTMLTextAreaElement>(null);
   
   const { updateNote, deleteNote, uploadImage } = useNotes(projectId);
@@ -212,54 +210,12 @@ export default function NoteItem({
     }),
   });
   
-  // Create additional drop targets for top and bottom
-  const [{ isOverTop }, dropTop] = useDrop({
-    accept: ItemTypes.NOTE,
-    hover: (item: { id: number }, monitor) => {
-      if (item.id === note.id) return;
-      if (!canDrop(item.id)) return;
-      setDragPosition('before');
-    },
-    drop: (item: { id: number }) => {
-      if (item.id !== note.id) {
-        moveNote(item.id, note.id, 'before');
-      }
-      setDragPosition(null);
-    },
-    collect: (monitor) => ({
-      isOverTop: monitor.isOver(),
-    }),
-  });
-
-  const [{ isOverBottom }, dropBottom] = useDrop({
-    accept: ItemTypes.NOTE,
-    hover: (item: { id: number }, monitor) => {
-      if (item.id === note.id) return;
-      if (!canDrop(item.id)) return;
-      setDragPosition('after');
-    },
-    drop: (item: { id: number }) => {
-      if (item.id !== note.id) {
-        moveNote(item.id, note.id, 'after');
-      }
-      setDragPosition(null);
-    },
-    collect: (monitor) => ({
-      isOverBottom: monitor.isOver(),
-    }),
-  });
-
   // Combine drag and drop refs
   drag(drop(noteRef));
-  dropTop(topDropRef);
-  dropBottom(bottomDropRef);
   
   // Determine classes for drag preview
   const getDragIndicatorClass = () => {
-    if (!isOver || !dragPosition) {
-      // Return hover-only indicator lines when not actively dragging over
-      return "before:absolute before:left-0 before:right-0 before:top-0 before:h-0.5 before:bg-primary/30 hover:before:opacity-100 before:opacity-0 after:absolute after:left-0 after:right-0 after:bottom-0 after:h-0.5 after:bg-primary/30 hover:after:opacity-100 after:opacity-0";
-    }
+    if (!isOver || !dragPosition) return "";
     
     switch (dragPosition) {
       case 'before':
@@ -309,14 +265,6 @@ export default function NoteItem({
       className={`note-item transition-opacity ${isDragging ? "opacity-30" : ""}`}
       data-note-id={note.id}
     >
-      {/* Top drop target zone - when hovered, shows a line indicating "drop before" */}
-      <div 
-        ref={topDropRef} 
-        className={`h-2 w-full group relative rounded-sm mb-1 ${isOverTop ? 'bg-primary/20' : 'hover:bg-primary/10'}`}
-      >
-        <div className={`absolute top-1/2 left-0 right-0 h-0.5 bg-primary ${isOverTop ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-      </div>
-      
       <div className="flex items-start group mb-1">
         <button
           className={`p-1 text-neutral-muted hover:text-neutral-text ${!hasChildren && 'opacity-0'}`}
@@ -561,14 +509,6 @@ export default function NoteItem({
             )}
           </div>
         </div>
-      </div>
-      
-      {/* Bottom drop target zone - when hovered, shows a line indicating "drop after" */}
-      <div 
-        ref={bottomDropRef} 
-        className={`h-2 w-full group relative rounded-sm mb-1 ${isOverBottom ? 'bg-primary/20' : 'hover:bg-primary/10'}`}
-      >
-        <div className={`absolute top-1/2 left-0 right-0 h-0.5 bg-primary ${isOverBottom ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
       </div>
       
       <ConfirmationDialog
