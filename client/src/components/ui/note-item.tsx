@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { Note } from "@shared/schema";
 import { Button } from "@/components/ui/button";
@@ -57,8 +57,9 @@ export default function NoteItem({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [dragPosition, setDragPosition] = useState<'before' | 'after' | 'child' | null>(null);
   const noteRef = useRef<HTMLDivElement>(null);
+  const contentInputRef = useRef<HTMLTextAreaElement>(null);
   
-  const { updateNote, deleteNote, uploadImage } = useNotes(projectId);
+  const { updateNote, deleteNote, uploadImage, lastCreatedNoteId, clearLastCreatedNoteId } = useNotes(projectId);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -203,6 +204,23 @@ export default function NoteItem({
     }
   };
   
+  // Effect to auto-enter edit mode for newly created notes
+  useEffect(() => {
+    // Check if this is the newly created note
+    if (lastCreatedNoteId === note.id && !isEditing) {
+      setIsEditing(true);
+      // Clear the ID so we don't keep triggering this
+      clearLastCreatedNoteId();
+    }
+  }, [lastCreatedNoteId, note.id, isEditing, clearLastCreatedNoteId]);
+
+  // Effect to focus on content field when entering edit mode
+  useEffect(() => {
+    if (isEditing && contentInputRef.current) {
+      contentInputRef.current.focus();
+    }
+  }, [isEditing]);
+
   // Check if note has additional content
   const hasUrl = !!note.url;
   const hasYouTube = !!note.youtubeLink;
@@ -240,6 +258,7 @@ export default function NoteItem({
                   <div className="flex-1">
                     <div className="mb-3">
                       <Textarea
+                        ref={contentInputRef}
                         name="content"
                         value={formData.content}
                         onChange={handleInputChange}
