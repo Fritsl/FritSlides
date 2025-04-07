@@ -184,7 +184,8 @@ export default function Header({
         size="sm"
         variant="ghost"
         className={cn(
-          "min-w-8 h-8 mx-0.5 p-0 rounded-sm hover:opacity-100 text-white",
+          "min-w-8 h-8 mx-0.5 p-0 rounded-sm hover:opacity-100 text-white font-medium",
+          isActive ? "ring-2 ring-white/20" : ""
         )}
         style={{ 
           backgroundColor: isActive ? colorPair.light : colorPair.regular,
@@ -198,7 +199,7 @@ export default function Header({
   });
 
   return (
-    <header className="bg-background border-b border-neutral-subtle shadow-sm sticky top-0 z-50">
+    <header className="bg-slate-900 text-white border-b border-slate-800 shadow-md sticky top-0 z-50">
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex items-center">
           {currentProject ? (
@@ -210,13 +211,13 @@ export default function Header({
                   onChange={(e) => setProjectName(e.target.value)}
                   onKeyDown={handleKeyDown}
                   onBlur={saveProjectName}
-                  className="max-w-[200px] font-semibold text-lg"
+                  className="max-w-[200px] font-semibold text-lg bg-slate-800 border-slate-700 text-white"
                 />
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   onClick={saveProjectName} 
-                  className="ml-1 h-8 w-8"
+                  className="ml-1 h-8 w-8 text-white hover:bg-slate-800"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
@@ -224,28 +225,28 @@ export default function Header({
                   variant="ghost" 
                   size="icon" 
                   onClick={cancelEditing} 
-                  className="ml-1 h-8 w-8"
+                  className="ml-1 h-8 w-8 text-white hover:bg-slate-800"
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             ) : (
               <div 
-                className="cursor-pointer text-lg font-semibold text-foreground"
+                className="cursor-pointer text-lg font-semibold text-white"
                 onClick={startEditing}
               >
                 {currentProject.name}
               </div>
             )
           ) : (
-            <h1 className="text-lg font-semibold text-primary">NoteDrop</h1>
+            <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">NoteDrop</h1>
           )}
         </div>
         
         {/* Level buttons */}
         {currentProject && maxDepth > 0 && onExpandToLevel && (
           <div className="flex items-center mx-4 overflow-x-auto">
-            <div className="flex items-center px-2 py-1 rounded-md bg-background border border-neutral-subtle shadow-sm">
+            <div className="flex items-center px-2 py-1 rounded-md bg-slate-800 border border-slate-700 shadow-sm">
               {levelButtons}
             </div>
           </div>
@@ -255,7 +256,7 @@ export default function Header({
           {/* Hamburger Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="ml-auto">
+              <Button variant="ghost" size="icon" className="ml-auto text-white hover:bg-slate-800">
                 <Menu className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>

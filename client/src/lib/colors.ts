@@ -7,38 +7,38 @@ export type ColorPair = {
 };
 
 export const LEVEL_COLORS: ColorPair[] = [
-  // Deep blue
-  { regular: '#1a1e2c', light: '#252a3a' }, 
+  // Royal blue
+  { regular: '#1a237e', light: '#303f9f' }, 
   // Purple
-  { regular: '#2d1f3d', light: '#3a294e' },
-  // Deep teal
-  { regular: '#1d3b36', light: '#254941' },
-  // Burgundy
-  { regular: '#3d1f2f', light: '#4c2a3c' },
-  // Dark blue-green
-  { regular: '#1d303d', light: '#263a4a' },
-  // Dark olive
-  { regular: '#2e331f', light: '#3a4128' },
-  // Deep magenta
-  { regular: '#351a35', light: '#412541' },
-  // Slate
-  { regular: '#2c2c3d', light: '#37374c' },
-  // Dark brown
-  { regular: '#342617', light: '#413020' },
-  // Deep indigo
-  { regular: '#1f234d', light: '#292d5e' },
-  // Dark forest green
-  { regular: '#1e2e1e', light: '#284028' },
-  // Dark crimson
-  { regular: '#3d1919', light: '#4c2424' },
-  // Charcoal blue
-  { regular: '#232e3d', light: '#2d394a' },
-  // Dark mauve
-  { regular: '#3d2638', light: '#4b3144' },
+  { regular: '#4a148c', light: '#6a1b9a' },
+  // Teal
+  { regular: '#00695c', light: '#00897b' },
+  // Red
+  { regular: '#b71c1c', light: '#c62828' },
+  // Indigo
+  { regular: '#283593', light: '#3949ab' },
+  // Green
+  { regular: '#2e7d32', light: '#388e3c' },
+  // Deep pink
+  { regular: '#880e4f', light: '#ad1457' },
+  // Slate blue
+  { regular: '#303f9f', light: '#3f51b5' },
+  // Brown
+  { regular: '#4e342e', light: '#5d4037' },
+  // Blue-purple
+  { regular: '#311b92', light: '#4527a0' },
+  // Deep green
+  { regular: '#1b5e20', light: '#2e7d32' },
+  // Crimson
+  { regular: '#7b1fa2', light: '#8e24aa' },
+  // Navy
+  { regular: '#0d47a1', light: '#1565c0' },
+  // Burgundy 
+  { regular: '#6a1b9a', light: '#7b1fa2' },
   // Dark cyan
-  { regular: '#1a3333', light: '#254040' },
-  // Dark gold
-  { regular: '#33301a', light: '#403d24' }
+  { regular: '#006064', light: '#00796b' },
+  // Dark orange
+  { regular: '#bf360c', light: '#d84315' }
 ];
 
 // Get color for a specific level (cycles through if level > colors available)
