@@ -106,7 +106,7 @@ export default function Header({
 
   if (!user) {
     return (
-      <header className="bg-background border-b border-neutral-subtle shadow-sm">
+      <header className="bg-background border-b border-neutral-subtle shadow-sm sticky top-0 z-50">
         <div className="flex items-center justify-between px-4 py-3">
           <h1 className="text-lg font-semibold text-primary">NoteDrop</h1>
           <div className="flex items-center">
@@ -180,7 +180,7 @@ export default function Header({
   });
 
   return (
-    <header className="bg-background border-b border-neutral-subtle shadow-sm">
+    <header className="bg-background border-b border-neutral-subtle shadow-sm sticky top-0 z-50">
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex items-center">
           {currentProject ? (
