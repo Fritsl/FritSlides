@@ -60,8 +60,19 @@ export function useNotes(projectId: number | null) {
       return res.json();
     },
     onMutate: async (newNote: Partial<InsertNote>) => {
+      console.log(`[CREATE MUTATE] Starting optimistic update for new note`, newNote);
+      
       // Skip optimistic update if we don't have the notes data yet
-      if (!notes || !projectId) return;
+      if (!notes || !projectId) {
+        console.log(`[CREATE MUTATE] Skipping optimistic update - no notes or projectId available`);
+        return;
+      }
+      
+      // IMPORTANT CHANGE: Clear localStorage flags to avoid edit mode during optimistic update
+      // We'll wait for server confirmation before entering edit mode
+      localStorage.removeItem('newNoteCreated');
+      localStorage.removeItem('lastCreatedNoteId');
+      console.log(`[CREATE MUTATE] Cleared localStorage flags to prevent premature edit mode`);
       
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
@@ -71,6 +82,7 @@ export function useNotes(projectId: number | null) {
       
       // Create an optimistic note
       const optimisticNote = createOptimisticNote(newNote, projectId);
+      console.log(`[CREATE MUTATE] Created optimistic note with temp ID: ${optimisticNote.id}`);
       
       // Optimistically update the UI
       if (previousNotes) {
@@ -78,28 +90,31 @@ export function useNotes(projectId: number | null) {
           [`/api/projects/${projectId}/notes`], 
           [...previousNotes, optimisticNote]
         );
+        console.log(`[CREATE MUTATE] Updated query cache with optimistic note`);
       }
       
       return { previousNotes, optimisticNote };
     },
     onSuccess: (data, variables, context) => {
+      console.log(`[CREATE SUCCESS] Server created note with ID: ${data.id}`, data);
+      
       // No need to invalidate manually since we'll update the cache with the server response
       if (projectId) {
         // Get the current notes
         const currentNotes = queryClient.getQueryData<Note[]>([`/api/projects/${projectId}/notes`]);
         
         if (currentNotes && context?.optimisticNote) {
-          // Replace the optimistic note with the real one but preserve edit flags
+          console.log(`[CREATE SUCCESS] Replacing optimistic note ${context.optimisticNote.id} with real note ${data.id}`);
+          
+          // Replace the optimistic note with the real one
           const updatedNotes = currentNotes.map(note => {
             if (note.id === context.optimisticNote.id) {
-              // Transfer any client-side state by checking for flag in localStorage
-              const newNoteBeingCreated = localStorage.getItem('newNoteCreated') === 'true';
-              if (newNoteBeingCreated) {
-                // If this is the optimistic note that was just created, don't reset localStorage
-                // The NoteItem component will handle setting newNoteCreated to false after 
-                // it finishes initializing edit mode
-                localStorage.setItem('lastCreatedNoteId', data.id.toString());
-              }
+              // IMPORTANT CHANGE: Now that server has confirmed the note creation, 
+              // we set the flags to trigger edit mode
+              console.log(`[CREATE SUCCESS] Setting up edit mode for new note ${data.id}`);
+              localStorage.setItem('newNoteCreated', 'true');
+              localStorage.setItem('lastCreatedNoteId', data.id.toString());
+              
               return data;
             }
             return note;
@@ -107,8 +122,14 @@ export function useNotes(projectId: number | null) {
           
           // Update the cache with the real note
           queryClient.setQueryData<Note[]>([`/api/projects/${projectId}/notes`], updatedNotes);
+          console.log(`[CREATE SUCCESS] Updated query cache with real note`);
+          
+          // Immediately invalidate the query to trigger a re-render that will pick up the localStorage flags
+          console.log(`[CREATE SUCCESS] Invalidating query to trigger UI update and enter edit mode`);
+          queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
         } else {
           // Fallback to invalidating if something went wrong
+          console.log(`[CREATE SUCCESS] No optimistic note found, invalidating query`);
           queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
         }
       }
