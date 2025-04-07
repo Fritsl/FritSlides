@@ -212,22 +212,26 @@ export default function NoteItem({
     }));
   };
   
-  // Set up drag source
+  // Set up drag source - disabled when editing
   const [{ isDragging }, drag, dragPreview] = useDrag({
     type: ItemTypes.NOTE,
     item: () => {
+      // Don't allow dragging when in edit mode
+      if (isEditing) return null;
       onDragStart();
       return { id: note.id, text: note.content };
     },
+    canDrag: () => !isEditing, // Disable dragging when in edit mode
     end: () => onDragEnd(),
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
   });
   
-  // Set up drop target
+  // Set up drop target - disabled when editing
   const [{ isOver }, drop] = useDrop({
     accept: ItemTypes.NOTE,
+    canDrop: () => !isEditing, // Disable dropping when in edit mode
     hover: (item: { id: number }, monitor) => {
       if (!noteRef.current || item.id === note.id) return;
       
@@ -486,8 +490,9 @@ export default function NoteItem({
               // Edit mode
               <div>
                 <div className="flex items-start">
-                  <div ref={drag} className="cursor-grab pr-2 pt-1 opacity-30 hover:opacity-100">
-                    <GripVertical className="h-4 w-4 text-white" />
+                  {/* Not using drag ref in edit mode to allow for text selection */}
+                  <div className="cursor-default pr-2 pt-1 opacity-30">
+                    <GripVertical className="h-4 w-4 text-white opacity-50" />
                   </div>
                   <div className="flex-1">
                     <div className="mb-3">
