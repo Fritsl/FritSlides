@@ -497,10 +497,48 @@ export default function NoteItem({
             {isEditing ? (
               // Edit mode
               <div className="text-selection-container">
-                {/* Fixed-position edit panel for mobile */}
-                <div className="fixed top-0 left-0 right-0 z-50 bg-gray-900 p-3 rounded-b-lg shadow-lg border-b border-primary">
-                  {/* Main content textarea - Always visible */}
-                  <div className="mb-2">
+                {/* Fixed-position edit panel for mobile and desktop */}
+                <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-blue-950 to-gray-900 p-4 shadow-xl border-b-2 border-blue-500">
+                  {/* Edit mode title */}
+                  <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-white font-bold text-lg flex items-center">
+                      <Edit className="h-5 w-5 mr-2 text-blue-400" /> 
+                      Edit Note
+                    </h2>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCancel}
+                        disabled={updateNote.isPending}
+                        className="h-8 border-red-500 hover:bg-red-900/30 text-red-300"
+                      >
+                        <X className="h-4 w-4 mr-1" /> Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={updateNote.isPending}
+                        className="h-8 bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        {updateNote.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-1" />
+                            Save
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Main content textarea with prominent styling */}
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-blue-300 mb-1">Content</label>
                     <Textarea
                       ref={contentInputRef}
                       name="content"
@@ -508,7 +546,7 @@ export default function NoteItem({
                       onChange={handleInputChange}
                       rows={3}
                       placeholder="Note content..."
-                      className="w-full p-2 border-neutral-subtle focus:border-primary select-text cursor-text"
+                      className="w-full p-3 border-2 border-blue-700 focus:border-blue-500 rounded-md bg-gray-800 text-white select-text cursor-text shadow-inner"
                       style={{ 
                         userSelect: 'text', 
                         WebkitUserSelect: 'text',
@@ -521,49 +559,32 @@ export default function NoteItem({
                     />
                   </div>
                   
-                  {/* Action buttons always visible at top */}
-                  <div className="flex justify-between mb-2">
-                    <div className="flex space-x-1">
-                      {/* Toggle button for additional fields */}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className={`p-1 h-8 ${hasAdditionalContent ? 'text-blue-300' : 'text-blue-200 opacity-70'}`}
-                        onClick={() => setShowAdditionalFields(!showAdditionalFields)}
-                        title="Toggle additional fields"
-                      >
-                        {showAdditionalFields ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                    
-                    <div className="flex space-x-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleCancel}
-                        disabled={updateNote.isPending}
-                        className="h-8"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleSave}
-                        disabled={updateNote.isPending}
-                        className="h-8"
-                      >
-                        {updateNote.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
+                  {/* Toggle button for additional fields with clear visual indicator */}
+                  <Button
+                    size="sm"
+                    variant={showAdditionalFields ? "default" : "outline"}
+                    className={`w-full mb-2 ${
+                      showAdditionalFields 
+                        ? 'bg-blue-700 hover:bg-blue-800 text-white' 
+                        : 'border-blue-600 text-blue-400 hover:text-blue-300'
+                    }`}
+                    onClick={() => setShowAdditionalFields(!showAdditionalFields)}
+                  >
+                    {showAdditionalFields ? (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                        Hide Additional Fields
+                      </>
+                    ) : (
+                      <>
+                        <ChevronRight className="h-4 w-4 mr-2" />
+                        {hasAdditionalContent 
+                          ? "Show Additional Fields (Contains Data)" 
+                          : "Show Additional Fields"
+                        }
+                      </>
+                    )}
+                  </Button>
                   
                   {/* Collapsible additional fields */}
                   {showAdditionalFields && (
