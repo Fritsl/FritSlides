@@ -497,18 +497,12 @@ export default function NoteItem({
             {isEditing ? (
               // Edit mode
               <div className="text-selection-container">
-                {/* Visual indication of which note is being edited */}
-                <div className="bg-primary/20 p-3 rounded-md border-2 border-primary/40 mb-2 relative">
-                  <div className="absolute top-0 right-0 bg-primary text-white px-2 py-1 text-xs rounded-bl-md">
-                    Currently Editing
-                  </div>
-                  <p className="text-white opacity-70 pt-5">
-                    {note.content || "Empty note"}
-                  </p>
-                </div>
-                
-                {/* Fixed-position edit panel for mobile and desktop */}
+                {/* Fixed-position edit panel for mobile and desktop with note indicator */}
                 <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-blue-950 to-gray-900 p-4 shadow-xl border-b-2 border-blue-500">
+                  {/* Note identifier badge */}
+                  <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                    Editing: {note.content.substring(0, 25)}{note.content.length > 25 ? "..." : ""}
+                  </div>
                   {/* Edit mode title */}
                   <div className="flex justify-between items-center mb-3">
                     <h2 className="text-white font-bold text-lg flex items-center">
@@ -705,7 +699,7 @@ export default function NoteItem({
                 </div>
                 
                 {/* Spacer element to prevent content from being hidden under the fixed edit panel */}
-                <div className="h-[350px]"></div>
+                <div className="h-[200px]"></div>
               </div>
             ) : (
               // Normal mode
