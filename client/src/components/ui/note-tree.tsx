@@ -135,16 +135,43 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
       
       // Move as sibling
       const siblings = notes.filter(n => n.parentId === targetNote.parentId);
-      siblings.sort((a, b) => a.order - b.order);
+      siblings.sort((a, b) => Number(a.order) - Number(b.order));
       
       console.log('Siblings (sorted by order):', siblings);
       
       const targetIndex = siblings.findIndex(n => n.id === targetId);
       console.log(`Target index in siblings array: ${targetIndex}`);
       
-      const newOrder = position === 'before' 
-        ? targetNote.order - 0.5 
-        : targetNote.order + 0.5;
+      // Find the note before and after the target in sorted order for better positioning
+      const prevNote = targetIndex > 0 ? siblings[targetIndex - 1] : null;
+      const nextNote = targetIndex < siblings.length - 1 ? siblings[targetIndex + 1] : null;
+      
+      console.log('Previous sibling:', prevNote);
+      console.log('Next sibling:', nextNote);
+      
+      // Calculate order based on surrounding notes
+      let newOrder;
+      if (position === 'before') {
+        if (prevNote) {
+          // Place between prev and target
+          newOrder = Number(prevNote.order) + (Number(targetNote.order) - Number(prevNote.order)) / 2;
+        } else {
+          // Place before the first item
+          newOrder = Number(targetNote.order) - 0.5;
+        }
+      } else { // after
+        if (nextNote) {
+          // Place between target and next
+          newOrder = Number(targetNote.order) + (Number(nextNote.order) - Number(targetNote.order)) / 2;
+        } else {
+          // Place after the last item
+          newOrder = Number(targetNote.order) + 0.5;
+        }
+      }
+      
+      console.log(`Position: ${position}`);
+      console.log(`Previous note order: ${prevNote?.order}, Target note order: ${targetNote.order}, Next note order: ${nextNote?.order}`);
+      console.log(`New calculated order: ${newOrder}`);
       
       console.log(`Target note order: ${targetNote.order}, new calculated order: ${newOrder}`);
       

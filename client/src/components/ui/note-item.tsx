@@ -187,28 +187,61 @@ export default function NoteItem({
       console.log(`Middle Y: ${hoverMiddleY}, Cursor Y: ${hoverClientY}`);
       console.log(`Middle X: ${hoverMiddleX}, Cursor X: ${hoverClientX}`);
       
-      // Determine drop position
-      const isLeftSide = hoverClientX < hoverMiddleX / 2; // Left side for before/after, right side for child positions
-      const isRightSide = hoverClientX >= hoverMiddleX / 2;
+      // Determine drop position with improved algorithm
+      // Define the horizontal zones (0-30% left, 30-70% middle, 70-100% right)
+      const leftThreshold = hoverBoundingRect.width * 0.3;
+      const rightThreshold = hoverBoundingRect.width * 0.7;
       
-      console.log(`isLeftSide: ${isLeftSide}, isRightSide: ${isRightSide}`);
-      console.log(`Top half check: ${hoverClientY < hoverMiddleY / 2}`);
-      console.log(`Bottom half check: ${hoverClientY > hoverMiddleY * 1.5}`);
+      // Define the vertical zones (0-40% top, 40-60% middle, 60-100% bottom)
+      const topThreshold = hoverBoundingRect.height * 0.4;
+      const bottomThreshold = hoverBoundingRect.height * 0.6;
+      
+      // Determine the zone
+      const isLeftZone = hoverClientX < leftThreshold;
+      const isRightZone = hoverClientX > rightThreshold;
+      const isMiddleZone = !isLeftZone && !isRightZone;
+      
+      const isTopZone = hoverClientY < topThreshold;
+      const isBottomZone = hoverClientY > bottomThreshold;
+      const isMiddleVerticalZone = !isTopZone && !isBottomZone;
+      
+      console.log(`Drop zone: ${isLeftZone ? 'Left' : isRightZone ? 'Right' : 'Middle'}-${isTopZone ? 'Top' : isBottomZone ? 'Bottom' : 'Middle'}`);
+      console.log(`Left threshold: ${leftThreshold.toFixed(2)}, Right threshold: ${rightThreshold.toFixed(2)}`);
+      console.log(`Top threshold: ${topThreshold.toFixed(2)}, Bottom threshold: ${bottomThreshold.toFixed(2)}`);
       
       let newPosition: 'before' | 'after' | 'child' | 'first-child' | null = null;
       
-      if (isLeftSide && hoverClientY < hoverMiddleY / 2) {
-        // Top-left quadrant: before
-        newPosition = 'before';
-      } else if (isLeftSide && hoverClientY > hoverMiddleY * 1.5) {
-        // Bottom-left quadrant: after
-        newPosition = 'after';
-      } else if (isRightSide && hoverClientY < hoverMiddleY / 2) {
-        // Top-right quadrant: first-child
-        newPosition = 'first-child';
+      // Improved position determination logic
+      if (isTopZone) {
+        // Top of the note
+        if (isLeftZone || isMiddleZone) {
+          // Use before for the entire top except far right
+          newPosition = 'before';
+        } else {
+          // Far right-top corner - first child
+          newPosition = 'first-child';
+        }
+      } else if (isBottomZone) {
+        // Bottom of the note
+        if (isLeftZone || isMiddleZone) {
+          // Use after for the entire bottom except far right
+          newPosition = 'after';
+        } else {
+          // Far right-bottom corner - child
+          newPosition = 'child';
+        }
       } else {
-        // Bottom-right quadrant: child (append)
-        newPosition = 'child';
+        // Middle of the note
+        if (isLeftZone) {
+          // Middle left - before
+          newPosition = 'before';
+        } else if (isRightZone) {
+          // Middle right - child
+          newPosition = 'child';
+        } else {
+          // Middle area - use before for top half, after for bottom half
+          newPosition = hoverClientY < hoverMiddleY ? 'before' : 'after';
+        }
       }
       
       console.log(`Selected position: ${newPosition}`);
