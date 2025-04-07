@@ -58,7 +58,7 @@ export default function NoteItem({
   moveNote,
   createNote,
 }: NoteItemProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  // Use local state for tracking newly created status and delete dialog
   const [isNewlyCreated, setIsNewlyCreated] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteChildren, setDeleteChildren] = useState(false);
@@ -71,7 +71,18 @@ export default function NoteItem({
   const contentInputRef = useRef<HTMLTextAreaElement>(null);
   const noteDataRef = useRef<string | null>(null);
   
-  const { updateNote, deleteNote, uploadImage } = useNotes(projectId);
+  // Use the centralized editing state management
+  const { 
+    updateNote, 
+    deleteNote, 
+    uploadImage,
+    startEditing,
+    stopEditing,
+    editingNoteId
+  } = useNotes(projectId);
+  
+  // Derive local editing state from global state
+  const isEditing = editingNoteId === note.id;
   
   // Form state
   const [formData, setFormData] = useState({
@@ -122,7 +133,7 @@ export default function NoteItem({
         // Set the flag that this is a deliberate exit from edit mode
         // This prevents the note from re-entering edit mode during server sync
         userExitedEditModeRef.current = true;
-        setIsEditing(false);
+        stopEditing();
       },
       onError: (error) => {
         console.error(`Note update failed:`, error);
@@ -152,7 +163,7 @@ export default function NoteItem({
     userExitedEditModeRef.current = true;
     
     // Exit edit mode
-    setIsEditing(false);
+    stopEditing();
   };
   
   // Handle delete confirmation
@@ -345,7 +356,7 @@ export default function NoteItem({
       
       // Small delay to ensure this runs after the component is fully mounted
       setTimeout(() => {
-        setIsEditing(true);
+        startEditing(note.id);
       }, 50);
     }
   }, [note.id, note.content, isEditing, isNewlyCreated]);
@@ -377,7 +388,7 @@ export default function NoteItem({
       if (wasEditing && !isEditing && !userExited) {
         // Return to edit mode and preserve the editing state
         setTimeout(() => {
-          setIsEditing(true);
+          startEditing(note.id);
         }, 50);
       }
       return;
@@ -724,7 +735,7 @@ export default function NoteItem({
                     size="sm"
                     variant="ghost"
                     className="p-1 h-auto text-blue-200 hover:bg-blue-900/40 hover:text-blue-100"
-                    onClick={() => setIsEditing(true)}
+                    onClick={() => startEditing(note.id)}
                     title="Edit note"
                   >
                     <Edit className="h-4 w-4" />

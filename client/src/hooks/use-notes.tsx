@@ -2,6 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Note, InsertNote, UpdateNote } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useCallback, createContext, useContext } from "react";
 
 // Helper function to find a note by ID in a list
 const findNoteById = (notes: Note[], id: number): Note | undefined => {
@@ -40,8 +41,68 @@ const createOptimisticNote = (note: Partial<InsertNote>, projectId: number): Not
   };
 };
 
+// Create a context to track which note is currently being edited across components
+interface EditingContext {
+  editingNoteId: number | null;
+  setEditingNoteId: (id: number | null) => void;
+  isEditing: boolean;
+}
+
+const NoteEditingContext = createContext<EditingContext | null>(null);
+
+// Provider component for the editing state
+export function NoteEditingProvider({ children }: { children: React.ReactNode }) {
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  
+  const context = {
+    editingNoteId,
+    setEditingNoteId,
+    isEditing: editingNoteId !== null
+  };
+  
+  return (
+    <NoteEditingContext.Provider value={context}>
+      {children}
+    </NoteEditingContext.Provider>
+  );
+}
+
+// Hook to access the editing state
+export function useNoteEditing() {
+  const context = useContext(NoteEditingContext);
+  if (!context) {
+    throw new Error("useNoteEditing must be used within a NoteEditingProvider");
+  }
+  return context;
+}
+
 export function useNotes(projectId: number | null) {
   const { toast } = useToast();
+  const { editingNoteId, setEditingNoteId, isEditing } = useNoteEditing();
+  
+  // Function to start editing a note - ensures only one note can be edited at a time
+  const startEditing = useCallback((noteId: number) => {
+    console.log(`[EDITING] Starting edit mode for note ${noteId}`);
+    
+    // If already editing a different note, show a warning
+    if (editingNoteId !== null && editingNoteId !== noteId) {
+      toast({
+        title: "Already editing",
+        description: "Please finish editing the current note before editing another one.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    setEditingNoteId(noteId);
+    return true;
+  }, [editingNoteId, setEditingNoteId, toast]);
+  
+  // Function to stop editing 
+  const stopEditing = useCallback(() => {
+    console.log(`[EDITING] Exiting edit mode`);
+    setEditingNoteId(null);
+  }, [setEditingNoteId]);
   
   const {
     data: notes,
@@ -432,5 +493,9 @@ export function useNotes(projectId: number | null) {
     updateNoteParent,
     updateNoteOrder,
     uploadImage,
+    startEditing,
+    stopEditing,
+    editingNoteId,
+    isEditing
   };
 }

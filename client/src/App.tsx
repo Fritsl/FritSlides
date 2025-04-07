@@ -7,6 +7,7 @@ import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
+import { NoteEditingProvider } from "@/hooks/use-notes";
 
 function Router() {
   return (
@@ -22,8 +23,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
-        <Toaster />
+        <NoteEditingProvider>
+          <Router />
+          <Toaster />
+        </NoteEditingProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
