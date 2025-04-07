@@ -4,6 +4,8 @@ import { Note } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { FileUpload } from "./file-upload";
 import { ConfirmationDialog } from "./confirmation-dialog";
 import { useNotes } from "@/hooks/use-notes";
@@ -58,6 +60,7 @@ export default function NoteItem({
 }: NoteItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteChildren, setDeleteChildren] = useState(false);
   const [dragPosition, setDragPosition] = useState<'before' | 'after' | 'child' | 'first-child' | null>(null);
   const noteRef = useRef<HTMLDivElement>(null);
   const contentInputRef = useRef<HTMLTextAreaElement>(null);
@@ -118,8 +121,12 @@ export default function NoteItem({
   
   // Handle delete confirmation
   const handleDelete = () => {
-    deleteNote.mutate(note.id, {
-      onSuccess: () => setIsDeleteDialogOpen(false)
+    // When the deleteChildren toggle is checked, pass true to the API
+    deleteNote.mutate({ id: note.id, deleteChildren }, {
+      onSuccess: () => {
+        setIsDeleteDialogOpen(false);
+        setDeleteChildren(false); // Reset for next time
+      }
     });
   };
   
@@ -508,11 +515,25 @@ export default function NoteItem({
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         title="Delete Note"
-        description="Are you sure you want to delete this note and all its children? This action cannot be undone."
+        description={
+          hasChildren
+          ? "Do you want to delete this note? By default, any child notes will be promoted to the same level."
+          : "Are you sure you want to delete this note? This action cannot be undone."
+        }
         confirmText="Delete"
         onConfirm={handleDelete}
         isPending={deleteNote.isPending}
         confirmVariant="destructive"
+        extraContent={hasChildren && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="delete-children"
+              checked={deleteChildren}
+              onCheckedChange={setDeleteChildren}
+            />
+            <Label htmlFor="delete-children">Also delete all children</Label>
+          </div>
+        )}
       />
     </div>
   );

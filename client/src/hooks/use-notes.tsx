@@ -64,8 +64,8 @@ export function useNotes(projectId: number | null) {
   });
 
   const deleteNote = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/notes/${id}`);
+    mutationFn: async ({ id, deleteChildren }: { id: number, deleteChildren: boolean }) => {
+      await apiRequest("DELETE", `/api/notes/${id}?deleteChildren=${deleteChildren}`);
     },
     onSuccess: () => {
       if (projectId) {

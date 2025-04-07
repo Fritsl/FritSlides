@@ -204,6 +204,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/notes/:id", isAuthenticated, async (req, res) => {
     try {
       const noteId = parseInt(req.params.id);
+      // Default to not deleting children unless explicitly requested
+      const deleteChildren = req.query.deleteChildren === 'true';
       
       // Check if note exists and belongs to user's project
       const note = await storage.getNote(noteId);
@@ -217,7 +219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Attempt to delete the note
-      const result = await storage.deleteNote(noteId);
+      const result = await storage.deleteNote(noteId, deleteChildren);
       
       if (result) {
         res.sendStatus(204);

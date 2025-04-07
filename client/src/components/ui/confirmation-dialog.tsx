@@ -1,6 +1,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { ReactNode } from "react";
 
 interface ConfirmationDialogProps {
   isOpen: boolean;
@@ -12,6 +15,7 @@ interface ConfirmationDialogProps {
   onConfirm: () => void;
   isPending?: boolean;
   confirmVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  extraContent?: ReactNode;
 }
 
 export function ConfirmationDialog({
@@ -24,6 +28,7 @@ export function ConfirmationDialog({
   onConfirm,
   isPending = false,
   confirmVariant = "default",
+  extraContent,
 }: ConfirmationDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -32,6 +37,13 @@ export function ConfirmationDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        
+        {extraContent && (
+          <div className="mt-4">
+            {extraContent}
+          </div>
+        )}
+        
         <DialogFooter className="flex sm:justify-end gap-2 mt-4">
           <Button 
             variant="outline" 

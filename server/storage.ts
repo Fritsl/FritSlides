@@ -149,7 +149,7 @@ export class DatabaseStorage implements IStorage {
     return updatedNote;
   }
 
-  async deleteNote(id: number): Promise<boolean> {
+  async deleteNote(id: number, deleteChildren: boolean = true): Promise<boolean> {
     try {
       // First check if the note exists
       const [noteToDelete] = await db
@@ -161,16 +161,31 @@ export class DatabaseStorage implements IStorage {
         return false;
       }
       
-      // Find all descendant notes recursively using a CTE query
-      // Using quotes to ensure proper column casing
-      await db.execute(sql`
-        WITH RECURSIVE descendants AS (
-          SELECT "id" FROM notes WHERE "id" = ${id}
-          UNION
-          SELECT n."id" FROM notes n, descendants d WHERE n."parentId" = d."id"
-        )
-        DELETE FROM notes WHERE "id" IN (SELECT "id" FROM descendants)
-      `);
+      if (deleteChildren) {
+        // Find all descendant notes recursively using a CTE query
+        // Using quotes to ensure proper column casing
+        await db.execute(sql`
+          WITH RECURSIVE descendants AS (
+            SELECT "id" FROM notes WHERE "id" = ${id}
+            UNION
+            SELECT n."id" FROM notes n, descendants d WHERE n."parentId" = d."id"
+          )
+          DELETE FROM notes WHERE "id" IN (SELECT "id" FROM descendants)
+        `);
+      } else {
+        // First update all child notes to have the same parent as the deleted note
+        await db.execute(sql`
+          UPDATE notes 
+          SET "parentId" = ${noteToDelete.parentId} 
+          WHERE "parentId" = ${id}
+        `);
+        
+        // Then delete only the requested note
+        await db.delete(notes).where(eq(notes.id, id));
+        
+        // Normalize order of remaining notes
+        await this.normalizeNoteOrders(noteToDelete.parentId);
+      }
       
       return true;
     } catch (error) {
@@ -393,27 +408,49 @@ export class MemStorage implements IStorage {
     return updatedNote;
   }
 
-  async deleteNote(id: number): Promise<boolean> {
+  async deleteNote(id: number, deleteChildren: boolean = true): Promise<boolean> {
     // Get the note to delete
     const noteToDelete = this.notes.get(id);
     if (!noteToDelete) return false;
     
-    // Find and delete all children recursively
-    const deleteChildren = (parentId: number) => {
-      const children = Array.from(this.notes.values()).filter(
-        note => note.parentId === parentId
+    if (deleteChildren) {
+      // Find and delete all children recursively
+      const deleteDescendants = (parentId: number) => {
+        const children = Array.from(this.notes.values()).filter(
+          note => note.parentId === parentId
+        );
+        
+        for (const child of children) {
+          deleteDescendants(child.id); // Delete grandchildren
+          this.notes.delete(child.id); // Delete the child
+        }
+      };
+      
+      deleteDescendants(id);
+    } else {
+      // Reassign all direct children to the parent of the note being deleted
+      const childNotes = Array.from(this.notes.values()).filter(
+        note => note.parentId === id
       );
       
-      for (const child of children) {
-        deleteChildren(child.id); // Delete grandchildren
-        this.notes.delete(child.id); // Delete the child
+      for (const child of childNotes) {
+        this.notes.set(child.id, {
+          ...child,
+          parentId: noteToDelete.parentId,
+          updatedAt: new Date()
+        });
       }
-    };
-    
-    deleteChildren(id);
+    }
     
     // Delete the note itself
-    return this.notes.delete(id);
+    const result = this.notes.delete(id);
+    
+    // If we reassigned children, normalize their order
+    if (!deleteChildren) {
+      await this.normalizeNoteOrders(noteToDelete.parentId);
+    }
+    
+    return result;
   }
 
   async updateNoteOrder(id: number, order: number): Promise<boolean> {
