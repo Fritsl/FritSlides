@@ -7,38 +7,22 @@ export type ColorPair = {
 };
 
 export const LEVEL_COLORS: ColorPair[] = [
-  // Royal blue
-  { regular: '#1a237e', light: '#303f9f' }, 
+  // Blue 
+  { regular: '#1976d2', light: '#42a5f5' },
   // Purple
-  { regular: '#4a148c', light: '#6a1b9a' },
-  // Teal
-  { regular: '#00695c', light: '#00897b' },
-  // Red
-  { regular: '#b71c1c', light: '#c62828' },
-  // Indigo
-  { regular: '#283593', light: '#3949ab' },
+  { regular: '#7b1fa2', light: '#9c27b0' },
   // Green
-  { regular: '#2e7d32', light: '#388e3c' },
-  // Deep pink
-  { regular: '#880e4f', light: '#ad1457' },
-  // Slate blue
-  { regular: '#303f9f', light: '#3f51b5' },
+  { regular: '#2e7d32', light: '#43a047' },
+  // Red
+  { regular: '#c62828', light: '#e53935' },
+  // Teal
+  { regular: '#00796b', light: '#26a69a' },
+  // Orange
+  { regular: '#e64a19', light: '#ff7043' },
+  // Indigo
+  { regular: '#303f9f', light: '#5c6bc0' },
   // Brown
-  { regular: '#4e342e', light: '#5d4037' },
-  // Blue-purple
-  { regular: '#311b92', light: '#4527a0' },
-  // Deep green
-  { regular: '#1b5e20', light: '#2e7d32' },
-  // Crimson
-  { regular: '#7b1fa2', light: '#8e24aa' },
-  // Navy
-  { regular: '#0d47a1', light: '#1565c0' },
-  // Burgundy 
-  { regular: '#6a1b9a', light: '#7b1fa2' },
-  // Dark cyan
-  { regular: '#006064', light: '#00796b' },
-  // Dark orange
-  { regular: '#bf360c', light: '#d84315' }
+  { regular: '#5d4037', light: '#795548' }
 ];
 
 // Get color for a specific level (cycles through if level > colors available)
