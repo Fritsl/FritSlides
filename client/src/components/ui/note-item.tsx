@@ -438,29 +438,11 @@ export default function NoteItem({
   if (isEditing) {
     return (
       <div ref={dragPreview} className="note-item pb-1.5 relative">
-        {/* Display note in the tree with the same styling as normal notes */}
-        <div className={`ml-${level * 3}`}>
-          <div 
-            style={{ backgroundColor: getLevelColor(level).regular }}
-            className="relative rounded-md p-3 shadow-sm border border-blue-600"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center text-white">
-                <div className="w-2 h-2 rounded-full bg-blue-400 mr-2"></div>
-                <span className={`${
-                  level === 0 ? 'text-xl font-bold' : 
-                  level === 1 ? 'text-lg font-semibold' : 
-                  level === 2 ? 'text-base font-medium' : 
-                  level === 3 ? 'text-base font-normal' : 
-                  'text-sm font-normal'
-                }`}>
-                  {note.content.split('\n')[0]}
-                </span>
-              </div>
-              <div className="text-xs text-blue-300 font-medium">
-                Editing...
-              </div>
-            </div>
+        {/* Small indicator where the note is in the tree - Fixed with proper styling */}
+        <div className={`ml-${level * 3} p-3 rounded-md bg-blue-900/40 border border-blue-700 mb-3`}>
+          <div className="text-sm text-blue-300 flex items-center">
+            <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+            <span className="font-medium">Currently editing</span>
           </div>
         </div>
         
@@ -661,8 +643,8 @@ export default function NoteItem({
           )}
         </div>
         
-        {/* Spacer element to prevent content from being hidden under the fixed edit panel - reduced size */}
-        <div className="h-[20px]"></div>
+        {/* Spacer element to prevent content from being hidden under the fixed edit panel */}
+        <div className="h-[200px]"></div>
       </div>
     );
   }
