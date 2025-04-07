@@ -311,13 +311,13 @@ export default function NoteItem({
     
     switch (dragPosition) {
       case 'before':
-        return "before:absolute before:left-0 before:right-0 before:top-0 before:h-1 before:bg-primary";
+        return "before:absolute before:left-0 before:right-0 before:top-0 before:h-1.5 before:bg-lime-400 before:shadow-[0_0_8px_rgba(163,230,53,0.8)]";
       case 'after':
-        return "after:absolute after:left-0 after:right-0 after:bottom-0 after:h-1 after:bg-primary";
+        return "after:absolute after:left-0 after:right-0 after:bottom-0 after:h-1.5 after:bg-lime-400 after:shadow-[0_0_8px_rgba(163,230,53,0.8)]";
       case 'first-child':
-        return "before:absolute before:top-0 before:right-0 before:w-1 before:h-1/2 before:bg-green-500";
+        return "before:absolute before:top-0 before:right-0 before:w-1.5 before:h-1/2 before:bg-lime-400 before:shadow-[0_0_8px_rgba(163,230,53,0.8)]";
       case 'child':
-        return "after:absolute after:bottom-0 after:right-0 after:w-1 after:h-1/2 after:bg-yellow-500";
+        return "after:absolute after:bottom-0 after:right-0 after:w-1.5 after:h-1/2 after:bg-lime-400 after:shadow-[0_0_8px_rgba(163,230,53,0.8)]";
       default:
         return "";
     }
