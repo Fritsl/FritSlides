@@ -49,13 +49,11 @@ export function MoveNoteDialog({
   isPending
 }: MoveNoteDialogProps) {
   const [selectedNoteId, setSelectedNoteId] = useState<number | null>(null);
-  const [selectedPosition, setSelectedPosition] = useState<'before' | 'after' | 'child'>('after');
   
   // Reset selection when dialog opens
   useEffect(() => {
     if (isOpen) {
       setSelectedNoteId(null);
-      setSelectedPosition('after');
     }
   }, [isOpen]);
   
@@ -84,11 +82,11 @@ export function MoveNoteDialog({
     selectedNoteId !== sourceNote.id && 
     !isDescendant(selectedNoteId, sourceNote.id, notes);
   
-  // Handle the move action
-  const handleMove = () => {
+  // Handle the move action with position
+  const handleMoveWithPosition = (position: 'before' | 'after' | 'child') => {
     if (!selectedNoteId || !sourceNote) return;
     
-    onMove(sourceNote.id, selectedNoteId, selectedPosition);
+    onMove(sourceNote.id, selectedNoteId, position);
     onOpenChange(false);
   };
   
@@ -168,13 +166,14 @@ export function MoveNoteDialog({
           {/* Position selection - only available when a note is selected */}
           {selectedNoteId && (
             <div>
-              <p className="mb-2 text-sm font-medium">Choose position:</p>
+              <p className="mb-2 text-sm font-medium">Click a position to move:</p>
               <div className="flex space-x-2">
                 <Button 
-                  variant={selectedPosition === 'before' ? "default" : "outline"}
+                  variant="secondary"
                   size="sm"
-                  onClick={() => setSelectedPosition('before')}
-                  className="flex-1"
+                  onClick={() => handleMoveWithPosition('before')}
+                  className="flex-1 hover:bg-blue-600"
+                  disabled={isPending}
                 >
                   <div className="flex items-center">
                     <div className="mr-2">↑</div>
@@ -182,10 +181,11 @@ export function MoveNoteDialog({
                   </div>
                 </Button>
                 <Button 
-                  variant={selectedPosition === 'after' ? "default" : "outline"}
+                  variant="secondary"
                   size="sm"
-                  onClick={() => setSelectedPosition('after')}
-                  className="flex-1"
+                  onClick={() => handleMoveWithPosition('after')}
+                  className="flex-1 hover:bg-blue-600"
+                  disabled={isPending}
                 >
                   <div className="flex items-center">
                     <div className="mr-2">↓</div>
@@ -193,11 +193,11 @@ export function MoveNoteDialog({
                   </div>
                 </Button>
                 <Button 
-                  variant={selectedPosition === 'child' ? "default" : "outline"}
+                  variant="secondary"
                   size="sm"
-                  onClick={() => setSelectedPosition('child')}
-                  className="flex-1"
-                  disabled={!canAddAsChild}
+                  onClick={() => handleMoveWithPosition('child')}
+                  className="flex-1 hover:bg-blue-600"
+                  disabled={!canAddAsChild || isPending}
                   title={!canAddAsChild ? "Cannot add as child to prevent circular references" : ""}
                 >
                   <div className="flex items-center">
@@ -214,25 +214,9 @@ export function MoveNoteDialog({
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
-            disabled={isPending}
+            className="w-full"
           >
             Cancel
-          </Button>
-          <Button 
-            onClick={handleMove} 
-            disabled={!selectedNoteId || isPending}
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Moving...
-              </>
-            ) : (
-              <>
-                <FolderTree className="mr-2 h-4 w-4" />
-                Move Note
-              </>
-            )}
           </Button>
         </DialogFooter>
       </DialogContent>
