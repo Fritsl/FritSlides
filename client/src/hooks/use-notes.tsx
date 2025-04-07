@@ -86,7 +86,7 @@ export function useNotes(projectId: number | null) {
   });
 
   const updateNoteParent = useMutation({
-    mutationFn: async ({ noteId, parentId, order }: { noteId: number; parentId: number | null; order?: number }) => {
+    mutationFn: async ({ noteId, parentId, order }: { noteId: number; parentId: number | null; order?: number | string }) => {
       await apiRequest("PUT", `/api/notes/${noteId}/parent`, { parentId, order });
     },
     onSuccess: () => {
@@ -104,7 +104,7 @@ export function useNotes(projectId: number | null) {
   });
 
   const updateNoteOrder = useMutation({
-    mutationFn: async ({ noteId, order }: { noteId: number; order: number }) => {
+    mutationFn: async ({ noteId, order }: { noteId: number; order: number | string }) => {
       await apiRequest("PUT", `/api/notes/${noteId}/order`, { order });
     },
     onSuccess: () => {

@@ -88,14 +88,16 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
       let newOrder = 0;
       
       if (position === 'first-child') {
-        // Set as first child - need to find the current first child to place before it
+        // Set as first child with an order that guarantees it will be first
         const childNotes = notes.filter(n => n.parentId === targetId);
         if (childNotes.length > 0) {
           // Find the child with the smallest order
           const firstChild = childNotes.reduce((prev, current) => 
             prev.order < current.order ? prev : current
           );
-          newOrder = firstChild.order - 1;
+          // Use an order significantly smaller than the current first child
+          // to ensure it comes first even after normalization
+          newOrder = Math.floor(firstChild.order) - 10;
         }
       }
       
@@ -116,9 +118,12 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
       siblings.sort((a, b) => a.order - b.order);
       
       const targetIndex = siblings.findIndex(n => n.id === targetId);
+      // For 'before' positioning, we need to ensure it's significantly below the target note's order
+      // For 'after' positioning, we need to ensure it's significantly above the target note's order
+      // This ensures the ordering works correctly even after normalization
       const newOrder = position === 'before' 
-        ? targetNote.order - 0.5 
-        : targetNote.order + 0.5;
+        ? Math.floor(targetNote.order) - 5  // More aggressive difference for 'before'
+        : Math.ceil(targetNote.order) + 5;  // More aggressive difference for 'after'
       
       // Update parent if needed
       if (sourceNote.parentId !== targetNote.parentId) {
