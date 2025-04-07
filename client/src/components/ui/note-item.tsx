@@ -59,7 +59,7 @@ export default function NoteItem({
   const noteRef = useRef<HTMLDivElement>(null);
   const contentInputRef = useRef<HTMLTextAreaElement>(null);
   
-  const { updateNote, deleteNote, uploadImage, lastCreatedNoteId, clearLastCreatedNoteId } = useNotes(projectId);
+  const { updateNote, deleteNote, uploadImage } = useNotes(projectId);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -204,22 +204,28 @@ export default function NoteItem({
     }
   };
   
-  // Effect to auto-enter edit mode for newly created notes
-  useEffect(() => {
-    // Check if this is the newly created note
-    if (lastCreatedNoteId === note.id && !isEditing) {
-      setIsEditing(true);
-      // Clear the ID so we don't keep triggering this
-      clearLastCreatedNoteId();
-    }
-  }, [lastCreatedNoteId, note.id, isEditing, clearLastCreatedNoteId]);
-
   // Effect to focus on content field when entering edit mode
   useEffect(() => {
     if (isEditing && contentInputRef.current) {
       contentInputRef.current.focus();
     }
   }, [isEditing]);
+
+  // Effect to check for newly created note flag
+  useEffect(() => {
+    const newNoteFlag = localStorage.getItem('newNoteCreated');
+    
+    // Check if a new note was just created and this is an empty note
+    if (newNoteFlag === 'true' && note.content === '' && !isEditing) {
+      // Clear the flag immediately to avoid affecting other notes
+      localStorage.removeItem('newNoteCreated');
+      
+      // Small delay to ensure this runs after the component is fully mounted
+      setTimeout(() => {
+        setIsEditing(true);
+      }, 50);
+    }
+  }, [note.id, note.content, isEditing]);
 
   // Check if note has additional content
   const hasUrl = !!note.url;
@@ -409,13 +415,14 @@ export default function NoteItem({
                     className="p-1 h-auto"
                     onClick={() => {
                       // Create a new note below this one
-                      const newNote = {
-                        projectId,
+                      localStorage.setItem('newNoteCreated', 'true');
+                      
+                      const { createNote } = useNotes(projectId);
+                      createNote.mutate({
                         parentId: note.parentId,
                         content: "",
                         order: note.order + 1,
-                      };
-                      useNotes(projectId).createNote.mutate(newNote);
+                      });
                     }}
                     title="Add note below"
                   >
@@ -427,13 +434,15 @@ export default function NoteItem({
                     className="p-1 h-auto"
                     onClick={() => {
                       // Create a child note
-                      const newNote = {
-                        projectId,
+                      localStorage.setItem('newNoteCreated', 'true');
+                      
+                      const { createNote } = useNotes(projectId);
+                      createNote.mutate({
                         parentId: note.id,
                         content: "",
                         order: 0,
-                      };
-                      useNotes(projectId).createNote.mutate(newNote);
+                      });
+                      
                       // Ensure the parent is expanded
                       if (!isExpanded) {
                         toggleExpand();

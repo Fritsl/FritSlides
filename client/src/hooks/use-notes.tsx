@@ -2,11 +2,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Note, InsertNote, UpdateNote } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
 
 export function useNotes(projectId: number | null) {
   const { toast } = useToast();
-  const [lastCreatedNoteId, setLastCreatedNoteId] = useState<number | null>(null);
   
   const {
     data: notes,
@@ -23,10 +21,7 @@ export function useNotes(projectId: number | null) {
       const res = await apiRequest("POST", `/api/projects/${projectId}/notes`, note);
       return res.json();
     },
-    onSuccess: (createdNote) => {
-      // Store the ID of the newly created note
-      setLastCreatedNoteId(createdNote.id);
-      
+    onSuccess: () => {
       if (projectId) {
         queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
       }
@@ -152,10 +147,6 @@ export function useNotes(projectId: number | null) {
     },
   });
 
-  const clearLastCreatedNoteId = () => {
-    setLastCreatedNoteId(null);
-  };
-
   return {
     notes,
     isLoading,
@@ -166,7 +157,5 @@ export function useNotes(projectId: number | null) {
     updateNoteParent,
     updateNoteOrder,
     uploadImage,
-    lastCreatedNoteId,
-    clearLastCreatedNoteId,
   };
 }

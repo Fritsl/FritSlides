@@ -170,6 +170,9 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
 
   // Create a new root note
   const handleAddRootNote = () => {
+    // Set a temporary flag in localStorage to indicate a new note is being created
+    localStorage.setItem('newNoteCreated', 'true');
+    
     createNote.mutate({
       content: "",
       parentId: null,
