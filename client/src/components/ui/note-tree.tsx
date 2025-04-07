@@ -197,12 +197,13 @@ export default function NoteTree({
         if (childNotes.length > 0) {
           // Find the child with the smallest order
           const firstChild = childNotes.reduce((prev, current) => 
-            prev.order < current.order ? prev : current
+            Number(prev.order) < Number(current.order) ? prev : current
           );
-          newOrder = firstChild.order - 1;
+          newOrder = (Number(firstChild.order) - 1).toString();
           console.log(`Found first child with order ${firstChild.order}, setting new order to ${newOrder}`);
         } else {
           console.log('No existing children, using default order 0');
+          newOrder = "0"; // Set default order as string
         }
       }
       
@@ -242,18 +243,18 @@ export default function NoteTree({
       if (position === 'before') {
         if (prevNote) {
           // Place between prev and target
-          newOrder = Number(prevNote.order) + (Number(targetNote.order) - Number(prevNote.order)) / 2;
+          newOrder = (Number(prevNote.order) + (Number(targetNote.order) - Number(prevNote.order)) / 2).toString();
         } else {
           // Place before the first item
-          newOrder = Number(targetNote.order) - 0.5;
+          newOrder = (Number(targetNote.order) - 0.5).toString();
         }
       } else { // after
         if (nextNote) {
           // Place between target and next
-          newOrder = Number(targetNote.order) + (Number(nextNote.order) - Number(targetNote.order)) / 2;
+          newOrder = (Number(targetNote.order) + (Number(nextNote.order) - Number(targetNote.order)) / 2).toString();
         } else {
           // Place after the last item
-          newOrder = Number(targetNote.order) + 0.5;
+          newOrder = (Number(targetNote.order) + 0.5).toString();
         }
       }
       
@@ -352,7 +353,7 @@ export default function NoteTree({
       youtubeLink: "",
       time: "",
       images: [],
-      order: 0
+      order: "0" // Send as string to match the server's expected type
     });
   };
 
