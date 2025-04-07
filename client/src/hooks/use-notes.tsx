@@ -16,9 +16,10 @@ export function useNotes(projectId: number | null) {
   });
 
   const createNote = useMutation({
-    mutationFn: async (note: Omit<InsertNote, "projectId">) => {
-      if (!projectId) throw new Error("Project ID is required");
-      const res = await apiRequest("POST", `/api/projects/${projectId}/notes`, note);
+    mutationFn: async (note: Partial<InsertNote>) => {
+      if (!projectId && !note.projectId) throw new Error("Project ID is required");
+      const targetProjectId = projectId || note.projectId;
+      const res = await apiRequest("POST", `/api/projects/${targetProjectId}/notes`, note);
       return res.json();
     },
     onSuccess: () => {
@@ -40,7 +41,7 @@ export function useNotes(projectId: number | null) {
   });
 
   const updateNote = useMutation({
-    mutationFn: async ({ id, ...note }: UpdateNote & { id: number }) => {
+    mutationFn: async ({ id, ...note }: Partial<UpdateNote> & { id: number }) => {
       const res = await apiRequest("PUT", `/api/notes/${id}`, note);
       return res.json();
     },
@@ -85,8 +86,8 @@ export function useNotes(projectId: number | null) {
   });
 
   const updateNoteParent = useMutation({
-    mutationFn: async ({ noteId, parentId }: { noteId: number; parentId: number | null }) => {
-      await apiRequest("PUT", `/api/notes/${noteId}/parent`, { parentId });
+    mutationFn: async ({ noteId, parentId, order }: { noteId: number; parentId: number | null; order?: number }) => {
+      await apiRequest("PUT", `/api/notes/${noteId}/parent`, { parentId, order });
     },
     onSuccess: () => {
       if (projectId) {

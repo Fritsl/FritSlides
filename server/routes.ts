@@ -227,7 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/notes/:id/parent", isAuthenticated, async (req, res) => {
     try {
       const noteId = parseInt(req.params.id);
-      const { parentId } = req.body;
+      const { parentId, order } = req.body;
       
       // Check if note exists and belongs to user's project
       const note = await storage.getNote(noteId);
@@ -259,7 +259,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      await storage.updateNoteParent(noteId, parentId !== null ? parseInt(parentId) : null);
+      // Update parent and order if both are provided
+      if (order !== undefined) {
+        await storage.updateNoteParent(noteId, parentId !== null ? parseInt(parentId) : null, order);
+        // After updating parent with order, we need to adjust orders of siblings
+        await storage.normalizeNoteOrders(parentId !== null ? parseInt(parentId) : null);
+      } else {
+        // Just update parent
+        await storage.updateNoteParent(noteId, parentId !== null ? parseInt(parentId) : null);
+      }
+      
       res.sendStatus(200);
     } catch (err) {
       res.status(500).json({ message: "Failed to update note parent" });

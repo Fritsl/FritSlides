@@ -75,17 +75,35 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
   }, [notes]);
 
   // Move a note to a new position (update parent and/or order)
-  const moveNote = useCallback((noteId: number, targetId: number, position: 'before' | 'after' | 'child') => {
+  const moveNote = useCallback((noteId: number, targetId: number, position: 'before' | 'after' | 'child' | 'first-child') => {
     const sourceNote = notes.find(n => n.id === noteId);
     const targetNote = notes.find(n => n.id === targetId);
     
     if (!sourceNote || !targetNote) return;
     
-    if (position === 'child') {
+    if (position === 'child' || position === 'first-child') {
       // Make source a child of target
-      if (sourceNote.parentId === targetId) return; // Already a child
+      if (sourceNote.parentId === targetId && position === 'child') return; // Already a child (and not specifically a first-child)
       
-      updateNoteParent.mutate({ noteId, parentId: targetId });
+      let newOrder = 0;
+      
+      if (position === 'first-child') {
+        // Set as first child - need to find the current first child to place before it
+        const childNotes = notes.filter(n => n.parentId === targetId);
+        if (childNotes.length > 0) {
+          // Find the child with the smallest order
+          const firstChild = childNotes.reduce((prev, current) => 
+            prev.order < current.order ? prev : current
+          );
+          newOrder = firstChild.order - 1;
+        }
+      }
+      
+      updateNoteParent.mutate({ 
+        noteId, 
+        parentId: targetId,
+        order: position === 'first-child' ? newOrder : undefined
+      });
       
       // Expand the target to show the newly moved child
       setExpandedNodes(prev => ({
@@ -175,9 +193,11 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
     // Set a temporary flag in localStorage to indicate a new note is being created
     localStorage.setItem('newNoteCreated', 'true');
     
+    // @ts-ignore - Types are incorrect for useMutation
     createNote.mutate({
       content: "",
       parentId: null,
+      projectId: projectId,
     });
   };
 
