@@ -85,16 +85,12 @@ export default function NoteItem({
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    console.log(`[Note ${note.id}] Input change - field: ${name}, value: ${value.substring(0, 15)}${value.length > 15 ? '...' : ''}`);
-    console.log(`[Note ${note.id}] Before input change - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
+    // Removed excessive logging
     setFormData(prev => ({ ...prev, [name]: value }));
-    console.log(`[Note ${note.id}] After input change - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
   };
   
   // Handle form submission
   const handleSave = () => {
-    console.log(`[Note ${note.id}] Save button clicked - current state - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
-    
     // Create an update object that matches the UpdateNote type
     const updateData = {
       id: note.id,
@@ -114,54 +110,28 @@ export default function NoteItem({
     // This way even if the component rerenders, we'll have the information
     const wasNewlyCreated = isNewlyCreated;
     
-    console.log(`[Note ${note.id}] About to update with data:`, updateData);
-    console.log(`[Note ${note.id}] wasNewlyCreated: ${wasNewlyCreated}`);
-    
     // @ts-ignore - Types are incorrect for useMutation
     updateNote.mutate(updateData, {
       onSuccess: (updatedNote) => {
-        console.log(`[Note ${note.id}] Update succeeded`);
-        
-        // Track whether we'll exit edit mode or not
-        let shouldExitEditMode = false;
-        
-        // IMPORTANT CHANGE: Always exit edit mode after saving, regardless of content
-        // This is the expected behavior when a user clicks Save
+        // No longer newly created
         if (wasNewlyCreated) {
-          console.log(`[Note ${note.id}] This was a newly created note, exiting edit mode after save`);
-          
-          // No longer newly created
           setIsNewlyCreated(false);
-          
-          // Always exit edit mode
-          shouldExitEditMode = true;
-        } else {
-          console.log(`[Note ${note.id}] This was a regular edit, exiting edit mode`);
-          // For regular notes, exit edit mode after save
-          shouldExitEditMode = true;
         }
         
-        // Apply edit mode change at the end 
-        if (shouldExitEditMode) {
-          console.log(`[Note ${note.id}] Setting isEditing to false and marking as user-initiated exit`);
-          // Set the flag that this is a deliberate exit from edit mode
-          // This prevents the note from re-entering edit mode during server sync
-          userExitedEditModeRef.current = true;
-          setIsEditing(false);
-        } else {
-          console.log(`[Note ${note.id}] Keeping edit mode active (isEditing: true)`);
-        }
+        // Set the flag that this is a deliberate exit from edit mode
+        // This prevents the note from re-entering edit mode during server sync
+        userExitedEditModeRef.current = true;
+        setIsEditing(false);
       },
       onError: (error) => {
-        console.log(`[Note ${note.id}] Update failed:`, error);
+        console.error(`Note update failed:`, error);
       }
     });
   };
   
   // Handle cancel editing
   const handleCancel = () => {
-    console.log(`[Note ${note.id}] Cancel button clicked`);
-    
+    // Reset form data to original values
     setFormData({
       content: note.content,
       url: note.url || "",
@@ -173,16 +143,14 @@ export default function NoteItem({
     
     // Reset newly created state when canceling
     if (isNewlyCreated) {
-      console.log(`[Note ${note.id}] Resetting newly created state`);
       setIsNewlyCreated(false);
     }
     
-    // IMPORTANT CHANGE: Mark this as a deliberate exit from edit mode
+    // Mark this as a deliberate exit from edit mode
     // to prevent the effect from restoring edit mode during server sync
-    console.log(`[Note ${note.id}] Setting user exited edit mode flag`);
     userExitedEditModeRef.current = true;
     
-    console.log(`[Note ${note.id}] Exiting edit mode`);
+    // Exit edit mode
     setIsEditing(false);
   };
   
@@ -252,11 +220,7 @@ export default function NoteItem({
       const hoverMiddleX = (hoverBoundingRect.right - hoverBoundingRect.left) / 2;
       const hoverClientX = clientOffset!.x - hoverBoundingRect.left;
       
-      // DEBUG: Log these values
-      console.log(`=== HOVER DEBUG (note ${note.id}) ===`);
-      console.log(`Rect: top=${hoverBoundingRect.top}, bottom=${hoverBoundingRect.bottom}, left=${hoverBoundingRect.left}, right=${hoverBoundingRect.right}`);
-      console.log(`Middle Y: ${hoverMiddleY}, Cursor Y: ${hoverClientY}`);
-      console.log(`Middle X: ${hoverMiddleX}, Cursor X: ${hoverClientX}`);
+      // Disabled debug logging
       
       // Determine drop position with improved algorithm
       // Define the horizontal zones (0-30% left, 30-70% middle, 70-100% right)
@@ -275,10 +239,6 @@ export default function NoteItem({
       const isTopZone = hoverClientY < topThreshold;
       const isBottomZone = hoverClientY > bottomThreshold;
       const isMiddleVerticalZone = !isTopZone && !isBottomZone;
-      
-      console.log(`Drop zone: ${isLeftZone ? 'Left' : isRightZone ? 'Right' : 'Middle'}-${isTopZone ? 'Top' : isBottomZone ? 'Bottom' : 'Middle'}`);
-      console.log(`Left threshold: ${leftThreshold.toFixed(2)}, Right threshold: ${rightThreshold.toFixed(2)}`);
-      console.log(`Top threshold: ${topThreshold.toFixed(2)}, Bottom threshold: ${bottomThreshold.toFixed(2)}`);
       
       let newPosition: 'before' | 'after' | 'child' | 'first-child' | null = null;
       
@@ -315,12 +275,10 @@ export default function NoteItem({
         }
       }
       
-      console.log(`Selected position: ${newPosition}`);
       setDragPosition(newPosition);
     },
     drop: (item: { id: number }) => {
-      console.log(`=== DROP DEBUG ===`);
-      console.log(`Dropping noteId ${item.id} onto noteId ${note.id} with position ${dragPosition}`);
+      // Removed debug logs
       
       if (dragPosition && item.id !== note.id) {
         moveNote(item.id, note.id, dragPosition);
@@ -362,45 +320,32 @@ export default function NoteItem({
 
   // Effect to check for newly created note flag
   useEffect(() => {
-    console.log(`[Note ${note.id}] Effect for newly created note check running.`);
-    console.log(`[Note ${note.id}] Current state - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
-    
+    // Reduced debug logging
     const newNoteFlag = localStorage.getItem('newNoteCreated');
     const lastCreatedId = localStorage.getItem('lastCreatedNoteId');
-    
-    console.log(`[Note ${note.id}] localStorage flags - newNoteCreated: ${newNoteFlag}, lastCreatedNoteId: ${lastCreatedId}`);
     
     // Determine if this is a newly created note
     const isNewNoteByFlag = newNoteFlag === 'true' && note.content === '';
     const isNewNoteById = lastCreatedId && parseInt(lastCreatedId) === note.id;
     
-    console.log(`[Note ${note.id}] Detection results - isNewNoteByFlag: ${isNewNoteByFlag}, isNewNoteById: ${isNewNoteById}`);
-    
     // If this is a newly created note...
     if ((isNewNoteByFlag || isNewNoteById) && !isEditing) {
-      console.log(`[Note ${note.id}] Detected as newly created note, will enter edit mode`);
-      
       // Mark this note as newly created
       setIsNewlyCreated(true);
       
       // Clear the flags that apply to this note
       if (isNewNoteByFlag) {
-        console.log(`[Note ${note.id}] Clearing newNoteCreated flag`);
         localStorage.removeItem('newNoteCreated');
       }
       
       if (isNewNoteById) {
-        console.log(`[Note ${note.id}] Clearing lastCreatedNoteId flag`);
         localStorage.removeItem('lastCreatedNoteId');
       }
       
       // Small delay to ensure this runs after the component is fully mounted
       setTimeout(() => {
-        console.log(`[Note ${note.id}] Setting isEditing to true after delay`);
         setIsEditing(true);
       }, 50);
-    } else {
-      console.log(`[Note ${note.id}] Not entering edit mode: ${!isNewNoteByFlag && !isNewNoteById ? 'Not identified as new note' : 'Already in edit mode'}`);
     }
   }, [note.id, note.content, isEditing, isNewlyCreated]);
 
@@ -412,15 +357,11 @@ export default function NoteItem({
   
   // Effect to detect change in note data from server and preserve edit mode
   useEffect(() => {
-    console.log(`[Note ${note.id}] Note data changed from server`);
-    console.log(`[Note ${note.id}] Current state before data change effect - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
-    console.log(`[Note ${note.id}] Previous edit state from ref: ${isEditingRef.current}`);
-    console.log(`[Note ${note.id}] User exited edit mode flag: ${userExitedEditModeRef.current}`);
+    // Reduced debug logging
     
     // Only make changes if necessary
     if (isEditing) {
-      // We are in edit mode, note that we want to stay here
-      console.log(`[Note ${note.id}] Currently in edit mode - will preserve this state`);
+      // We are in edit mode, need to preserve this state
       
       // Update form data with current note values
       // This preserves any edits the user made locally while server data was updating
@@ -465,16 +406,13 @@ export default function NoteItem({
         hasLocalChanges = true;
       }
       
-      if (hasLocalChanges) {
-        console.log(`[Note ${note.id}] Detected local changes in edit form, preserving user edits`);
-      } else {
-        console.log(`[Note ${note.id}] No local changes detected, updating form with server data`);
+      // Only update form data if there are no local changes
+      if (!hasLocalChanges) {
         setFormData(formValues);
       }
     } else if (isEditingRef.current && !isEditing && !userExitedEditModeRef.current) {
       // We were in edit mode, but now we're not, and it wasn't explicitly requested
       // by the user (e.g., via Save/Cancel). This could be due to server data changes
-      console.log(`[Note ${note.id}] Detected loss of edit mode - restoring edit state`);
       
       // Return to edit mode and preserve the editing state
       setTimeout(() => {
@@ -487,7 +425,6 @@ export default function NoteItem({
     
     // Reset user exit flag now that we've handled any state changes
     if (userExitedEditModeRef.current) {
-      console.log(`[Note ${note.id}] Resetting user exited edit mode flag`);
       userExitedEditModeRef.current = false;
     }
   }, [note, isEditing, isNewlyCreated, formData]);
@@ -503,60 +440,54 @@ export default function NoteItem({
   // Apply opacity to indicate dragging
   const opacity = isDragging ? 0.4 : 1;
   
-  // If editing, show inline indicator and editor at top of screen
+  // If editing, show compact inline indicator and editor at top of screen
   if (isEditing) {
     return (
       <div ref={dragPreview} className="note-item pb-1.5 relative">
-        {/* Small indicator in the note tree */}
-        <div className="h-6 flex items-center opacity-60 ml-2 mb-1">
-          <div className="w-2 h-2 rounded-full bg-blue-400 mr-2"></div>
-          <span className="text-xs text-blue-300">Currently editing</span>
+        {/* Small indicator where the note is in the tree */}
+        <div className={`ml-${level * 3} p-2 rounded-md bg-blue-900/20 border border-blue-800/30 mb-2`}>
+          <div className="text-xs text-blue-300 flex items-center">
+            <div className="w-2 h-2 rounded-full bg-blue-400 mr-2"></div>
+            Currently editing
+          </div>
         </div>
         
         {/* Fixed-position editor */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-blue-950 to-gray-900 p-4 shadow-xl border-b-2 border-blue-500">
-          {/* Edit mode title with note identifier */}
+          {/* Edit mode title - simpler layout */}
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-white font-bold text-lg flex items-center">
-              <Edit className="h-5 w-5 mr-2 text-blue-400" /> 
+            <h2 className="text-white font-bold text-lg">
               Edit Note
             </h2>
             
-            <div className="flex items-center">
-              {/* Note identifier badge */}
-              <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full mr-3">
-                {note.content.substring(0, 20) || "New note"}{note.content.length > 20 ? "..." : ""}
-              </div>
-            
-              <div className="flex space-x-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={updateNote.isPending}
-                  className="h-8 border-red-500 hover:bg-red-900/30 text-red-300"
-                >
-                  <X className="h-4 w-4 mr-1" /> Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={updateNote.isPending}
-                  className="h-8 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  {updateNote.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-1" />
-                      Save
-                    </>
-                  )}
-                </Button>
-              </div>
+            <div className="flex space-x-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={updateNote.isPending}
+                className="h-8 border-red-500 hover:bg-red-900/30 text-red-300"
+              >
+                <X className="h-4 w-4 mr-1" /> Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={updateNote.isPending}
+                className="h-8 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {updateNote.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-1" />
+                    Save
+                  </>
+                )}
+              </Button>
             </div>
           </div>
           
