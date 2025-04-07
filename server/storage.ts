@@ -195,78 +195,121 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateNoteOrder(id: number, order: number): Promise<boolean> {
-    const [updatedNote] = await db
-      .update(notes)
-      .set({ order, updatedAt: new Date() })
-      .where(eq(notes.id, id))
-      .returning();
+    try {
+      // First get the note to update to access its properties
+      const [noteToUpdate] = await db
+        .select()
+        .from(notes)
+        .where(eq(notes.id, id));
+        
+      if (!noteToUpdate) return false;
       
-    return !!updatedNote;
+      // Update the note with the new order
+      const [updatedNote] = await db
+        .update(notes)
+        .set({ order, updatedAt: new Date() })
+        .where(eq(notes.id, id))
+        .returning();
+      
+      // If we successfully updated, normalize the orders of siblings
+      if (updatedNote) {
+        await this.normalizeNoteOrders(noteToUpdate.parentId);
+      }
+      
+      return !!updatedNote;
+    } catch (error) {
+      console.error("Error updating note order:", error);
+      throw error;
+    }
   }
 
   async updateNoteParent(id: number, parentId: number | null, order?: number): Promise<boolean> {
-    // Get the note we're updating to get its project ID
-    const [noteToUpdate] = await db
-      .select()
-      .from(notes)
-      .where(eq(notes.id, id));
-      
-    if (!noteToUpdate) return false;
-    
-    // If specific order is not provided, find max order value for new siblings to place this note at the end
-    let newOrder: number;
-    
-    if (order !== undefined) {
-      newOrder = order; // Use the provided order
-    } else {
-      // Calculate a new order at the end
-      const [maxOrderResult] = await db
-        .select({ maxOrder: sql<number>`COALESCE(MAX(${notes.order}), -1)` })
+    try {
+      // Get the note we're updating to get its project ID and current parent
+      const [noteToUpdate] = await db
+        .select()
         .from(notes)
-        .where(and(
-          eq(notes.projectId, noteToUpdate.projectId),
-          parentId ? eq(notes.parentId, parentId) : isNull(notes.parentId)
-        ));
+        .where(eq(notes.id, id));
+        
+      if (!noteToUpdate) return false;
       
-      newOrder = (maxOrderResult?.maxOrder ?? -1) + 1;
+      // Store old parent for normalization
+      const oldParentId = noteToUpdate.parentId;
+      
+      // If specific order is not provided, find max order value for new siblings to place this note at the end
+      let newOrder: number;
+      
+      if (order !== undefined) {
+        newOrder = order; // Use the provided order
+      } else {
+        // Calculate a new order at the end
+        const [maxOrderResult] = await db
+          .select({ maxOrder: sql<number>`COALESCE(MAX(${notes.order}), -1)` })
+          .from(notes)
+          .where(and(
+            eq(notes.projectId, noteToUpdate.projectId),
+            parentId ? eq(notes.parentId, parentId) : isNull(notes.parentId)
+          ));
+        
+        newOrder = (maxOrderResult?.maxOrder ?? -1) + 1;
+      }
+      
+      const [updatedNote] = await db
+        .update(notes)
+        .set({ 
+          parentId, 
+          order: newOrder,
+          updatedAt: new Date() 
+        })
+        .where(eq(notes.id, id))
+        .returning();
+      
+      // If updated successfully, normalize both old and new parent's children
+      if (updatedNote) {
+        // Normalize orders for the old parent's children
+        if (oldParentId !== parentId) {
+          await this.normalizeNoteOrders(oldParentId);
+        }
+        
+        // Normalize orders for the new parent's children
+        await this.normalizeNoteOrders(parentId);
+      }
+      
+      return !!updatedNote;
+    } catch (error) {
+      console.error("Error updating note parent:", error);
+      throw error;
     }
-    
-    const [updatedNote] = await db
-      .update(notes)
-      .set({ 
-        parentId, 
-        order: newOrder,
-        updatedAt: new Date() 
-      })
-      .where(eq(notes.id, id))
-      .returning();
-      
-    return !!updatedNote;
   }
   
   async normalizeNoteOrders(parentId: number | null): Promise<boolean> {
-    // Get all notes with the same parent, ordered by their current order
-    const notesWithSameParent = await db
-      .select()
-      .from(notes)
-      .where(parentId ? eq(notes.parentId, parentId) : isNull(notes.parentId))
-      .orderBy(notes.order);
-    
-    if (!notesWithSameParent.length) return true;
-    
-    // Reassign orders in sequence (0, 1, 2, etc.)
-    let orderCounter = 0;
-    
-    for (const note of notesWithSameParent) {
-      await db
-        .update(notes)
-        .set({ order: orderCounter, updatedAt: new Date() })
-        .where(eq(notes.id, note.id));
+    try {
+      // Get all notes with the same parent, ordered by their current order
+      const notesWithSameParent = await db
+        .select()
+        .from(notes)
+        .where(parentId ? eq(notes.parentId, parentId) : isNull(notes.parentId))
+        .orderBy(notes.order);
       
-      orderCounter++;
+      if (!notesWithSameParent.length) return true;
+      
+      // Use a transaction to ensure all updates happen atomically
+      await db.transaction(async (tx) => {
+        // Reassign orders in sequence (0, 1, 2, etc.)
+        for (let i = 0; i < notesWithSameParent.length; i++) {
+          const note = notesWithSameParent[i];
+          await tx
+            .update(notes)
+            .set({ order: i, updatedAt: new Date() })
+            .where(eq(notes.id, note.id));
+        }
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error normalizing note orders:", error);
+      throw error;
     }
-    
-    return true;
   }
 }
 
@@ -369,19 +412,20 @@ export class MemStorage implements IStorage {
     const now = new Date();
     
     // Find max order value for siblings to place this note at the end
-    // @ts-ignore - TypeScript issue with property comparison
     const siblings = Array.from(this.notes.values()).filter(
-      note => note.projectId === insertNote.projectId && 
-      note.parentId === insertNote.parentId
+      (note: Note) => 
+        note.projectId === insertNote.projectId && 
+        String(note.parentId) === String(insertNote.parentId)
     );
     
-    const maxOrder = siblings.length > 0 
-      ? Math.max(...siblings.map(n => n.order)) 
-      : -1;
+    let maxOrder = -1;
+    if (siblings.length > 0) {
+      const orders = siblings.map(n => Number(n.order));
+      maxOrder = Math.max(...orders);
+    }
     
-    const order = insertNote.order ?? maxOrder + 1;
+    const order = insertNote.order !== undefined ? insertNote.order : maxOrder + 1;
     
-    // @ts-ignore - TypeScript issue with property comparison
     const note: Note = { 
       ...insertNote, 
       id, 
@@ -454,62 +498,102 @@ export class MemStorage implements IStorage {
   }
 
   async updateNoteOrder(id: number, order: number): Promise<boolean> {
-    const note = this.notes.get(id);
-    if (!note) return false;
-    
-    const updatedNote = { ...note, order, updatedAt: new Date() };
-    this.notes.set(id, updatedNote);
-    return true;
+    try {
+      const note = this.notes.get(id);
+      if (!note) return false;
+      
+      // Store the parent for normalization
+      const parentId = note.parentId;
+      
+      // Update the note
+      const updatedNote = { ...note, order, updatedAt: new Date() };
+      this.notes.set(id, updatedNote);
+      
+      // Normalize orders of all siblings
+      await this.normalizeNoteOrders(parentId);
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating note order in MemStorage:", error);
+      throw error;
+    }
   }
 
   async updateNoteParent(id: number, parentId: number | null, order?: number): Promise<boolean> {
-    const note = this.notes.get(id);
-    if (!note) return false;
-    
-    let newOrder: number;
-    
-    if (order !== undefined) {
-      newOrder = order; // Use the provided order
-    } else {
-      // Find max order value for new siblings to place this note at the end
-      const newSiblings = Array.from(this.notes.values()).filter(
-        n => n.projectId === note.projectId && n.parentId === parentId
-      );
+    try {
+      const note = this.notes.get(id);
+      if (!note) return false;
       
-      const maxOrder = newSiblings.length > 0 
-        ? Math.max(...newSiblings.map(n => n.order)) 
-        : -1;
+      // Store old parent for normalization later
+      const oldParentId = note.parentId;
       
-      newOrder = maxOrder + 1;
+      let newOrder: number;
+      
+      if (order !== undefined) {
+        newOrder = order; // Use the provided order
+      } else {
+        // Find max order value for new siblings to place this note at the end
+        const newSiblings = Array.from(this.notes.values()).filter(
+          (n: Note) => 
+            n.projectId === note.projectId && 
+            String(n.parentId) === String(parentId)
+        );
+        
+        let maxOrder = -1;
+        if (newSiblings.length > 0) {
+          const orders = newSiblings.map(n => Number(n.order));
+          maxOrder = Math.max(...orders);
+        }
+        
+        newOrder = maxOrder + 1;
+      }
+      
+      const updatedNote = { 
+        ...note, 
+        parentId, 
+        order: newOrder,
+        updatedAt: new Date() 
+      };
+      
+      // Update the note with its new parent and order
+      this.notes.set(id, updatedNote);
+      
+      // Normalize orders for both the old and new parent's children
+      if (oldParentId !== parentId) {
+        await this.normalizeNoteOrders(oldParentId);
+      }
+      await this.normalizeNoteOrders(parentId);
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating note parent in MemStorage:", error);
+      throw error;
     }
-    
-    const updatedNote = { 
-      ...note, 
-      parentId, 
-      order: newOrder,
-      updatedAt: new Date() 
-    };
-    
-    this.notes.set(id, updatedNote);
-    return true;
   }
   
   async normalizeNoteOrders(parentId: number | null): Promise<boolean> {
-    // Get notes with the same parent, ordered by their current order
-    const notesWithSameParent = Array.from(this.notes.values())
-      .filter(note => note.parentId === parentId)
-      .sort((a, b) => a.order - b.order);
-    
-    // Reassign orders in sequence (0, 1, 2, etc.)
-    notesWithSameParent.forEach((note, index) => {
-      this.notes.set(note.id, {
-        ...note,
-        order: index,
-        updatedAt: new Date()
+    try {
+      // Get notes with the same parent, ordered by their current order
+      const notesWithSameParent = Array.from(this.notes.values())
+        .filter((note: Note) => String(note.parentId) === String(parentId))
+        .sort((a, b) => Number(a.order) - Number(b.order));
+      
+      if (!notesWithSameParent.length) return true;
+      
+      // Reassign orders in sequence (0, 1, 2, etc.)
+      notesWithSameParent.forEach((note, index) => {
+        this.notes.set(note.id, {
+          ...note,
+          order: index,
+          updatedAt: new Date()
+        });
       });
-    });
-    
-    return true;
+      
+      return true;
+    } catch (error) {
+      console.error("Error normalizing note orders in MemStorage:", error);
+      throw error;
+    }
   }
 }
 
