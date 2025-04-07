@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useProjects } from "@/hooks/use-projects";
 import { useNotes, useNoteEditing } from "@/hooks/use-notes";
+import { useLocation } from "wouter";
 import Header from "@/components/ui/header";
 import NoteTree from "@/components/ui/note-tree";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export default function HomePage() {
   const { notes, isLoading: isLoadingNotes } = useNotes(selectedProjectId);
   const { editingNoteId } = useNoteEditing();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -125,6 +127,21 @@ export default function HomePage() {
     
     setIsImportDialogOpen(true);
   };
+  
+  // Enter presentation mode
+  const enterPresentationMode = () => {
+    if (!selectedProjectId) {
+      toast({
+        title: "No project selected",
+        description: "Please select a project before entering presentation mode",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Navigate to the presentation mode route with the selected project ID
+    setLocation(`/present/${selectedProjectId}`);
+  };
 
   // Select the first project by default when projects load
   if (projects?.length && !selectedProjectId && !isLoadingProjects) {
@@ -146,6 +163,7 @@ export default function HomePage() {
           onNewProject={() => {}}
           onExportNotes={() => {}}
           onImportNotes={() => {}}
+          onPresentMode={() => {}}
         />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -168,6 +186,7 @@ export default function HomePage() {
           onNewProject={() => setIsNewProjectDialogOpen(true)}
           onExportNotes={() => {}}
           onImportNotes={() => {}}
+          onPresentMode={() => {}}
         />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center p-8 max-w-md">
@@ -203,6 +222,7 @@ export default function HomePage() {
         currentExpandLevel={expandLevel}
         onExportNotes={handleExportNotes}
         onImportNotes={handleImportNotes}
+        onPresentMode={enterPresentationMode}
       />
       
       <div className="flex-1 flex overflow-hidden">

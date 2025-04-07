@@ -24,7 +24,9 @@ import {
   Check, 
   X, 
   Download, 
-  Upload 
+  Upload,
+  PlayCircle,
+  Presentation
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
@@ -45,6 +47,7 @@ interface HeaderProps {
   currentExpandLevel?: number; // Currently selected expansion level
   onExportNotes?: () => void; // For exporting notes
   onImportNotes?: () => void; // For importing notes
+  onPresentMode?: () => void; // For entering presentation mode
 }
 
 export default function Header({ 
@@ -58,7 +61,8 @@ export default function Header({
   onExpandToLevel,
   currentExpandLevel = -1,
   onExportNotes,
-  onImportNotes
+  onImportNotes,
+  onPresentMode
 }: HeaderProps) {
   const { logoutMutation } = useAuth();
   const { toast } = useToast();
@@ -253,6 +257,29 @@ export default function Header({
         )}
         
         <div className="flex items-center">
+          {/* Present mode button */}
+          {currentProject && onPresentMode && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (currentProject) {
+                  onPresentMode();
+                } else {
+                  toast({
+                    title: "Select a project first",
+                    description: "You need to select a project before entering presentation mode",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="mr-2 text-white hover:bg-slate-800"
+            >
+              <Presentation className="h-4 w-4 mr-2" />
+              <span>Present</span>
+            </Button>
+          )}
+          
           {/* Hamburger Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -356,6 +383,26 @@ export default function Header({
                   <span>Import Notes</span>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
+              
+              <DropdownMenuSeparator />
+              
+              {/* Presentation mode */}
+              <DropdownMenuItem 
+                onClick={() => {
+                  if (currentProject && onPresentMode) {
+                    onPresentMode();
+                  } else if (!currentProject) {
+                    toast({
+                      title: "Select a project first",
+                      description: "You need to select a project before entering presentation mode",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                <Presentation className="h-4 w-4 mr-2" />
+                <span>Presentation Mode</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
+import PresentMode from "@/pages/present-mode";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { NoteEditingProvider } from "@/hooks/use-notes";
@@ -13,6 +14,7 @@ function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={HomePage} />
+      <ProtectedRoute path="/present/:projectId" component={PresentMode} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
