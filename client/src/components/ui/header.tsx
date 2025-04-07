@@ -11,9 +11,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, ChevronDown, Plus, LogOut, Menu, User as UserIcon, Settings, FolderPlus } from "lucide-react";
+import { Loader2, ChevronDown, Plus, LogOut, Menu, User as UserIcon, Settings, FolderPlus, FileBox } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
+import { ProjectSelectorDialog } from "./project-selector-dialog";
 
 interface HeaderProps {
   user: User | null;
@@ -33,6 +34,7 @@ export default function Header({
   const { logoutMutation } = useAuth();
   const { toast } = useToast();
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -99,25 +101,10 @@ export default function Header({
                   <span>New Project</span>
                 </DropdownMenuItem>
                 
-                {projects.length > 0 && (
-                  <>
-                    <DropdownMenuLabel className="pt-2">Select Project</DropdownMenuLabel>
-                    {projects.map(project => (
-                      <DropdownMenuItem 
-                        key={project.id}
-                        onClick={() => onSelectProject(project.id)}
-                        className={project.id === currentProject?.id ? "bg-neutral-subtle font-medium" : ""}
-                      >
-                        <div className="w-4 h-4 mr-2 flex items-center justify-center">
-                          {project.id === currentProject?.id && (
-                            <div className="w-2 h-2 rounded-full bg-primary"></div>
-                          )}
-                        </div>
-                        {project.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </>
-                )}
+                <DropdownMenuItem onClick={() => setIsProjectSelectorOpen(true)}>
+                  <FileBox className="h-4 w-4 mr-2" />
+                  <span>Select Project</span>
+                </DropdownMenuItem>
               </DropdownMenuGroup>
               
               <DropdownMenuSeparator />
@@ -155,6 +142,15 @@ export default function Header({
         confirmText="Log Out"
         onConfirm={handleLogout}
         isPending={logoutMutation.isPending}
+      />
+      
+      <ProjectSelectorDialog
+        isOpen={isProjectSelectorOpen}
+        onOpenChange={setIsProjectSelectorOpen}
+        projects={projects}
+        currentProject={currentProject}
+        onSelectProject={onSelectProject}
+        onNewProject={onNewProject}
       />
     </header>
   );
