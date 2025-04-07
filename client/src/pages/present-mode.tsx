@@ -86,15 +86,27 @@ export default function PresentMode() {
   // Function to request fullscreen
   const requestFullscreen = () => {
     try {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
-      } else if ((document.documentElement as any).webkitRequestFullscreen) {
-        (document.documentElement as any).webkitRequestFullscreen();
-      } else if ((document.documentElement as any).msRequestFullscreen) {
-        (document.documentElement as any).msRequestFullscreen();
+      // Only try to request fullscreen in response to a user gesture (like a click)
+      // to avoid browser security errors
+      const element = document.documentElement;
+      
+      // Use the appropriate method based on browser
+      const requestMethod = element.requestFullscreen || 
+                           (element as any).webkitRequestFullscreen || 
+                           (element as any).mozRequestFullscreen || 
+                           (element as any).msRequestFullscreen;
+                           
+      if (requestMethod) {
+        // We need to handle the promise rejection that might happen if not triggered by user gesture
+        requestMethod.call(element).catch((err: any) => {
+          // Silently handle the error - this is expected in some browsers
+          // where fullscreen can only be requested from a user gesture
+          console.log('Fullscreen request was rejected:', err.message);
+        });
       }
     } catch (error) {
-      console.log('Fullscreen request failed:', error);
+      // Catch any other errors
+      console.log('Fullscreen API not supported');
     }
   };
 
@@ -260,10 +272,26 @@ export default function PresentMode() {
       </div>
       
       {/* Minimal footer with navigation hints */}
-      <div className="absolute bottom-0 left-0 right-0 text-center p-1">
+      <div className="absolute bottom-0 left-0 right-0 text-center p-1 flex justify-between items-center">
+        <div className="w-8"></div>
         <p className="text-white/30 text-[10px]">
-          {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • Click or → to advance • ← back • ESC to exit • F for fullscreen
+          {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • Click or → to advance • ← back • ESC to exit
         </p>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent triggering next slide
+            requestFullscreen();
+          }}
+          className="w-6 h-6 flex items-center justify-center text-white/20 hover:text-white/60 opacity-60 hover:opacity-100 transition-opacity"
+          title="Enter fullscreen (F)"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+        </button>
       </div>
     </div>
   );
