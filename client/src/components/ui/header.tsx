@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Project, User } from "@shared/schema";
+import { Project, User, Note } from "@shared/schema";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -11,28 +11,36 @@ import {
   DropdownMenuLabel,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, ChevronDown, Plus, LogOut, Menu, User as UserIcon, Settings, FolderPlus, FileBox, Check, X, Edit } from "lucide-react";
+import { Loader2, ChevronDown, Plus, LogOut, Menu, User as UserIcon, Settings, FolderPlus, FileBox, Check, X, Edit, Layers } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
 import { ProjectSelectorDialog } from "./project-selector-dialog";
 import { Input } from "@/components/ui/input";
+import { getLevelColor } from "@/lib/colors";
+import { cn } from "@/lib/utils";
 
 interface HeaderProps {
   user: User | null;
   currentProject: Project | null;
   projects: Project[];
+  notes?: Note[];
   onSelectProject: (id: number) => void;
   onNewProject: () => void;
   onUpdateProject?: (id: number, name: string) => void;
+  onExpandToLevel?: (level: number) => void; // New prop for level expansion
+  currentExpandLevel?: number; // Currently selected expansion level
 }
 
 export default function Header({ 
   user, 
   currentProject, 
   projects, 
+  notes = [],
   onSelectProject, 
   onNewProject,
-  onUpdateProject
+  onUpdateProject,
+  onExpandToLevel,
+  currentExpandLevel = -1
 }: HeaderProps) {
   const { logoutMutation } = useAuth();
   const { toast } = useToast();
@@ -109,6 +117,68 @@ export default function Header({
     );
   }
 
+  // Function to calculate the max depth of notes in the current project
+  const calculateMaxDepth = () => {
+    if (!notes || notes.length === 0) return 0;
+    
+    // First, create a map from parentId to child notes
+    const notesByParent: Map<number | null, Note[]> = new Map();
+    
+    // Group notes by their parent
+    notes.forEach(note => {
+      const parentId = note.parentId;
+      if (!notesByParent.has(parentId)) {
+        notesByParent.set(parentId, []);
+      }
+      notesByParent.get(parentId)!.push(note);
+    });
+    
+    // Function to recursively calculate depth
+    const calculateDepth = (parentId: number | null, currentDepth: number): number => {
+      const children = notesByParent.get(parentId) || [];
+      if (children.length === 0) return currentDepth;
+      
+      // Get the max depth among all children
+      let maxChildDepth = currentDepth;
+      children.forEach(child => {
+        const childDepth = calculateDepth(child.id, currentDepth + 1);
+        maxChildDepth = Math.max(maxChildDepth, childDepth);
+      });
+      
+      return maxChildDepth;
+    };
+    
+    // Start at root level (parentId = null) with depth 0
+    return calculateDepth(null, 0);
+  };
+  
+  // Calculate the max depth
+  const maxDepth = calculateMaxDepth();
+  
+  // Create an array of level buttons (0 to maxDepth)
+  const levelButtons = Array.from({ length: maxDepth + 1 }, (_, level) => {
+    const colorPair = getLevelColor(level);
+    const isActive = currentExpandLevel === level;
+    
+    return (
+      <Button 
+        key={level}
+        size="sm"
+        variant="ghost"
+        className={cn(
+          "min-w-8 h-8 mx-0.5 p-0 rounded-sm hover:opacity-100 text-white",
+        )}
+        style={{ 
+          backgroundColor: isActive ? colorPair.light : colorPair.regular,
+          opacity: isActive ? 1 : 0.7 
+        }}
+        onClick={() => onExpandToLevel?.(level)}
+      >
+        {level}
+      </Button>
+    );
+  });
+
   return (
     <header className="bg-background border-b border-neutral-subtle shadow-sm">
       <div className="flex items-center justify-between px-4 py-2">
@@ -153,6 +223,17 @@ export default function Header({
             <h1 className="text-lg font-semibold text-primary">NoteDrop</h1>
           )}
         </div>
+        
+        {/* Level buttons */}
+        {currentProject && maxDepth > 0 && onExpandToLevel && (
+          <div className="flex items-center mx-4 overflow-x-auto">
+            <div className="flex items-center px-2 py-1 rounded-md bg-background border border-neutral-subtle shadow-sm">
+              <Layers className="h-4 w-4 text-neutral-muted mr-2" />
+              {levelButtons}
+            </div>
+          </div>
+        )}
+        
         <div className="flex items-center">
           {/* Hamburger Menu */}
           <DropdownMenu>

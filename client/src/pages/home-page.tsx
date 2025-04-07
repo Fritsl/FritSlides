@@ -24,6 +24,8 @@ export default function HomePage() {
   const { notes, isLoading: isLoadingNotes } = useNotes(selectedProjectId);
   
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+  const [expandLevel, setExpandLevel] = useState<number>(-1); // Default to -1 (no specific level expansion)
+  const [maxNoteDepth, setMaxNoteDepth] = useState<number>(0);
 
   const form = useForm<z.infer<typeof projectSchema>>({
     resolver: zodResolver(projectSchema),
@@ -61,6 +63,7 @@ export default function HomePage() {
           user={user} 
           currentProject={null} 
           projects={[]} 
+          notes={[]}
           onSelectProject={() => {}} 
           onNewProject={() => {}}
         />
@@ -80,6 +83,7 @@ export default function HomePage() {
           user={user} 
           currentProject={null} 
           projects={[]} 
+          notes={[]}
           onSelectProject={() => {}} 
           onNewProject={() => setIsNewProjectDialogOpen(true)}
         />
@@ -109,9 +113,12 @@ export default function HomePage() {
         user={user} 
         currentProject={selectedProject || null} 
         projects={projects || []} 
+        notes={notes || []}
         onSelectProject={(id) => setSelectedProjectId(id)}
         onNewProject={() => setIsNewProjectDialogOpen(true)}
         onUpdateProject={onUpdateProject}
+        onExpandToLevel={(level) => setExpandLevel(level)}
+        currentExpandLevel={expandLevel}
       />
       
       <div className="flex-1 flex overflow-hidden">
@@ -119,7 +126,9 @@ export default function HomePage() {
           <NoteTree 
             projectId={selectedProjectId} 
             notes={notes || []} 
-            isLoading={isLoadingNotes} 
+            isLoading={isLoadingNotes}
+            expandLevel={expandLevel}
+            onMaxDepthChange={setMaxNoteDepth}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">

@@ -11,12 +11,100 @@ interface NoteTreeProps {
   projectId: number;
   notes: Note[];
   isLoading: boolean;
+  expandLevel?: number; // New prop to control the expansion level
+  onMaxDepthChange?: (maxDepth: number) => void; // Callback to notify the parent component of max depth
 }
 
-export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps) {
+export default function NoteTree({ 
+  projectId, 
+  notes, 
+  isLoading, 
+  expandLevel = -1, // Default to -1 which means no specific expansion level
+  onMaxDepthChange 
+}: NoteTreeProps) {
   const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
   const [draggingNoteId, setDraggingNoteId] = useState<number | null>(null);
+  const [maxDepth, setMaxDepth] = useState(0);
   const { createNote, updateNoteParent, updateNoteOrder } = useNotes(projectId);
+
+  // Calculate max depth of notes when notes change
+  useEffect(() => {
+    if (!notes || notes.length === 0) {
+      setMaxDepth(0);
+      if (onMaxDepthChange) onMaxDepthChange(0);
+      return;
+    }
+    
+    // First, create a map from parentId to child notes
+    const notesByParent: Map<number | null, Note[]> = new Map();
+    
+    // Group notes by their parent
+    notes.forEach(note => {
+      const parentId = note.parentId;
+      if (!notesByParent.has(parentId)) {
+        notesByParent.set(parentId, []);
+      }
+      notesByParent.get(parentId)!.push(note);
+    });
+    
+    // Function to recursively calculate depth
+    const calculateDepth = (parentId: number | null, currentDepth: number): number => {
+      const children = notesByParent.get(parentId) || [];
+      if (children.length === 0) return currentDepth;
+      
+      // Get the max depth among all children
+      let maxChildDepth = currentDepth;
+      children.forEach(child => {
+        const childDepth = calculateDepth(child.id, currentDepth + 1);
+        maxChildDepth = Math.max(maxChildDepth, childDepth);
+      });
+      
+      return maxChildDepth;
+    };
+    
+    // Start at root level (parentId = null) with depth 0
+    const maxTreeDepth = calculateDepth(null, 0);
+    setMaxDepth(maxTreeDepth);
+    
+    // Notify parent component if callback provided
+    if (onMaxDepthChange) onMaxDepthChange(maxTreeDepth);
+  }, [notes, onMaxDepthChange]);
+  
+  // Handle expand level changes
+  useEffect(() => {
+    // If expandLevel is -1, do nothing (maintains current expansion state)
+    if (expandLevel === -1) return;
+    
+    // Expand or collapse nodes based on their level
+    const newExpandedState: Record<number, boolean> = {};
+    
+    // Function to recursively process nodes and set their expanded states
+    const processNode = (noteId: number | null, level: number = 0) => {
+      if (noteId === null) {
+        // Process root level nodes
+        const rootNodes = notes.filter(note => note.parentId === null);
+        rootNodes.forEach(note => processNode(note.id, 0));
+        return;
+      }
+      
+      // For non-root nodes, set expanded state based on level
+      if (level < expandLevel) {
+        newExpandedState[noteId] = true; // Expand this node
+        
+        // Process its children
+        const children = notes.filter(note => note.parentId === noteId);
+        children.forEach(childNote => processNode(childNote.id, level + 1));
+      } else {
+        newExpandedState[noteId] = false; // Collapse this node
+      }
+    };
+    
+    // Start processing from root
+    processNode(null);
+    
+    // Update expanded nodes state
+    setExpandedNodes(newExpandedState);
+  }, [expandLevel, notes]);
 
   // Build the hierarchical structure of notes
   const buildNoteTree = useCallback(() => {
@@ -33,7 +121,7 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
     
     // Sort each group by order
     noteMap.forEach(noteGroup => {
-      noteGroup.sort((a, b) => a.order - b.order);
+      noteGroup.sort((a, b) => Number(a.order) - Number(b.order));
     });
     
     return noteMap;
