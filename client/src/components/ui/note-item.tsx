@@ -100,9 +100,20 @@ export default function NoteItem({
       order: note.order,
     };
     
+    // Check if this is a new note that's just been created
+    const lastCreatedId = localStorage.getItem('lastCreatedNoteId');
+    const isNewlyCreatedNote = parseInt(lastCreatedId || '0') === note.id || 
+                              (note.content === '' && formData.content.trim() !== '');
+    
     // @ts-ignore - Types are incorrect for useMutation
     updateNote.mutate(updateData, {
-      onSuccess: () => setIsEditing(false)
+      onSuccess: () => {
+        // Only exit edit mode if this isn't a newly created note
+        // For newly created notes, stay in edit mode to let the user keep working
+        if (!isNewlyCreatedNote) {
+          setIsEditing(false);
+        }
+      }
     });
   };
   
@@ -292,11 +303,22 @@ export default function NoteItem({
   // Effect to check for newly created note flag
   useEffect(() => {
     const newNoteFlag = localStorage.getItem('newNoteCreated');
+    const lastCreatedId = localStorage.getItem('lastCreatedNoteId');
     
-    // Check if a new note was just created and this is an empty note
-    if (newNoteFlag === 'true' && note.content === '' && !isEditing) {
-      // Clear the flag immediately to avoid affecting other notes
-      localStorage.removeItem('newNoteCreated');
+    // Check if this note should be in edit mode
+    // Case 1: New note flag is true and content is empty
+    // Case 2: This note matches the lastCreatedNoteId
+    if ((newNoteFlag === 'true' && note.content === '' && !isEditing) || 
+        (lastCreatedId && parseInt(lastCreatedId) === note.id && !isEditing)) {
+      
+      // Clear the flags that apply to this note
+      if (newNoteFlag === 'true' && note.content === '') {
+        localStorage.removeItem('newNoteCreated');
+      }
+      
+      if (lastCreatedId && parseInt(lastCreatedId) === note.id) {
+        localStorage.removeItem('lastCreatedNoteId');
+      }
       
       // Small delay to ensure this runs after the component is fully mounted
       setTimeout(() => {
@@ -498,7 +520,9 @@ export default function NoteItem({
                     variant="ghost"
                     className="p-1 h-auto text-green-200 hover:bg-green-900/40 hover:text-green-100"
                     onClick={() => {
-                      // Create a new note below this one
+                      // Set both flags: newNoteCreated for backward compatibility,
+                      // and we'll rely on the lastCreatedNoteId that will be set
+                      // in the onSuccess callback in useNotes hook
                       localStorage.setItem('newNoteCreated', 'true');
                       
                       (createNote.mutate as any)({
@@ -522,7 +546,9 @@ export default function NoteItem({
                     variant="ghost"
                     className="p-1 h-auto text-yellow-200 hover:bg-yellow-900/40 hover:text-yellow-100"
                     onClick={() => {
-                      // Create a child note
+                      // Set both flags: newNoteCreated for backward compatibility,
+                      // and we'll rely on the lastCreatedNoteId that will be set
+                      // in the onSuccess callback in useNotes hook
                       localStorage.setItem('newNoteCreated', 'true');
                       
                       (createNote.mutate as any)({

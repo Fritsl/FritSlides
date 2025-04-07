@@ -89,10 +89,21 @@ export function useNotes(projectId: number | null) {
         const currentNotes = queryClient.getQueryData<Note[]>([`/api/projects/${projectId}/notes`]);
         
         if (currentNotes && context?.optimisticNote) {
-          // Replace the optimistic note with the real one
-          const updatedNotes = currentNotes.map(note => 
-            note.id === context.optimisticNote.id ? data : note
-          );
+          // Replace the optimistic note with the real one but preserve edit flags
+          const updatedNotes = currentNotes.map(note => {
+            if (note.id === context.optimisticNote.id) {
+              // Transfer any client-side state by checking for flag in localStorage
+              const newNoteBeingCreated = localStorage.getItem('newNoteCreated') === 'true';
+              if (newNoteBeingCreated) {
+                // If this is the optimistic note that was just created, don't reset localStorage
+                // The NoteItem component will handle setting newNoteCreated to false after 
+                // it finishes initializing edit mode
+                localStorage.setItem('lastCreatedNoteId', data.id.toString());
+              }
+              return data;
+            }
+            return note;
+          });
           
           // Update the cache with the real note
           queryClient.setQueryData<Note[]>([`/api/projects/${projectId}/notes`], updatedNotes);
@@ -101,11 +112,7 @@ export function useNotes(projectId: number | null) {
           queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
         }
       }
-      
-      toast({
-        title: "Note created",
-        description: "Your new note has been created successfully.",
-      });
+      // No toast notification for note creation to avoid disrupting workflow
     },
     onError: (error, variables, context) => {
       // If the mutation fails, roll back to the previous notes
@@ -151,10 +158,8 @@ export function useNotes(projectId: number | null) {
       return { previousNotes };
     },
     onSuccess: () => {
-      toast({
-        title: "Note updated",
-        description: "Your note has been updated successfully.",
-      });
+      // Success toast removed to avoid disrupting the user's flow
+      // This makes the app feel more responsive and less "noisy"
     },
     onError: (error, variables, context) => {
       // If the mutation fails, roll back to the previous notes
