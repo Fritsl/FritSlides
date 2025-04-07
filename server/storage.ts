@@ -118,24 +118,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createNote(insertNote: InsertNote): Promise<Note> {
-    // Find max order value for siblings to place this note at the end
-    const [maxOrderResult] = await db
-      .select({ maxOrder: sql<number>`COALESCE(MAX(${notes.order}), -1)` })
-      .from(notes)
-      .where(and(
-        eq(notes.projectId, insertNote.projectId),
-        insertNote.parentId ? eq(notes.parentId, insertNote.parentId) : isNull(notes.parentId)
-      ));
-    
-    const maxOrder = maxOrderResult?.maxOrder ?? -1;
-    const order = insertNote.order ?? maxOrder + 1;
-    
-    const [note] = await db
-      .insert(notes)
-      .values({ ...insertNote, order })
-      .returning();
+    try {
+      // Find max order value for siblings to place this note at the end
+      const [maxOrderResult] = await db
+        .select({ maxOrder: sql<number>`COALESCE(MAX(${notes.order}), -1)` })
+        .from(notes)
+        .where(and(
+          eq(notes.projectId, insertNote.projectId),
+          insertNote.parentId ? eq(notes.parentId, insertNote.parentId) : isNull(notes.parentId)
+        ));
       
-    return note;
+      const maxOrder = maxOrderResult?.maxOrder ?? -1;
+      const order = insertNote.order ?? maxOrder + 1;
+      
+      const [note] = await db
+        .insert(notes)
+        .values({ ...insertNote, order })
+        .returning();
+      
+      // Always normalize orders after creating a note to ensure consistent ordering
+      await this.normalizeNoteOrders(insertNote.parentId);
+      
+      return note;
+    } catch (error) {
+      console.error("Error creating note:", error);
+      throw error;
+    }
   }
 
   async updateNote(id: number, updateData: UpdateNote): Promise<Note | undefined> {
@@ -204,19 +212,24 @@ export class DatabaseStorage implements IStorage {
         
       if (!noteToUpdate) return false;
       
-      // Ensure order is always an integer (Math.round handles negatives properly too)
-      const intOrder = Math.round(Number(order));
+      // Store old parent for normalization
+      const parentId = noteToUpdate.parentId;
+      
+      // Allow for fractional order values during drag operations (don't round immediately)
+      // This preserves the relative ordering during drag operations 
+      const numOrder = Number(order);
       
       // Update the note with the new order
       const [updatedNote] = await db
         .update(notes)
-        .set({ order: intOrder, updatedAt: new Date() })
+        .set({ order: numOrder, updatedAt: new Date() })
         .where(eq(notes.id, id))
         .returning();
       
-      // If we successfully updated, normalize the orders of siblings
+      // Always normalize the orders of siblings after any order change
+      // This ensures consistent sequential ordering (0, 1, 2...) of all notes
       if (updatedNote) {
-        await this.normalizeNoteOrders(noteToUpdate.parentId);
+        await this.normalizeNoteOrders(parentId);
       }
       
       return !!updatedNote;
@@ -243,8 +256,8 @@ export class DatabaseStorage implements IStorage {
       let newOrder: number;
       
       if (order !== undefined) {
-        // Ensure integer order
-        newOrder = Math.round(Number(order)); 
+        // Allow fractional orders during drag operations to maintain relative ordering
+        newOrder = Number(order);
       } else {
         // Calculate a new order at the end
         const [maxOrderResult] = await db
@@ -257,6 +270,8 @@ export class DatabaseStorage implements IStorage {
         
         newOrder = (maxOrderResult?.maxOrder ?? -1) + 1;
       }
+      
+      console.log(`Updating note parent: id=${id}, parentId=${parentId}, order=${newOrder}`);
       
       const [updatedNote] = await db
         .update(notes)
@@ -412,34 +427,43 @@ export class MemStorage implements IStorage {
   }
 
   async createNote(insertNote: InsertNote): Promise<Note> {
-    const id = this.currentNoteId++;
-    const now = new Date();
-    
-    // Find max order value for siblings to place this note at the end
-    const siblings = Array.from(this.notes.values()).filter(
-      (note: Note) => 
-        note.projectId === insertNote.projectId && 
-        String(note.parentId) === String(insertNote.parentId)
-    );
-    
-    let maxOrder = -1;
-    if (siblings.length > 0) {
-      const orders = siblings.map(n => Number(n.order));
-      maxOrder = Math.max(...orders);
+    try {
+      const id = this.currentNoteId++;
+      const now = new Date();
+      
+      // Find max order value for siblings to place this note at the end
+      const siblings = Array.from(this.notes.values()).filter(
+        (note: Note) => 
+          note.projectId === insertNote.projectId && 
+          String(note.parentId) === String(insertNote.parentId)
+      );
+      
+      let maxOrder = -1;
+      if (siblings.length > 0) {
+        const orders = siblings.map(n => Number(n.order));
+        maxOrder = Math.max(...orders);
+      }
+      
+      const order = insertNote.order !== undefined ? insertNote.order : maxOrder + 1;
+      
+      const note: Note = { 
+        ...insertNote, 
+        id, 
+        order,
+        createdAt: now,
+        updatedAt: now 
+      };
+      
+      this.notes.set(id, note);
+      
+      // Always normalize orders after creating a note to ensure consistent ordering
+      await this.normalizeNoteOrders(insertNote.parentId);
+      
+      return note;
+    } catch (error) {
+      console.error("Error creating note in MemStorage:", error);
+      throw error;
     }
-    
-    const order = insertNote.order !== undefined ? insertNote.order : maxOrder + 1;
-    
-    const note: Note = { 
-      ...insertNote, 
-      id, 
-      order,
-      createdAt: now,
-      updatedAt: now 
-    };
-    
-    this.notes.set(id, note);
-    return note;
   }
 
   async updateNote(id: number, updateData: UpdateNote): Promise<Note | undefined> {
