@@ -7,6 +7,7 @@ import { insertProjectSchema, insertNoteSchema, updateNoteSchema } from "@shared
 import fs from "fs";
 import path from "path";
 import { randomBytes } from "crypto";
+import { ImportData, ImportedNote, convertImportedNoteToInsert } from "./types";
 
 // Configure multer for file uploads
 const storage_dir = path.join(process.cwd(), "uploads");
@@ -332,6 +333,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.sendFile(filepath);
     } else {
       res.status(404).json({ message: "Image not found" });
+    }
+  });
+
+  // Export notes from a project
+  app.get("/api/projects/:projectId/export", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Check if project exists and belongs to the user
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      if (project.userId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to export this project" });
+      }
+      
+      // Get all notes for the project
+      const notes = await storage.getNotes(projectId);
+      
+      // Format the timestamp for the filename
+      const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+      const filename = `${project.name.replace(/\s+/g, '_')}_${timestamp}.json`;
+      
+      // Set headers for file download
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      
+      // Send the notes as a JSON file
+      res.json({ project: { name: project.name }, notes });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to export notes" });
+    }
+  });
+
+  // Import notes into a project
+  app.post("/api/projects/:projectId/import", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Check if project exists and belongs to the user
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      if (project.userId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to import into this project" });
+      }
+      
+      // Get the import data from the request body
+      const importData = req.body as ImportData;
+      
+      // Validate the import data has the correct structure
+      if (!importData || !Array.isArray(importData.notes)) {
+        return res.status(400).json({ message: "Invalid import data" });
+      }
+      
+      // Create a mapping of old ids to new ids for proper parent references
+      const idMap = new Map<number, number>();
+      
+      // First pass: Create all notes without parent relationships
+      for (const note of importData.notes as ImportedNote[]) {
+        // Use helper function to convert imported note to insert format
+        const noteToInsert = convertImportedNoteToInsert(note, projectId);
+        // Create a new note without parent reference first
+        const newNote = await storage.createNote(noteToInsert);
+        
+        // Store the mapping from original id to new id
+        idMap.set(note.id, newNote.id);
+      }
+      
+      // Second pass: Update parent relationships
+      for (const note of importData.notes as ImportedNote[]) {
+        // Make sure parentId is a valid number before using it
+        const parentId = typeof note.parentId === 'number' ? note.parentId : null;
+        
+        if (parentId !== null && idMap.has(parentId)) {
+          const newId = idMap.get(note.id);
+          const newParentId = idMap.get(parentId);
+          
+          if (newId !== undefined && newParentId !== undefined) {
+            await storage.updateNoteParent(newId, newParentId);
+          }
+        }
+      }
+      
+      // Return success with count of imported notes
+      res.status(200).json({ 
+        message: "Import successful", 
+        count: importData.notes.length 
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to import notes" });
     }
   });
 

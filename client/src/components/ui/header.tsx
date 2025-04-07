@@ -11,7 +11,21 @@ import {
   DropdownMenuLabel,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, ChevronDown, Plus, LogOut, Menu, User as UserIcon, Settings, FolderPlus, FileBox, Check, X, Edit } from "lucide-react";
+import { 
+  Loader2, 
+  ChevronDown, 
+  Plus, 
+  LogOut, 
+  Menu, 
+  User as UserIcon, 
+  Settings, 
+  FolderPlus, 
+  FileBox, 
+  Check, 
+  X, 
+  Download, 
+  Upload 
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
 import { ProjectSelectorDialog } from "./project-selector-dialog";
@@ -29,6 +43,8 @@ interface HeaderProps {
   onUpdateProject?: (id: number, name: string) => void;
   onExpandToLevel?: (level: number) => void; // New prop for level expansion
   currentExpandLevel?: number; // Currently selected expansion level
+  onExportNotes?: () => void; // For exporting notes
+  onImportNotes?: () => void; // For importing notes
 }
 
 export default function Header({ 
@@ -40,7 +56,9 @@ export default function Header({
   onNewProject,
   onUpdateProject,
   onExpandToLevel,
-  currentExpandLevel = -1
+  currentExpandLevel = -1,
+  onExportNotes,
+  onImportNotes
 }: HeaderProps) {
   const { logoutMutation } = useAuth();
   const { toast } = useToast();
@@ -298,6 +316,45 @@ export default function Header({
                 <Plus className="h-4 w-4 mr-2" />
                 <span>New Note</span>
               </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              
+              {/* Import/Export section */}
+              <DropdownMenuGroup>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    if (currentProject && onExportNotes) {
+                      onExportNotes();
+                    } else if (!currentProject) {
+                      toast({
+                        title: "Select a project first",
+                        description: "You need to select a project before exporting notes",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  <span>Export Notes</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem 
+                  onClick={() => {
+                    if (currentProject && onImportNotes) {
+                      onImportNotes();
+                    } else if (!currentProject) {
+                      toast({
+                        title: "Select a project first",
+                        description: "You need to select a project before importing notes",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  <span>Import Notes</span>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

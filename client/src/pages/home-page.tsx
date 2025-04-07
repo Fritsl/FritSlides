@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useProjects } from "@/hooks/use-projects";
 import { useNotes } from "@/hooks/use-notes";
@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { ImportDialog } from "@/components/ui/import-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required").max(50, "Project name is too long"),
@@ -22,10 +24,15 @@ export default function HomePage() {
   const { projects, isLoading: isLoadingProjects, createProject, updateProject } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const { notes, isLoading: isLoadingNotes } = useNotes(selectedProjectId);
+  const { toast } = useToast();
   
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [expandLevel, setExpandLevel] = useState<number>(-1); // Default to -1 (no specific level expansion)
   const [maxNoteDepth, setMaxNoteDepth] = useState<number>(0);
+  
+  // Create a hidden anchor element for downloads
+  const downloadLinkRef = useRef<HTMLAnchorElement | null>(null);
 
   const form = useForm<z.infer<typeof projectSchema>>({
     resolver: zodResolver(projectSchema),
@@ -47,6 +54,76 @@ export default function HomePage() {
   const onUpdateProject = (id: number, name: string) => {
     updateProject.mutate({ id, name });
   };
+  
+  // Handle exporting notes
+  const handleExportNotes = () => {
+    if (!selectedProjectId || !selectedProject) {
+      toast({
+        title: "No project selected",
+        description: "Please select a project to export notes from",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Create an anchor element if it doesn't exist
+    if (!downloadLinkRef.current) {
+      const link = document.createElement('a');
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      downloadLinkRef.current = link;
+    }
+    
+    // Fetch the export data
+    fetch(`/api/projects/${selectedProjectId}/export`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Failed to export notes");
+        }
+        return response.json();
+      })
+      .then(data => {
+        // Create a Blob from the data
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        // Set up the download link
+        if (downloadLinkRef.current) {
+          downloadLinkRef.current.href = url;
+          downloadLinkRef.current.download = `${selectedProject.name.replace(/\s+/g, '_')}_export_${new Date().toISOString().split('T')[0]}.json`;
+          downloadLinkRef.current.click();
+          
+          // Clean up
+          URL.revokeObjectURL(url);
+        }
+        
+        toast({
+          title: "Export successful",
+          description: "Your notes have been exported to a JSON file",
+        });
+      })
+      .catch(error => {
+        toast({
+          title: "Export failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      });
+  };
+  
+  // Handle opening the import dialog
+  const handleImportNotes = () => {
+    if (!selectedProjectId) {
+      toast({
+        title: "No project selected",
+        description: "Please select a project to import notes into",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsImportDialogOpen(true);
+  };
 
   // Select the first project by default when projects load
   if (projects?.length && !selectedProjectId && !isLoadingProjects) {
@@ -66,6 +143,8 @@ export default function HomePage() {
           notes={[]}
           onSelectProject={() => {}} 
           onNewProject={() => {}}
+          onExportNotes={() => {}}
+          onImportNotes={() => {}}
         />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -86,6 +165,8 @@ export default function HomePage() {
           notes={[]}
           onSelectProject={() => {}} 
           onNewProject={() => setIsNewProjectDialogOpen(true)}
+          onExportNotes={() => {}}
+          onImportNotes={() => {}}
         />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center p-8 max-w-md">
@@ -119,6 +200,8 @@ export default function HomePage() {
         onUpdateProject={onUpdateProject}
         onExpandToLevel={(level) => setExpandLevel(level)}
         currentExpandLevel={expandLevel}
+        onExportNotes={handleExportNotes}
+        onImportNotes={handleImportNotes}
       />
       
       <div className="flex-1 flex overflow-hidden">
@@ -137,6 +220,7 @@ export default function HomePage() {
         )}
       </div>
       
+      {/* Project creation dialog */}
       <NewProjectDialog 
         isOpen={isNewProjectDialogOpen} 
         onOpenChange={setIsNewProjectDialogOpen}
@@ -144,6 +228,20 @@ export default function HomePage() {
         onSubmit={onCreateProject}
         isPending={createProject.isPending}
       />
+      
+      {/* Import dialog */}
+      {selectedProjectId && (
+        <ImportDialog
+          isOpen={isImportDialogOpen}
+          onOpenChange={setIsImportDialogOpen}
+          projectId={selectedProjectId}
+        />
+      )}
+      
+      {/* Hidden download anchor for exports */}
+      <div style={{ display: 'none' }}>
+        <a ref={downloadLinkRef} />
+      </div>
     </div>
   );
 }
