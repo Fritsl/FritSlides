@@ -181,25 +181,43 @@ export default function NoteItem({
       const hoverMiddleX = (hoverBoundingRect.right - hoverBoundingRect.left) / 2;
       const hoverClientX = clientOffset!.x - hoverBoundingRect.left;
       
+      // DEBUG: Log these values
+      console.log(`=== HOVER DEBUG (note ${note.id}) ===`);
+      console.log(`Rect: top=${hoverBoundingRect.top}, bottom=${hoverBoundingRect.bottom}, left=${hoverBoundingRect.left}, right=${hoverBoundingRect.right}`);
+      console.log(`Middle Y: ${hoverMiddleY}, Cursor Y: ${hoverClientY}`);
+      console.log(`Middle X: ${hoverMiddleX}, Cursor X: ${hoverClientX}`);
+      
       // Determine drop position
       const isLeftSide = hoverClientX < hoverMiddleX / 2; // Left side for before/after, right side for child positions
       const isRightSide = hoverClientX >= hoverMiddleX / 2;
       
+      console.log(`isLeftSide: ${isLeftSide}, isRightSide: ${isRightSide}`);
+      console.log(`Top half check: ${hoverClientY < hoverMiddleY / 2}`);
+      console.log(`Bottom half check: ${hoverClientY > hoverMiddleY * 1.5}`);
+      
+      let newPosition: 'before' | 'after' | 'child' | 'first-child' | null = null;
+      
       if (isLeftSide && hoverClientY < hoverMiddleY / 2) {
         // Top-left quadrant: before
-        setDragPosition('before');
+        newPosition = 'before';
       } else if (isLeftSide && hoverClientY > hoverMiddleY * 1.5) {
         // Bottom-left quadrant: after
-        setDragPosition('after');
+        newPosition = 'after';
       } else if (isRightSide && hoverClientY < hoverMiddleY / 2) {
         // Top-right quadrant: first-child
-        setDragPosition('first-child');
+        newPosition = 'first-child';
       } else {
         // Bottom-right quadrant: child (append)
-        setDragPosition('child');
+        newPosition = 'child';
       }
+      
+      console.log(`Selected position: ${newPosition}`);
+      setDragPosition(newPosition);
     },
     drop: (item: { id: number }) => {
+      console.log(`=== DROP DEBUG ===`);
+      console.log(`Dropping noteId ${item.id} onto noteId ${note.id} with position ${dragPosition}`);
+      
       if (dragPosition && item.id !== note.id) {
         moveNote(item.id, note.id, dragPosition);
       }

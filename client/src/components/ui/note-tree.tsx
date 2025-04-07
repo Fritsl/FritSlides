@@ -76,29 +76,49 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
 
   // Move a note to a new position (update parent and/or order)
   const moveNote = useCallback((noteId: number, targetId: number, position: 'before' | 'after' | 'child' | 'first-child') => {
+    console.log(`=== MOVE NOTE DEBUG ===`);
+    console.log(`Moving noteId ${noteId} to position ${position} relative to noteId ${targetId}`);
+    
     const sourceNote = notes.find(n => n.id === noteId);
     const targetNote = notes.find(n => n.id === targetId);
     
-    if (!sourceNote || !targetNote) return;
+    console.log('Source note:', sourceNote);
+    console.log('Target note:', targetNote);
+    
+    if (!sourceNote || !targetNote) {
+      console.log('Source or target note not found, aborting');
+      return;
+    }
     
     if (position === 'child' || position === 'first-child') {
+      console.log(`Making note ${noteId} a ${position} of note ${targetId}`);
+      
       // Make source a child of target
-      if (sourceNote.parentId === targetId && position === 'child') return; // Already a child (and not specifically a first-child)
+      if (sourceNote.parentId === targetId && position === 'child') {
+        console.log('Already a child of target and not specifically first-child, aborting');
+        return; // Already a child (and not specifically a first-child)
+      }
       
       let newOrder = 0;
       
       if (position === 'first-child') {
         // Set as first child - need to find the current first child to place before it
         const childNotes = notes.filter(n => n.parentId === targetId);
+        console.log('Existing child notes:', childNotes);
+        
         if (childNotes.length > 0) {
           // Find the child with the smallest order
           const firstChild = childNotes.reduce((prev, current) => 
             prev.order < current.order ? prev : current
           );
           newOrder = firstChild.order - 1;
+          console.log(`Found first child with order ${firstChild.order}, setting new order to ${newOrder}`);
+        } else {
+          console.log('No existing children, using default order 0');
         }
       }
       
+      console.log(`Updating note parent: noteId=${noteId}, parentId=${targetId}, order=${position === 'first-child' ? newOrder : 'undefined'}`);
       updateNoteParent.mutate({ 
         noteId, 
         parentId: targetId,
@@ -111,17 +131,26 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
         [targetId]: true
       }));
     } else {
+      console.log(`Moving note ${noteId} as sibling ${position} note ${targetId}`);
+      
       // Move as sibling
       const siblings = notes.filter(n => n.parentId === targetNote.parentId);
       siblings.sort((a, b) => a.order - b.order);
       
+      console.log('Siblings (sorted by order):', siblings);
+      
       const targetIndex = siblings.findIndex(n => n.id === targetId);
+      console.log(`Target index in siblings array: ${targetIndex}`);
+      
       const newOrder = position === 'before' 
         ? targetNote.order - 0.5 
         : targetNote.order + 0.5;
       
+      console.log(`Target note order: ${targetNote.order}, new calculated order: ${newOrder}`);
+      
       // Update parent if needed
       if (sourceNote.parentId !== targetNote.parentId) {
+        console.log(`Updating parent from ${sourceNote.parentId} to ${targetNote.parentId}`);
         updateNoteParent.mutate({ 
           noteId: sourceNote.id, 
           parentId: targetNote.parentId 
@@ -129,6 +158,7 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
       }
       
       // Update order
+      console.log(`Updating note order: noteId=${sourceNote.id}, order=${newOrder}`);
       updateNoteOrder.mutate({ 
         noteId: sourceNote.id, 
         order: newOrder 
