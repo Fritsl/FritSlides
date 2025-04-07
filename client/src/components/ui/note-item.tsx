@@ -485,10 +485,16 @@ export default function NoteItem({
               color: "white" 
             }}
             className={`relative rounded-md p-3 shadow-sm border border-transparent ${isEditing ? "border-primary shadow" : "hover:border-neutral-subtle"} group ${getDragIndicatorClass()}`}
+            onMouseDown={isEditing ? (e) => e.stopPropagation() : undefined}
           >
             {isEditing ? (
               // Edit mode
-              <div>
+              <div 
+                className="text-selection-container"
+                style={{ userSelect: 'text' }}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-start">
                   {/* Not using drag ref in edit mode to allow for text selection */}
                   <div className="cursor-default pr-2 pt-1 opacity-30">
@@ -504,7 +510,15 @@ export default function NoteItem({
                         rows={2}
                         placeholder="Note content..."
                         className="w-full p-2 border-neutral-subtle focus:border-primary select-text cursor-text"
-                        style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+                        style={{ 
+                          userSelect: 'text', 
+                          WebkitUserSelect: 'text',
+                          MozUserSelect: 'text',
+                          msUserSelect: 'text',
+                          pointerEvents: 'auto'
+                        }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
                       />
                     </div>
                     
@@ -518,7 +532,15 @@ export default function NoteItem({
                           value={formData.url}
                           onChange={handleInputChange}
                           className="flex-1 select-text cursor-text"
-                          style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+                          style={{ 
+                            userSelect: 'text', 
+                            WebkitUserSelect: 'text',
+                            MozUserSelect: 'text',
+                            msUserSelect: 'text',
+                            pointerEvents: 'auto'
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
                         />
                       </div>
                       
@@ -531,7 +553,15 @@ export default function NoteItem({
                           value={formData.linkText}
                           onChange={handleInputChange}
                           className="flex-1 select-text cursor-text"
-                          style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+                          style={{ 
+                            userSelect: 'text', 
+                            WebkitUserSelect: 'text',
+                            MozUserSelect: 'text',
+                            msUserSelect: 'text',
+                            pointerEvents: 'auto'
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
                         />
                       </div>
                       
@@ -544,7 +574,15 @@ export default function NoteItem({
                           value={formData.youtubeLink}
                           onChange={handleInputChange}
                           className="flex-1 select-text cursor-text"
-                          style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+                          style={{ 
+                            userSelect: 'text', 
+                            WebkitUserSelect: 'text',
+                            MozUserSelect: 'text',
+                            msUserSelect: 'text',
+                            pointerEvents: 'auto'
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
                         />
                       </div>
                       
@@ -557,7 +595,15 @@ export default function NoteItem({
                           value={formData.time}
                           onChange={handleInputChange}
                           className="w-24 select-text cursor-text"
-                          style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
+                          style={{ 
+                            userSelect: 'text', 
+                            WebkitUserSelect: 'text',
+                            MozUserSelect: 'text',
+                            msUserSelect: 'text',
+                            pointerEvents: 'auto'
+                          }}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
                         />
                       </div>
                       

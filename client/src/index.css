@@ -11,3 +11,27 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* Custom styles for text selection in notes */
+.text-selection-container {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+.text-selection-container input,
+.text-selection-container textarea {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  cursor: text !important;
+  pointer-events: auto !important;
+}
+
+/* Improve text selection highlighting */
+.text-selection-container ::selection {
+  background-color: rgba(66, 153, 225, 0.6) !important; /* Blue highlight with transparency */
+  color: white !important;
+}
