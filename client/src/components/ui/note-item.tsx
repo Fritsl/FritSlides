@@ -121,36 +121,16 @@ export default function NoteItem({
         // Track whether we'll exit edit mode or not
         let shouldExitEditMode = false;
         
-        // Persist edit mode for newly created notes with a different logic
+        // IMPORTANT CHANGE: Always exit edit mode after saving, regardless of content
+        // This is the expected behavior when a user clicks Save
         if (wasNewlyCreated) {
-          console.log(`[Note ${note.id}] This was a newly created note, checking if we should exit edit mode`);
+          console.log(`[Note ${note.id}] This was a newly created note, exiting edit mode after save`);
           
-          // We'll stay in edit mode if content is empty or basic
-          const contentIsBasic = formData.content.trim() === '';
+          // No longer newly created
+          setIsNewlyCreated(false);
           
-          // We'll exit edit mode if user has filled in content AND additional fields
-          const hasFilledAdditionalFields = 
-            formData.url !== '' || 
-            formData.linkText !== '' || 
-            formData.youtubeLink !== '' || 
-            formData.time !== '' || 
-            formData.images.length > 0;
-          
-          if (contentIsBasic) {
-            console.log(`[Note ${note.id}] Content is empty/basic, staying in edit mode`);
-            // Stay in edit mode, but mark note as no longer "newly created"
-            // This ensures subsequent interactions work properly
-            setIsNewlyCreated(false);
-          } else if (hasFilledAdditionalFields) {
-            console.log(`[Note ${note.id}] Content and additional fields filled, exiting edit mode`);
-            // Exit edit mode if the note is fully formed
-            shouldExitEditMode = true;
-            setIsNewlyCreated(false);
-          } else {
-            console.log(`[Note ${note.id}] Only basic content, staying in edit mode for more edits`);
-            // Keep edit mode for more edits, but note is no longer "newly created"
-            setIsNewlyCreated(false);
-          }
+          // Always exit edit mode
+          shouldExitEditMode = true;
         } else {
           console.log(`[Note ${note.id}] This was a regular edit, exiting edit mode`);
           // For regular notes, exit edit mode after save
