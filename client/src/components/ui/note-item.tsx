@@ -422,440 +422,559 @@ export default function NoteItem({
       // We are in edit mode, note that we want to stay here
       console.log(`[Note ${note.id}] Currently in edit mode - will preserve this state`);
       
-      // Update form data with the latest from the server
-      // Only if we don't have any client changes (which would be lost)
-      if (formData.content === note.content) {
-        setFormData({
-          content: note.content,
-          url: note.url || "",
-          linkText: note.linkText || "",
-          youtubeLink: note.youtubeLink || "",
-          time: note.time || "",
-          images: note.images || [],
-        });
+      // Update form data with current note values
+      // This preserves any edits the user made locally while server data was updating
+      // We only do this for fields that haven't been modified
+      const formValues = { ...formData };
+      let hasLocalChanges = false;
+      
+      if (formValues.content === note.content) {
+        formValues.content = note.content;
+      } else {
+        hasLocalChanges = true;
       }
-    } 
-    // Important case: we were in edit mode but aren't anymore due to a server update
-    else if (isEditingRef.current && !isEditing && !userExitedEditModeRef.current) {
-      // We were editing, but a server update changed that - restore edit mode
-      console.log(`[Note ${note.id}] Edit mode was lost due to server update - restoring`);
-      setIsEditing(true);
+      
+      if (formValues.url === (note.url || "")) {
+        formValues.url = note.url || "";
+      } else {
+        hasLocalChanges = true;
+      }
+      
+      if (formValues.linkText === (note.linkText || "")) {
+        formValues.linkText = note.linkText || "";
+      } else {
+        hasLocalChanges = true;
+      }
+      
+      if (formValues.youtubeLink === (note.youtubeLink || "")) {
+        formValues.youtubeLink = note.youtubeLink || "";
+      } else {
+        hasLocalChanges = true;
+      }
+      
+      if (formValues.time === (note.time || "")) {
+        formValues.time = note.time || "";
+      } else {
+        hasLocalChanges = true;
+      }
+      
+      // Copy the array to prevent object reference issues
+      if (JSON.stringify(formValues.images) === JSON.stringify(note.images || [])) {
+        formValues.images = [...(note.images || [])];
+      } else {
+        hasLocalChanges = true;
+      }
+      
+      if (hasLocalChanges) {
+        console.log(`[Note ${note.id}] Detected local changes in edit form, preserving user edits`);
+      } else {
+        console.log(`[Note ${note.id}] No local changes detected, updating form with server data`);
+        setFormData(formValues);
+      }
+    } else if (isEditingRef.current && !isEditing && !userExitedEditModeRef.current) {
+      // We were in edit mode, but now we're not, and it wasn't explicitly requested
+      // by the user (e.g., via Save/Cancel). This could be due to server data changes
+      console.log(`[Note ${note.id}] Detected loss of edit mode - restoring edit state`);
+      
+      // Return to edit mode and preserve the editing state
+      setTimeout(() => {
+        setIsEditing(true);
+      }, 50);
     }
     
-    // Update our reference values for next comparison
+    // Store current state for next comparison
     isEditingRef.current = isEditing;
     
-    // Reset the user exited flag once we've used it
+    // Reset user exit flag now that we've handled any state changes
     if (userExitedEditModeRef.current) {
+      console.log(`[Note ${note.id}] Resetting user exited edit mode flag`);
       userExitedEditModeRef.current = false;
     }
-  }, [note, isEditing, isNewlyCreated]);
+  }, [note, isEditing, isNewlyCreated, formData]);
   
-  // Identify if note has additional content
+  // Check if note has a URL, YouTube link, or images for display purposes
   const hasUrl = !!note.url;
   const hasYouTube = !!note.youtubeLink;
   const hasImages = note.images && note.images.length > 0;
   
-  // Detect if the form has additional content to highlight the toggle button
-  const hasAdditionalContent = 
-    !!formData.url || 
-    !!formData.youtubeLink || 
-    !!formData.time || 
-    (formData.images && formData.images.length > 0);
+  // Check if note has any additional content (URL, YouTube, or images)
+  const hasAdditionalContent = hasUrl || hasYouTube || hasImages || !!note.time;
   
   // Apply opacity to indicate dragging
   const opacity = isDragging ? 0.4 : 1;
   
+  // If editing, show inline indicator and editor at top of screen
+  if (isEditing) {
+    return (
+      <div ref={dragPreview} className="note-item pb-1.5 relative">
+        {/* Small indicator in the note tree */}
+        <div className="h-6 flex items-center opacity-60 ml-2 mb-1">
+          <div className="w-2 h-2 rounded-full bg-blue-400 mr-2"></div>
+          <span className="text-xs text-blue-300">Currently editing</span>
+        </div>
+        
+        {/* Fixed-position editor */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-blue-950 to-gray-900 p-4 shadow-xl border-b-2 border-blue-500">
+          {/* Edit mode title with note identifier */}
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-white font-bold text-lg flex items-center">
+              <Edit className="h-5 w-5 mr-2 text-blue-400" /> 
+              Edit Note
+            </h2>
+            
+            <div className="flex items-center">
+              {/* Note identifier badge */}
+              <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full mr-3">
+                {note.content.substring(0, 20) || "New note"}{note.content.length > 20 ? "..." : ""}
+              </div>
+            
+              <div className="flex space-x-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={updateNote.isPending}
+                  className="h-8 border-red-500 hover:bg-red-900/30 text-red-300"
+                >
+                  <X className="h-4 w-4 mr-1" /> Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={updateNote.isPending}
+                  className="h-8 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {updateNote.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-1" />
+                      Save
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Main content textarea with prominent styling */}
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-blue-300 mb-1">Content</label>
+            <Textarea
+              ref={contentInputRef}
+              name="content"
+              value={formData.content}
+              onChange={handleInputChange}
+              rows={3}
+              placeholder="Note content..."
+              className="w-full p-3 border-2 border-blue-700 focus:border-blue-500 rounded-md bg-gray-800 text-white select-text cursor-text shadow-inner"
+              style={{ 
+                userSelect: 'text', 
+                WebkitUserSelect: 'text',
+                MozUserSelect: 'text',
+                msUserSelect: 'text',
+                pointerEvents: 'auto'
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          
+          {/* Toggle button for additional fields with clear visual indicator */}
+          <Button
+            size="sm"
+            variant={showAdditionalFields ? "default" : "outline"}
+            className={`w-full mb-2 ${
+              showAdditionalFields 
+                ? 'bg-blue-700 hover:bg-blue-800 text-white' 
+                : 'border-blue-600 text-blue-400 hover:text-blue-300'
+            }`}
+            onClick={() => setShowAdditionalFields(!showAdditionalFields)}
+          >
+            {showAdditionalFields ? (
+              <>
+                <ChevronDown className="h-4 w-4 mr-2" />
+                Hide Additional Fields
+              </>
+            ) : (
+              <>
+                <ChevronRight className="h-4 w-4 mr-2" />
+                {hasAdditionalContent 
+                  ? "Show Additional Fields (Contains Data)" 
+                  : "Show Additional Fields"
+                }
+              </>
+            )}
+          </Button>
+          
+          {/* Collapsible additional fields */}
+          {showAdditionalFields && (
+            <div className="space-y-2 text-sm">
+              {/* URL fields */}
+              <div className="flex items-center">
+                <label className="font-medium text-white w-16 text-xs">URL</label>
+                <Input
+                  name="url"
+                  type="text"
+                  placeholder="https://..."
+                  value={formData.url}
+                  onChange={handleInputChange}
+                  className="flex-1 select-text cursor-text text-xs h-8"
+                  style={{ 
+                    userSelect: 'text', 
+                    WebkitUserSelect: 'text',
+                    MozUserSelect: 'text',
+                    msUserSelect: 'text',
+                    pointerEvents: 'auto'
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+              
+              {/* Link Text - only show if URL is present */}
+              {formData.url && (
+                <div className="flex items-center">
+                  <label className="font-medium text-white w-16 text-xs">Link Text</label>
+                  <Input
+                    name="linkText"
+                    type="text"
+                    placeholder="Link description..."
+                    value={formData.linkText}
+                    onChange={handleInputChange}
+                    className="flex-1 select-text cursor-text text-xs h-8"
+                    style={{ 
+                      userSelect: 'text', 
+                      WebkitUserSelect: 'text',
+                      MozUserSelect: 'text',
+                      msUserSelect: 'text',
+                      pointerEvents: 'auto'
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              )}
+              
+              {/* YouTube field */}
+              <div className="flex items-center">
+                <label className="font-medium text-white w-16 text-xs">YouTube</label>
+                <Input
+                  name="youtubeLink"
+                  type="text"
+                  placeholder="YouTube URL..."
+                  value={formData.youtubeLink}
+                  onChange={handleInputChange}
+                  className="flex-1 select-text cursor-text text-xs h-8"
+                  style={{ 
+                    userSelect: 'text', 
+                    WebkitUserSelect: 'text',
+                    MozUserSelect: 'text',
+                    msUserSelect: 'text',
+                    pointerEvents: 'auto'
+                  }}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </div>
+              
+              {/* Time field - only show if YouTube is present */}
+              {formData.youtubeLink && (
+                <div className="flex items-center">
+                  <label className="font-medium text-white w-16 text-xs">Time</label>
+                  <Input
+                    name="time"
+                    type="text"
+                    placeholder="HH:MM"
+                    value={formData.time}
+                    onChange={handleInputChange}
+                    className="w-24 select-text cursor-text text-xs h-8"
+                    style={{ 
+                      userSelect: 'text', 
+                      WebkitUserSelect: 'text',
+                      MozUserSelect: 'text',
+                      msUserSelect: 'text',
+                      pointerEvents: 'auto'
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              )}
+              
+              {/* Image field */}
+              <div className="flex flex-col">
+                <label className="font-medium text-white mb-1 text-xs">Images</label>
+                <FileUpload
+                  onUpload={handleImageUpload}
+                  onRemove={handleImageRemove}
+                  existingImages={formData.images}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Spacer element to prevent content from being hidden under the fixed edit panel */}
+        <div className="h-[200px]"></div>
+      </div>
+    );
+  }
+
+  // Normal display mode (not editing)
   return (
-    <div ref={dragPreview} style={{ opacity }} className={`note-item pb-1.5 relative ${isDragging ? 'is-dragging' : ''} ${!isEditing ? 'cursor-grab' : ''}`}>
+    <div ref={dragPreview} style={{ opacity }} className={`note-item pb-1.5 relative ${isDragging ? 'is-dragging' : ''} cursor-grab`}>
       <div ref={noteRef}>
         <div className={`ml-${level * 3}`}>
           <div
             style={{ 
-              backgroundColor: isEditing 
-                ? getLevelColor(level).light 
-                : getLevelColor(level).regular,
+              backgroundColor: getLevelColor(level).regular,
               color: "white" 
             }}
-            className={`relative rounded-md p-3 shadow-sm border border-transparent ${isEditing ? "border-primary shadow" : "hover:border-neutral-subtle"} group ${getDragIndicatorClass()}`}
-            ref={!isEditing ? drag : undefined}
-            onMouseDown={isEditing ? (e) => e.stopPropagation() : undefined}
+            className={`relative rounded-md p-3 shadow-sm border border-transparent hover:border-neutral-subtle group ${getDragIndicatorClass()}`}
+            ref={drag}
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            {isEditing ? (
-              // Edit mode
-              <div className="text-selection-container">
-                {/* Fixed-position edit panel for mobile and desktop with note indicator */}
-                <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-blue-950 to-gray-900 p-4 shadow-xl border-b-2 border-blue-500">
-                  {/* Note identifier badge */}
-                  <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                    Editing: {note.content.substring(0, 25)}{note.content.length > 25 ? "..." : ""}
-                  </div>
-                  {/* Edit mode title */}
-                  <div className="flex justify-between items-center mb-3">
-                    <h2 className="text-white font-bold text-lg flex items-center">
-                      <Edit className="h-5 w-5 mr-2 text-blue-400" /> 
-                      Edit Note
-                    </h2>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleCancel}
-                        disabled={updateNote.isPending}
-                        className="h-8 border-red-500 hover:bg-red-900/30 text-red-300"
-                      >
-                        <X className="h-4 w-4 mr-1" /> Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleSave}
-                        disabled={updateNote.isPending}
-                        className="h-8 bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        {updateNote.isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="h-4 w-4 mr-1" />
-                            Save
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* Main content textarea with prominent styling */}
-                  <div className="mb-3">
-                    <label className="block text-sm font-medium text-blue-300 mb-1">Content</label>
-                    <Textarea
-                      ref={contentInputRef}
-                      name="content"
-                      value={formData.content}
-                      onChange={handleInputChange}
-                      rows={3}
-                      placeholder="Note content..."
-                      className="w-full p-3 border-2 border-blue-700 focus:border-blue-500 rounded-md bg-gray-800 text-white select-text cursor-text shadow-inner"
-                      style={{ 
-                        userSelect: 'text', 
-                        WebkitUserSelect: 'text',
-                        MozUserSelect: 'text',
-                        msUserSelect: 'text',
-                        pointerEvents: 'auto'
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </div>
-                  
-                  {/* Toggle button for additional fields with clear visual indicator */}
-                  <Button
-                    size="sm"
-                    variant={showAdditionalFields ? "default" : "outline"}
-                    className={`w-full mb-2 ${
-                      showAdditionalFields 
-                        ? 'bg-blue-700 hover:bg-blue-800 text-white' 
-                        : 'border-blue-600 text-blue-400 hover:text-blue-300'
-                    }`}
-                    onClick={() => setShowAdditionalFields(!showAdditionalFields)}
-                  >
-                    {showAdditionalFields ? (
-                      <>
-                        <ChevronDown className="h-4 w-4 mr-2" />
-                        Hide Additional Fields
-                      </>
-                    ) : (
-                      <>
-                        <ChevronRight className="h-4 w-4 mr-2" />
-                        {hasAdditionalContent 
-                          ? "Show Additional Fields (Contains Data)" 
-                          : "Show Additional Fields"
-                        }
-                      </>
-                    )}
-                  </Button>
-                  
-                  {/* Collapsible additional fields */}
-                  {showAdditionalFields && (
-                    <div className="space-y-2 text-sm">
-                      {/* URL fields */}
-                      <div className="flex items-center">
-                        <label className="font-medium text-white w-16 text-xs">URL</label>
-                        <Input
-                          name="url"
-                          type="text"
-                          placeholder="https://..."
-                          value={formData.url}
-                          onChange={handleInputChange}
-                          className="flex-1 select-text cursor-text text-xs h-8"
-                          style={{ 
-                            userSelect: 'text', 
-                            WebkitUserSelect: 'text',
-                            MozUserSelect: 'text',
-                            msUserSelect: 'text',
-                            pointerEvents: 'auto'
-                          }}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                      
-                      {/* Link Text - only show if URL is present */}
-                      {formData.url && (
-                        <div className="flex items-center">
-                          <label className="font-medium text-white w-16 text-xs">Link Text</label>
-                          <Input
-                            name="linkText"
-                            type="text"
-                            placeholder="Link description..."
-                            value={formData.linkText}
-                            onChange={handleInputChange}
-                            className="flex-1 select-text cursor-text text-xs h-8"
-                            style={{ 
-                              userSelect: 'text', 
-                              WebkitUserSelect: 'text',
-                              MozUserSelect: 'text',
-                              msUserSelect: 'text',
-                              pointerEvents: 'auto'
-                            }}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
-                      )}
-                      
-                      {/* YouTube field */}
-                      <div className="flex items-center">
-                        <label className="font-medium text-white w-16 text-xs">YouTube</label>
-                        <Input
-                          name="youtubeLink"
-                          type="text"
-                          placeholder="YouTube URL..."
-                          value={formData.youtubeLink}
-                          onChange={handleInputChange}
-                          className="flex-1 select-text cursor-text text-xs h-8"
-                          style={{ 
-                            userSelect: 'text', 
-                            WebkitUserSelect: 'text',
-                            MozUserSelect: 'text',
-                            msUserSelect: 'text',
-                            pointerEvents: 'auto'
-                          }}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                      
-                      {/* Time field - only show if YouTube is present */}
-                      {formData.youtubeLink && (
-                        <div className="flex items-center">
-                          <label className="font-medium text-white w-16 text-xs">Time</label>
-                          <Input
-                            name="time"
-                            type="text"
-                            placeholder="HH:MM"
-                            value={formData.time}
-                            onChange={handleInputChange}
-                            className="w-24 select-text cursor-text text-xs h-8"
-                            style={{ 
-                              userSelect: 'text', 
-                              WebkitUserSelect: 'text',
-                              MozUserSelect: 'text',
-                              msUserSelect: 'text',
-                              pointerEvents: 'auto'
-                            }}
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
-                      )}
-                      
-                      {/* Image field */}
-                      <div className="flex flex-col">
-                        <label className="font-medium text-white mb-1 text-xs">Images</label>
-                        <FileUpload
-                          onUpload={handleImageUpload}
-                          onRemove={handleImageRemove}
-                          existingImages={formData.images}
-                        />
-                      </div>
-                    </div>
+            {/* Normal mode content */}
+            <div>
+              <div className="flex items-start">
+                <div className="flex-1">
+                  <p className={`text-white ${
+                    level === 0 ? 'text-xl font-bold' : 
+                    level === 1 ? 'text-lg font-semibold' : 
+                    level === 2 ? 'text-base font-medium' : 
+                    level === 3 ? 'text-base font-normal' : 
+                    'text-sm font-normal'
+                  }`}>
+                    {note.content.split('\n')[0]}
+                  </p>
+                  {note.content.split('\n').length > 1 && (
+                    <p className={`text-white text-opacity-80 ${
+                      level <= 2 ? 'text-sm' : 'text-xs'
+                    }`}>
+                      {note.content.split('\n').slice(1).join('\n')}
+                    </p>
                   )}
                 </div>
-                
-                {/* Spacer element to prevent content from being hidden under the fixed edit panel */}
-                <div className="h-[200px]"></div>
-              </div>
-            ) : (
-              // Normal mode
-              <div>
-                <div className="flex items-start">
-                  <div className="flex-1">
-                    <p className={`text-white ${
-                      level === 0 ? 'text-xl font-bold' : 
-                      level === 1 ? 'text-lg font-semibold' : 
-                      level === 2 ? 'text-base font-medium' : 
-                      level === 3 ? 'text-base font-normal' : 
-                      'text-sm font-normal'
-                    }`}>
-                      {note.content.split('\n')[0]}
-                    </p>
-                    {note.content.split('\n').length > 1 && (
-                      <p className={`text-white text-opacity-80 ${
-                        level <= 2 ? 'text-sm' : 'text-xs'
-                      }`}>
-                        {note.content.split('\n').slice(1).join('\n')}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex space-x-1 ml-2">
-                    {hasUrl && (
-                      <div className="text-blue-200" title="Contains links">
-                        <Link className="h-4 w-4" />
-                      </div>
-                    )}
-                    {hasYouTube && (
-                      <div className="text-red-200" title="Contains YouTube links">
-                        <Youtube className="h-4 w-4" />
-                      </div>
-                    )}
-                    {hasImages && (
-                      <div className="text-green-200" title="Contains images">
-                        <Image className="h-4 w-4" />
-                      </div>
-                    )}
-                    {note.time && (
-                      <div className="text-yellow-200" title={`Time: ${note.time}`}>
-                        <Clock className="h-4 w-4" />
-                      </div>
-                    )}
-                    <button
-                      className={`p-1 text-white hover:text-white ml-1 ${!hasChildren && 'opacity-0'}`}
-                      onClick={toggleExpand}
-                      title={isExpanded ? "Collapse" : "Expand"}
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                  <div className="flex space-x-1 opacity-0 group-hover:opacity-100">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="p-1 h-auto text-blue-200 hover:bg-blue-900/40 hover:text-blue-100"
-                      onClick={() => setIsEditing(true)}
-                      title="Edit note"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="p-1 h-auto text-green-200 hover:bg-green-900/40 hover:text-green-100"
-                      onClick={() => {
-                        // Set both flags: newNoteCreated for backward compatibility,
-                        // and we'll rely on the lastCreatedNoteId that will be set
-                        // in the onSuccess callback in useNotes hook
-                        localStorage.setItem('newNoteCreated', 'true');
-                        
-                        (createNote.mutate as any)({
-                          projectId: note.projectId,
-                          parentId: note.parentId,
-                          content: "",
-                          order: (Number(note.order) + 1).toString(),
-                          url: "",
-                          linkText: "",
-                          youtubeLink: "",
-                          time: "",
-                          images: []
-                        });
-                      }}
-                      title="Add note below"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="p-1 h-auto text-yellow-200 hover:bg-yellow-900/40 hover:text-yellow-100"
-                      onClick={() => {
-                        // Set both flags: newNoteCreated for backward compatibility,
-                        // and we'll rely on the lastCreatedNoteId that will be set
-                        // in the onSuccess callback in useNotes hook
-                        localStorage.setItem('newNoteCreated', 'true');
-                        
-                        (createNote.mutate as any)({
-                          projectId: note.projectId,
-                          parentId: note.id,
-                          content: "",
-                          order: "0",
-                          url: "",
-                          linkText: "",
-                          youtubeLink: "",
-                          time: "",
-                          images: []
-                        });
-                        
-                        // Ensure the parent is expanded
-                        if (!isExpanded) {
-                          toggleExpand();
-                        }
-                      }}
-                      title="Add child note"
-                    >
+                <div className="flex space-x-1 ml-2">
+                  {hasUrl && (
+                    <div className="text-blue-200" title="Contains links">
+                      <Link className="h-4 w-4" />
+                    </div>
+                  )}
+                  {hasYouTube && (
+                    <div className="text-red-200" title="Contains YouTube links">
+                      <Youtube className="h-4 w-4" />
+                    </div>
+                  )}
+                  {hasImages && (
+                    <div className="text-green-200" title="Contains images">
+                      <Image className="h-4 w-4" />
+                    </div>
+                  )}
+                  {note.time && (
+                    <div className="text-yellow-200" title={`Time: ${note.time}`}>
+                      <Clock className="h-4 w-4" />
+                    </div>
+                  )}
+                  <button
+                    className={`p-1 text-white hover:text-white ml-1 ${!hasChildren && 'opacity-0'}`}
+                    onClick={toggleExpand}
+                    title={isExpanded ? "Collapse" : "Expand"}
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
                       <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="p-1 h-auto text-red-200 hover:bg-red-900/40 hover:text-red-100"
-                      onClick={() => setIsDeleteDialogOpen(true)}
-                      title="Delete note"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="opacity-0 group-hover:opacity-70 text-white/60" title="Drag to reorder">
-                    <GripVertical className="h-3 w-3" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <div className="flex space-x-1 opacity-0 group-hover:opacity-100">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="p-1 h-auto text-blue-200 hover:bg-blue-900/40 hover:text-blue-100"
+                    onClick={() => setIsEditing(true)}
+                    title="Edit note"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="p-1 h-auto text-green-200 hover:bg-green-900/40 hover:text-green-100"
+                    onClick={() => {
+                      // Set both flags: newNoteCreated for backward compatibility,
+                      // and we'll rely on the lastCreatedNoteId that will be set
+                      // in the onSuccess callback in useNotes hook
+                      localStorage.setItem('newNoteCreated', 'true');
+                      
+                      (createNote.mutate as any)({
+                        projectId: note.projectId,
+                        parentId: note.parentId,
+                        content: "",
+                        order: (Number(note.order) + 1).toString(),
+                        url: "",
+                        linkText: "",
+                        youtubeLink: "",
+                        time: "",
+                        images: []
+                      });
+                    }}
+                    title="Add note below"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="p-1 h-auto text-yellow-200 hover:bg-yellow-900/40 hover:text-yellow-100"
+                    onClick={() => {
+                      // Set both flags: newNoteCreated for backward compatibility,
+                      // and we'll rely on the lastCreatedNoteId that will be set
+                      // in the onSuccess callback in useNotes hook
+                      localStorage.setItem('newNoteCreated', 'true');
+                      
+                      (createNote.mutate as any)({
+                        projectId: note.projectId,
+                        parentId: note.id,
+                        content: "",
+                        order: "0",
+                        url: "",
+                        linkText: "",
+                        youtubeLink: "",
+                        time: "",
+                        images: []
+                      });
+                      
+                      // Ensure the parent is expanded
+                      if (!isExpanded) {
+                        toggleExpand();
+                      }
+                    }}
+                    title="Add child note"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="p-1 h-auto text-red-200 hover:bg-red-900/40 hover:text-red-100"
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    title="Delete note"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center justify-end">
+                  <div className="text-gray-400 opacity-40 group-hover:opacity-80 text-xs flex items-center space-x-1">
+                    <GripVertical className="h-3 w-3 ml-1" />
                   </div>
                 </div>
               </div>
-            )}
+              
+              {/* URL display */}
+              {note.url && (
+                <div className="mt-2 text-sm">
+                  <a
+                    href={note.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-300 hover:text-blue-200 hover:underline flex items-center"
+                  >
+                    <Link className="h-3 w-3 mr-1 inline-block" />
+                    {note.linkText || note.url}
+                  </a>
+                </div>
+              )}
+              
+              {/* YouTube display */}
+              {note.youtubeLink && (
+                <div className="mt-2 text-sm">
+                  <a
+                    href={note.youtubeLink + (note.time ? `&t=${convertTimeToSeconds(note.time)}` : '')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-300 hover:text-red-200 hover:underline flex items-center"
+                  >
+                    <Youtube className="h-3 w-3 mr-1 inline-block" />
+                    YouTube {note.time && <span className="ml-1 text-yellow-300">@ {note.time}</span>}
+                  </a>
+                </div>
+              )}
+              
+              {/* Images display */}
+              {hasImages && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {note.images!.map((image, idx) => (
+                    <a 
+                      key={idx} 
+                      href={image} 
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block border-2 border-blue-800 rounded overflow-hidden hover:border-blue-600 transition-colors"
+                    >
+                      <img src={image} alt={`Note image ${idx + 1}`} className="h-16 w-auto object-cover" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
       
+      {/* Delete confirmation dialog */}
       <ConfirmationDialog
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         title="Delete Note"
-        description={
-          hasChildren
-          ? "Do you want to delete this note? By default, any child notes will be promoted to the same level."
-          : "Are you sure you want to delete this note? This action cannot be undone."
-        }
+        description={`Are you sure you want to delete "${note.content.substring(0, 40)}${note.content.length > 40 ? '...' : ''}"?`}
         confirmText="Delete"
+        confirmVariant="destructive"
         onConfirm={handleDelete}
         isPending={deleteNote.isPending}
-        confirmVariant="destructive"
-        extraContent={hasChildren && (
-          <div className="flex items-center space-x-2">
+        extraContent={
+          <div className="flex items-center space-x-2 mt-4">
             <Switch
               id="delete-children"
               checked={deleteChildren}
               onCheckedChange={setDeleteChildren}
             />
-            <Label htmlFor="delete-children">Also delete all children</Label>
+            <Label
+              htmlFor="delete-children"
+              className="font-normal text-sm cursor-pointer"
+            >
+              Also delete all child notes
+            </Label>
           </div>
-        )}
+        }
       />
     </div>
   );
+}
+
+// Helper function to convert time format (HH:MM:SS or MM:SS) to seconds for YouTube URLs
+function convertTimeToSeconds(time: string): number {
+  if (!time) return 0;
+  
+  const parts = time.split(':').map(part => parseInt(part, 10));
+  
+  if (parts.length === 3) {
+    // HH:MM:SS format
+    return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+  } else if (parts.length === 2) {
+    // MM:SS format
+    return (parts[0] * 60) + parts[1];
+  } else if (parts.length === 1 && !isNaN(parts[0])) {
+    // Just seconds
+    return parts[0];
+  }
+  
+  return 0;
 }
