@@ -861,7 +861,7 @@ export default function NoteItem({
               {/* Images display */}
               {hasImages && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {note.images!.map((image, idx) => (
+                  {note.images && note.images.map((image: string, idx: number) => (
                     <a 
                       key={idx} 
                       href={image} 
@@ -940,7 +940,15 @@ function convertTimeToSeconds(time: string): number {
 }
 
 // Add the MoveNoteDialog at the end of the file
-function addMoveNoteDialog(props: any) {
+interface MoveNoteDialogProps {
+  isMoveDialogOpen: boolean;
+  setIsMoveDialogOpen: (open: boolean) => void;
+  note: Note;
+  allNotes: Note[];
+  moveNote: (noteId: number, targetId: number, position: 'before' | 'after' | 'child' | 'first-child') => void;
+}
+
+function addMoveNoteDialog(props: MoveNoteDialogProps) {
   return (
     <MoveNoteDialog
       isOpen={props.isMoveDialogOpen}

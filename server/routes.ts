@@ -271,17 +271,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update parent and order if both are provided
       if (order !== undefined) {
-        await storage.updateNoteParent(noteId, parentId !== null ? parseInt(parentId) : null, order);
+        const result = await storage.updateNoteParent(noteId, parentId !== null ? parseInt(parentId) : null, order);
+        if (!result) {
+          return res.status(500).json({ message: "Failed to update note parent" });
+        }
         // After updating parent with order, we need to adjust orders of siblings
         await storage.normalizeNoteOrders(parentId !== null ? parseInt(parentId) : null);
       } else {
         // Just update parent
-        await storage.updateNoteParent(noteId, parentId !== null ? parseInt(parentId) : null);
+        const result = await storage.updateNoteParent(noteId, parentId !== null ? parseInt(parentId) : null);
+        if (!result) {
+          return res.status(500).json({ message: "Failed to update note parent" });
+        }
       }
       
-      res.sendStatus(200);
+      return res.sendStatus(200);
     } catch (err) {
-      res.status(500).json({ message: "Failed to update note parent" });
+      console.error("Error updating note parent:", err);
+      return res.status(500).json({ message: "Failed to update note parent" });
     }
   });
 
@@ -302,10 +309,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to update this note" });
       }
       
-      await storage.updateNoteOrder(noteId, order);
-      res.sendStatus(200);
+      const result = await storage.updateNoteOrder(noteId, order);
+      if (!result) {
+        return res.status(500).json({ message: "Failed to update note order" });
+      }
+      return res.sendStatus(200);
     } catch (err) {
-      res.status(500).json({ message: "Failed to update note order" });
+      console.error("Error updating note order:", err);
+      return res.status(500).json({ message: "Failed to update note order" });
     }
   });
 
@@ -317,22 +328,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const imageUrl = `/api/images/${req.file.filename}`;
-      res.status(201).json({ imageUrl });
+      return res.status(201).json({ imageUrl });
     } catch (err) {
-      res.status(500).json({ message: "Failed to upload image" });
+      console.error("Error uploading image:", err);
+      return res.status(500).json({ message: "Failed to upload image" });
     }
   });
 
   // Serve uploaded images
   app.get("/api/images/:filename", (req, res) => {
-    const filename = req.params.filename;
-    const filepath = path.join(storage_dir, filename);
-    
-    // Check if file exists
-    if (fs.existsSync(filepath)) {
-      res.sendFile(filepath);
-    } else {
-      res.status(404).json({ message: "Image not found" });
+    try {
+      const filename = req.params.filename;
+      const filepath = path.join(storage_dir, filename);
+      
+      // Check if file exists
+      if (fs.existsSync(filepath)) {
+        return res.sendFile(filepath);
+      } else {
+        return res.status(404).json({ message: "Image not found" });
+      }
+    } catch (err) {
+      console.error("Error serving image:", err);
+      return res.status(500).json({ message: "Failed to serve image" });
     }
   });
 
@@ -363,9 +380,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
       
       // Send the notes as a JSON file
-      res.json({ project: { name: project.name }, notes });
+      return res.json({ project: { name: project.name }, notes });
     } catch (err) {
-      res.status(500).json({ message: "Failed to export notes" });
+      console.error("Error exporting notes:", err);
+      return res.status(500).json({ message: "Failed to export notes" });
     }
   });
 
@@ -438,14 +456,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Return success with count and total count for completion display
-      res.status(200).json({ 
+      return res.status(200).json({ 
         message: "Import successful", 
         count: importData.notes.length,
         processed: totalNotes,
         total: totalNotes
       });
     } catch (err) {
-      res.status(500).json({ message: "Failed to import notes" });
+      console.error("Error importing notes:", err);
+      return res.status(500).json({ message: "Failed to import notes" });
     }
   });
 
