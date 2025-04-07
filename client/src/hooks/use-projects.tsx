@@ -21,10 +21,9 @@ export function useProjects() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      toast({
-        title: "Project created",
-        description: "Your new project has been created successfully.",
-      });
+      // No toast notification for successful creation
+      // This avoids cluttering the UI, especially on small screens
+      console.log("[PROJECT] Project created successfully");
     },
     onError: (error) => {
       toast({
@@ -42,10 +41,9 @@ export function useProjects() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      toast({
-        title: "Project updated",
-        description: "Your project has been updated successfully.",
-      });
+      // No toast notification for successful update
+      // This avoids cluttering the UI, especially on small screens
+      console.log("[PROJECT] Project updated successfully");
     },
     onError: (error) => {
       toast({
@@ -62,10 +60,9 @@ export function useProjects() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      toast({
-        title: "Project deleted",
-        description: "Your project has been deleted successfully.",
-      });
+      // No toast notification for successful deletion
+      // This avoids cluttering the UI, especially on small screens
+      console.log("[PROJECT] Project deleted successfully");
     },
     onError: (error) => {
       toast({

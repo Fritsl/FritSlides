@@ -260,10 +260,9 @@ export function useNotes(projectId: number | null) {
       return { previousNotes };
     },
     onSuccess: () => {
-      toast({
-        title: "Note deleted",
-        description: "Your note has been deleted successfully.",
-      });
+      // No toast notification for successful deletion
+      // This avoids cluttering the UI, especially on small screens
+      console.log("[DELETE SUCCESS] Note deleted successfully");
     },
     onError: (error, variables, context) => {
       // If the mutation fails, roll back to the previous notes
