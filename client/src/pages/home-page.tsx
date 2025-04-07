@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useProjects } from "@/hooks/use-projects";
-import { useNotes } from "@/hooks/use-notes";
+import { useNotes, useNoteEditing } from "@/hooks/use-notes";
 import Header from "@/components/ui/header";
 import NoteTree from "@/components/ui/note-tree";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export default function HomePage() {
   const { projects, isLoading: isLoadingProjects, createProject, updateProject } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const { notes, isLoading: isLoadingNotes } = useNotes(selectedProjectId);
+  const { editingNoteId } = useNoteEditing();
   const { toast } = useToast();
   
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);

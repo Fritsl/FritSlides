@@ -187,7 +187,7 @@ export default function NoteTree({
         return; // Already a child (and not specifically a first-child)
       }
       
-      let newOrder = 0;
+      let newOrder: string = "0";
       
       if (position === 'first-child') {
         // Set as first child - need to find the current first child to place before it
@@ -199,7 +199,8 @@ export default function NoteTree({
           const firstChild = childNotes.reduce((prev, current) => 
             Number(prev.order) < Number(current.order) ? prev : current
           );
-          newOrder = (Number(firstChild.order) - 1).toString();
+          // Convert the order to string for consistency
+          newOrder = String(Number(firstChild.order) - 1);
           console.log(`Found first child with order ${firstChild.order}, setting new order to ${newOrder}`);
         } else {
           console.log('No existing children, using default order 0');
@@ -239,22 +240,22 @@ export default function NoteTree({
       console.log('Next sibling:', nextNote);
       
       // Calculate order based on surrounding notes
-      let newOrder;
+      let newOrder: string;
       if (position === 'before') {
         if (prevNote) {
           // Place between prev and target
-          newOrder = (Number(prevNote.order) + (Number(targetNote.order) - Number(prevNote.order)) / 2).toString();
+          newOrder = String((Number(prevNote.order) + (Number(targetNote.order) - Number(prevNote.order)) / 2));
         } else {
           // Place before the first item
-          newOrder = (Number(targetNote.order) - 0.5).toString();
+          newOrder = String(Number(targetNote.order) - 0.5);
         }
       } else { // after
         if (nextNote) {
           // Place between target and next
-          newOrder = (Number(targetNote.order) + (Number(nextNote.order) - Number(targetNote.order)) / 2).toString();
+          newOrder = String(Number(targetNote.order) + (Number(nextNote.order) - Number(targetNote.order)) / 2);
         } else {
           // Place after the last item
-          newOrder = (Number(targetNote.order) + 0.5).toString();
+          newOrder = String(Number(targetNote.order) + 0.5);
         }
       }
       
@@ -316,6 +317,7 @@ export default function NoteTree({
             canDrop={sourceId => canDrop(sourceId, note.id)}
             moveNote={moveNote}
             createNote={createNote}
+            allNotes={notes}
           />
           
           {/* Render children if expanded */}
@@ -335,7 +337,8 @@ export default function NoteTree({
     canDrop, 
     moveNote, 
     projectId,
-    createNote
+    createNote,
+    notes
   ]);
 
   // Create a new root note

@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { FileUpload } from "./file-upload";
 import { ConfirmationDialog } from "./confirmation-dialog";
-import { useNotes } from "@/hooks/use-notes";
+import { MoveNoteDialog } from "./move-note-dialog";
+import { useNotes, useNoteEditing } from "@/hooks/use-notes";
 import { getLevelColor } from "@/lib/colors";
 import {
   Link,
@@ -24,6 +25,7 @@ import {
   Save,
   X,
   Loader2,
+  MoveVertical,
 } from "lucide-react";
 
 interface NoteItemProps {
@@ -38,6 +40,7 @@ interface NoteItemProps {
   canDrop: (noteId: number) => boolean;
   moveNote: (noteId: number, targetId: number, position: 'before' | 'after' | 'child' | 'first-child') => void;
   createNote: any;
+  allNotes?: Note[]; // Make it optional to maintain backward compatibility
 }
 
 // Item types for drag and drop
@@ -57,10 +60,12 @@ export default function NoteItem({
   canDrop,
   moveNote,
   createNote,
+  allNotes,
 }: NoteItemProps) {
-  // Use local state for tracking newly created status and delete dialog
+  // Use local state for tracking newly created status and dialogs
   const [isNewlyCreated, setIsNewlyCreated] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
   const [deleteChildren, setDeleteChildren] = useState(false);
   const [dragPosition, setDragPosition] = useState<'before' | 'after' | 'child' | 'first-child' | null>(null);
   
@@ -806,6 +811,15 @@ export default function NoteItem({
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="p-1 h-auto text-blue-200 hover:bg-blue-900/40 hover:text-blue-100"
+                    onClick={() => setIsMoveDialogOpen(true)}
+                    title="Move note in tree"
+                  >
+                    <MoveVertical className="h-4 w-4" />
+                  </Button>
                 </div>
                 <div className="flex items-center justify-end">
                   <div className="text-gray-400 opacity-40 group-hover:opacity-80 text-xs flex items-center space-x-1">
@@ -891,6 +905,16 @@ export default function NoteItem({
           </div>
         }
       />
+      
+      {/* Move note dialog */}
+      <MoveNoteDialog
+        isOpen={isMoveDialogOpen}
+        onOpenChange={setIsMoveDialogOpen}
+        sourceNote={note}
+        notes={allNotes}
+        onMove={moveNote}
+        isPending={false}
+      />
     </div>
   );
 }
@@ -913,4 +937,18 @@ function convertTimeToSeconds(time: string): number {
   }
   
   return 0;
+}
+
+// Add the MoveNoteDialog at the end of the file
+function addMoveNoteDialog(props: any) {
+  return (
+    <MoveNoteDialog
+      isOpen={props.isMoveDialogOpen}
+      onOpenChange={props.setIsMoveDialogOpen}
+      sourceNote={props.note}
+      notes={props.allNotes}
+      onMove={props.moveNote}
+      isPending={false}
+    />
+  );
 }
