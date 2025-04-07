@@ -11,7 +11,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, ChevronDown, Plus, LogOut, Menu, User as UserIcon, Settings, FolderPlus, FileBox, Check, X, Edit, Layers } from "lucide-react";
+import { Loader2, ChevronDown, Plus, LogOut, Menu, User as UserIcon, Settings, FolderPlus, FileBox, Check, X, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
 import { ProjectSelectorDialog } from "./project-selector-dialog";
@@ -228,7 +228,6 @@ export default function Header({
         {currentProject && maxDepth > 0 && onExpandToLevel && (
           <div className="flex items-center mx-4 overflow-x-auto">
             <div className="flex items-center px-2 py-1 rounded-md bg-background border border-neutral-subtle shadow-sm">
-              <Layers className="h-4 w-4 text-neutral-muted mr-2" />
               {levelButtons}
             </div>
           </div>
