@@ -83,16 +83,39 @@ export default function PresentMode() {
     }
   };
   
-  // Handle keyboard navigation
+  // Function to request fullscreen
+  const requestFullscreen = () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      } else if ((document.documentElement as any).webkitRequestFullscreen) {
+        (document.documentElement as any).webkitRequestFullscreen();
+      } else if ((document.documentElement as any).msRequestFullscreen) {
+        (document.documentElement as any).msRequestFullscreen();
+      }
+    } catch (error) {
+      console.log('Fullscreen request failed:', error);
+    }
+  };
+
+  // Handle keyboard navigation and request fullscreen on mount
   useEffect(() => {
+    // Request fullscreen when the component mounts
+    requestFullscreen();
+    
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight" || e.key === "Space") {
+      if (e.key === "ArrowRight" || e.key === " ") {
         goToNextSlide();
       } else if (e.key === "ArrowLeft") {
         goToPrevSlide();
       } else if (e.key === "Escape") {
-        // Return to the main editor view
-        setLocation(`/`);
+        // If we're already out of fullscreen, then navigate away
+        if (!document.fullscreenElement) {
+          setLocation(`/`);
+        }
+      } else if (e.key === "f") {
+        // Also allow 'f' key to toggle fullscreen
+        requestFullscreen();
       }
     };
     
@@ -164,11 +187,17 @@ export default function PresentMode() {
       <div 
         className="flex-1 flex flex-col items-center justify-center w-full h-full cursor-pointer"
         onClick={(e) => {
-          // Only process if the click was directly on this div or the content container
-          // but not on links, iframes, or images
-          if (e.target === e.currentTarget || 
-              e.target.classList.contains('content') ||
-              e.target.tagName === 'P') {
+          // Check if the click was on an interactive element
+          const target = e.target as HTMLElement;
+          const isLink = target.tagName === 'A' || 
+                        target.closest('a') || 
+                        target.tagName === 'IFRAME' || 
+                        target.closest('iframe') || 
+                        target.tagName === 'IMG' || 
+                        target.closest('img');
+                        
+          // Only proceed to next slide if not clicking on interactive elements
+          if (!isLink) {
             goToNextSlide();
           }
         }}
@@ -233,7 +262,7 @@ export default function PresentMode() {
       {/* Minimal footer with navigation hints */}
       <div className="absolute bottom-0 left-0 right-0 text-center p-1">
         <p className="text-white/30 text-[10px]">
-          {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • Click or → to advance • ← back • ESC to exit
+          {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • Click or → to advance • ← back • ESC to exit • F for fullscreen
         </p>
       </div>
     </div>
