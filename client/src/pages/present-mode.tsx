@@ -162,7 +162,16 @@ export default function PresentMode() {
     <div className="min-h-screen flex flex-col bg-black">
       {/* Slide content - Full screen with no UI */}
       <div 
-        className="flex-1 flex flex-col items-center justify-center w-full h-full"
+        className="flex-1 flex flex-col items-center justify-center w-full h-full cursor-pointer"
+        onClick={(e) => {
+          // Only process if the click was directly on this div or the content container
+          // but not on links, iframes, or images
+          if (e.target === e.currentTarget || 
+              e.target.classList.contains('content') ||
+              e.target.tagName === 'P') {
+            goToNextSlide();
+          }
+        }}
         style={{ 
           backgroundColor: levelColor.regular,
           backgroundImage: `linear-gradient(135deg, ${levelColor.regular} 0%, ${levelColor.light} 100%)` 
@@ -224,7 +233,7 @@ export default function PresentMode() {
       {/* Minimal footer with navigation hints */}
       <div className="absolute bottom-0 left-0 right-0 text-center p-1">
         <p className="text-white/30 text-[10px]">
-          {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • ← → to navigate • ESC to exit
+          {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • Click or → to advance • ← back • ESC to exit
         </p>
       </div>
     </div>
