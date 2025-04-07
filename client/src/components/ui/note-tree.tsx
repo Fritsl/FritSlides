@@ -175,21 +175,25 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
       
       console.log(`Target note order: ${targetNote.order}, new calculated order: ${newOrder}`);
       
-      // Update parent if needed
+      // Since we now have optimistic updates in our hooks, we can simplify this
+      // First, update parent if needed, then update order (both done optimistically in the UI)
       if (sourceNote.parentId !== targetNote.parentId) {
         console.log(`Updating parent from ${sourceNote.parentId} to ${targetNote.parentId}`);
+        
+        // Update parent first, then order
         updateNoteParent.mutate({ 
           noteId: sourceNote.id, 
-          parentId: targetNote.parentId 
+          parentId: targetNote.parentId,
+          order: newOrder // Pass the order along with the parent update for a single optimistic update
+        });
+      } else {
+        // Only update the order if the parent is the same
+        console.log(`Updating note order: noteId=${sourceNote.id}, order=${newOrder}`);
+        updateNoteOrder.mutate({ 
+          noteId: sourceNote.id, 
+          order: newOrder 
         });
       }
-      
-      // Update order
-      console.log(`Updating note order: noteId=${sourceNote.id}, order=${newOrder}`);
-      updateNoteOrder.mutate({ 
-        noteId: sourceNote.id, 
-        order: newOrder 
-      });
     }
   }, [notes, updateNoteParent, updateNoteOrder]);
 
