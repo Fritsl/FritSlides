@@ -438,11 +438,11 @@ export default function NoteItem({
   if (isEditing) {
     return (
       <div ref={dragPreview} className="note-item pb-1.5 relative">
-        {/* Small indicator where the note is in the tree */}
-        <div className={`ml-${level * 3} p-2 rounded-md bg-blue-900/20 border border-blue-800/30 mb-2`}>
-          <div className="text-xs text-blue-300 flex items-center">
-            <div className="w-2 h-2 rounded-full bg-blue-400 mr-2"></div>
-            Currently editing
+        {/* Small indicator where the note is in the tree - Fixed with proper styling */}
+        <div className={`ml-${level * 3} p-3 rounded-md bg-blue-900/40 border border-blue-700 mb-3`}>
+          <div className="text-sm text-blue-300 flex items-center">
+            <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+            <span className="font-medium">Currently editing</span>
           </div>
         </div>
         
