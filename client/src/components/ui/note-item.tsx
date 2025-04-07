@@ -472,17 +472,7 @@ export default function NoteItem({
       data-note-id={note.id}
     >
       <div className="flex items-start group mb-1">
-        <button
-          className={`p-1 text-neutral-muted hover:text-neutral-text ${!hasChildren && 'opacity-0'}`}
-          onClick={toggleExpand}
-        >
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </button>
-        <div className="flex-1 ml-1">
+        <div className="flex-1">
           <div
             ref={noteRef}
             style={{ 
@@ -747,6 +737,17 @@ export default function NoteItem({
                         <Clock className="h-4 w-4" />
                       </div>
                     )}
+                    <button
+                      className={`p-1 text-white hover:text-white ml-1 ${!hasChildren && 'opacity-0'}`}
+                      onClick={toggleExpand}
+                      title={isExpanded ? "Collapse" : "Expand"}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
                 <div className="flex mt-2 space-x-1 opacity-0 group-hover:opacity-100">
