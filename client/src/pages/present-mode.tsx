@@ -120,7 +120,7 @@ export default function PresentMode() {
   // Helper functions for content display
   const formatContent = (content: string) => {
     return content.split('\\n').map((line, i) => (
-      <p key={i} className={i === 0 ? "text-3xl font-bold mb-4" : "text-xl"}>{line}</p>
+      <p key={i} className={i === 0 ? "text-4xl font-bold mb-6" : "text-2xl mb-3"}>{line}</p>
     ));
   };
   
@@ -155,133 +155,71 @@ export default function PresentMode() {
 
   return (
     <div className="min-h-screen flex flex-col bg-black">
-      {/* Header with navigation controls */}
-      <div className="flex justify-between items-center p-3 bg-gradient-to-b from-gray-900 to-transparent">
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline" 
-            size="sm"
-            className="text-white border-white/30 hover:bg-white/10"
-            onClick={() => setLocation(`/`)}
-          >
-            <X className="h-4 w-4 mr-1" />
-            Exit
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm" 
-            className="text-white border-white/30 hover:bg-white/10"
-            onClick={() => setLocation(`/`)}
-          >
-            <Edit className="h-4 w-4 mr-1" />
-            Edit Mode
-          </Button>
-        </div>
-        
-        <div className="text-white text-sm">
-          {currentProject?.name} • {currentSlideIndex + 1} / {flattenedNotes.length}
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-white border-white/30 hover:bg-white/10"
-            onClick={goToPrevSlide}
-            disabled={currentSlideIndex === 0}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-white border-white/30 hover:bg-white/10"
-            onClick={goToNextSlide}
-            disabled={currentSlideIndex === flattenedNotes.length - 1}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-      
-      {/* Slide content */}
+      {/* Slide content - Full screen with no UI */}
       <div 
-        className="flex-1 flex flex-col items-center justify-center p-8" 
+        className="flex-1 flex flex-col items-center justify-center w-full h-full"
         style={{ 
           backgroundColor: levelColor.regular,
           backgroundImage: `linear-gradient(135deg, ${levelColor.regular} 0%, ${levelColor.light} 100%)` 
         }}
       >
-        <div className="max-w-4xl w-full bg-white/90 backdrop-blur rounded-lg p-8 shadow-2xl">
-          <div className="mb-4">
-            <Badge 
-              variant="outline" 
-              className="border-2"
-              style={{ 
-                borderColor: levelColor.regular,
-                color: levelColor.regular
-              }}
-            >
-              Level {level}
-            </Badge>
+        <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
+          <div className="w-full bg-white/90 backdrop-blur rounded-lg p-12 shadow-2xl">
+            <div className="content mb-6">
+              {formatContent(currentNote.content)}
+            </div>
+            
+            {/* URL link if present */}
+            {currentNote.url && (
+              <div className="mt-6 p-3 bg-blue-50 rounded">
+                <a
+                  href={currentNote.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline flex items-center text-xl"
+                >
+                  <span className="mr-2">🔗</span>
+                  {currentNote.linkText || currentNote.url}
+                </a>
+              </div>
+            )}
+            
+            {/* YouTube embed if present */}
+            {currentNote.youtubeLink && (
+              <div className="mt-6 rounded overflow-hidden aspect-video">
+                <iframe
+                  className="w-full h-full"
+                  src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
+                  title="YouTube video"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              </div>
+            )}
+            
+            {/* Images if present */}
+            {currentNote.images && currentNote.images.length > 0 && (
+              <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {currentNote.images.map((image, idx) => (
+                  <div key={idx} className="rounded overflow-hidden shadow-md">
+                    <img 
+                      src={image} 
+                      alt={`Note image ${idx + 1}`} 
+                      className="w-full h-auto object-cover" 
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          
-          <div className="content mb-6">
-            {formatContent(currentNote.content)}
-          </div>
-          
-          {/* URL link if present */}
-          {currentNote.url && (
-            <div className="mt-4 p-2 bg-blue-50 rounded">
-              <a
-                href={currentNote.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline flex items-center"
-              >
-                <span className="mr-2">🔗</span>
-                {currentNote.linkText || currentNote.url}
-              </a>
-            </div>
-          )}
-          
-          {/* YouTube embed if present */}
-          {currentNote.youtubeLink && (
-            <div className="mt-6 rounded overflow-hidden aspect-video">
-              <iframe
-                className="w-full h-full"
-                src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
-                title="YouTube video"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              ></iframe>
-            </div>
-          )}
-          
-          {/* Images if present */}
-          {currentNote.images && currentNote.images.length > 0 && (
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {currentNote.images.map((image, idx) => (
-                <div key={idx} className="rounded overflow-hidden shadow-md">
-                  <img 
-                    src={image} 
-                    alt={`Note image ${idx + 1}`} 
-                    className="w-full h-auto object-cover" 
-                  />
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
       
-      {/* Footer with navigation hints */}
-      <div className="p-3 bg-gradient-to-t from-gray-900 to-transparent text-center">
-        <p className="text-white/60 text-xs">
-          Use arrow keys to navigate • Press ESC to exit presentation mode
+      {/* Minimal footer with navigation hints */}
+      <div className="absolute bottom-0 left-0 right-0 text-center p-1">
+        <p className="text-white/30 text-[10px]">
+          {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • ← → to navigate • ESC to exit
         </p>
       </div>
     </div>
