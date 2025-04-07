@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { FileUpload } from "./file-upload";
 import { ConfirmationDialog } from "./confirmation-dialog";
 import { useNotes } from "@/hooks/use-notes";
+import { getLevelColor } from "@/lib/colors";
 import {
   Link,
   Edit,
@@ -254,14 +255,20 @@ export default function NoteItem({
         <div className="flex-1 ml-1">
           <div
             ref={noteRef}
-            className={`relative rounded-md p-3 bg-white shadow-sm border border-transparent ${isEditing ? "border-primary shadow" : "hover:border-neutral-subtle"} group ${getDragIndicatorClass()}`}
+            style={{ 
+              backgroundColor: isEditing 
+                ? getLevelColor(level).light 
+                : getLevelColor(level).regular,
+              color: "white" 
+            }}
+            className={`relative rounded-md p-3 shadow-sm border border-transparent ${isEditing ? "border-primary shadow" : "hover:border-neutral-subtle"} group ${getDragIndicatorClass()}`}
           >
             {isEditing ? (
               // Edit mode
               <div>
                 <div className="flex items-start">
                   <div ref={drag} className="cursor-grab pr-2 pt-1 opacity-30 hover:opacity-100">
-                    <GripVertical className="h-4 w-4 text-neutral-muted" />
+                    <GripVertical className="h-4 w-4 text-white" />
                   </div>
                   <div className="flex-1">
                     <div className="mb-3">
@@ -278,7 +285,7 @@ export default function NoteItem({
                     
                     <div className="space-y-2 text-sm">
                       <div className="flex flex-col sm:flex-row sm:items-center">
-                        <label className="font-medium text-neutral-text w-20 mb-1 sm:mb-0">URL</label>
+                        <label className="font-medium text-white w-20 mb-1 sm:mb-0">URL</label>
                         <Input
                           name="url"
                           type="text"
@@ -290,7 +297,7 @@ export default function NoteItem({
                       </div>
                       
                       <div className="flex flex-col sm:flex-row sm:items-center">
-                        <label className="font-medium text-neutral-text w-20 mb-1 sm:mb-0">Link Text</label>
+                        <label className="font-medium text-white w-20 mb-1 sm:mb-0">Link Text</label>
                         <Input
                           name="linkText"
                           type="text"
@@ -302,7 +309,7 @@ export default function NoteItem({
                       </div>
                       
                       <div className="flex flex-col sm:flex-row sm:items-center">
-                        <label className="font-medium text-neutral-text w-20 mb-1 sm:mb-0">YouTube</label>
+                        <label className="font-medium text-white w-20 mb-1 sm:mb-0">YouTube</label>
                         <Input
                           name="youtubeLink"
                           type="text"
@@ -314,7 +321,7 @@ export default function NoteItem({
                       </div>
                       
                       <div className="flex flex-col sm:flex-row sm:items-center">
-                        <label className="font-medium text-neutral-text w-20 mb-1 sm:mb-0">Time</label>
+                        <label className="font-medium text-white w-20 mb-1 sm:mb-0">Time</label>
                         <Input
                           name="time"
                           type="text"
@@ -326,7 +333,7 @@ export default function NoteItem({
                       </div>
                       
                       <div className="flex flex-col">
-                        <label className="font-medium text-neutral-text mb-1">Images</label>
+                        <label className="font-medium text-white mb-1">Images</label>
                         <FileUpload
                           onUpload={handleImageUpload}
                           onRemove={handleImageRemove}
@@ -370,32 +377,32 @@ export default function NoteItem({
               <div>
                 <div className="flex items-start">
                   <div ref={drag} className="cursor-grab pr-2 pt-1 opacity-0 group-hover:opacity-100">
-                    <GripVertical className="h-4 w-4 text-neutral-muted" />
+                    <GripVertical className="h-4 w-4 text-white opacity-70" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium">{note.content.split('\n')[0]}</p>
+                    <p className="font-medium text-white">{note.content.split('\n')[0]}</p>
                     {note.content.split('\n').length > 1 && (
-                      <p className="text-sm text-neutral-text">{note.content.split('\n').slice(1).join('\n')}</p>
+                      <p className="text-sm text-white text-opacity-80">{note.content.split('\n').slice(1).join('\n')}</p>
                     )}
                   </div>
                   <div className="flex space-x-1 ml-2">
                     {hasUrl && (
-                      <div className="text-primary" title="Contains links">
+                      <div className="text-blue-200" title="Contains links">
                         <Link className="h-4 w-4" />
                       </div>
                     )}
                     {hasYouTube && (
-                      <div className="text-accent" title="Contains YouTube links">
+                      <div className="text-red-200" title="Contains YouTube links">
                         <Youtube className="h-4 w-4" />
                       </div>
                     )}
                     {hasImages && (
-                      <div className="text-secondary" title="Contains images">
+                      <div className="text-green-200" title="Contains images">
                         <Image className="h-4 w-4" />
                       </div>
                     )}
                     {note.time && (
-                      <div className="text-neutral-muted" title={`Time: ${note.time}`}>
+                      <div className="text-yellow-200" title={`Time: ${note.time}`}>
                         <Clock className="h-4 w-4" />
                       </div>
                     )}
@@ -405,7 +412,7 @@ export default function NoteItem({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="p-1 h-auto"
+                    className="p-1 h-auto text-blue-200 hover:bg-blue-900/40 hover:text-blue-100"
                     onClick={() => setIsEditing(true)}
                     title="Edit note"
                   >
@@ -414,7 +421,7 @@ export default function NoteItem({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="p-1 h-auto"
+                    className="p-1 h-auto text-green-200 hover:bg-green-900/40 hover:text-green-100"
                     onClick={() => {
                       // Create a new note below this one
                       localStorage.setItem('newNoteCreated', 'true');
@@ -432,7 +439,7 @@ export default function NoteItem({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="p-1 h-auto"
+                    className="p-1 h-auto text-yellow-200 hover:bg-yellow-900/40 hover:text-yellow-100"
                     onClick={() => {
                       // Create a child note
                       localStorage.setItem('newNoteCreated', 'true');
@@ -455,7 +462,7 @@ export default function NoteItem({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="p-1 h-auto text-neutral-text hover:bg-red-100 hover:text-red-500"
+                    className="p-1 h-auto text-red-200 hover:bg-red-900/40 hover:text-red-100"
                     onClick={() => setIsDeleteDialogOpen(true)}
                     title="Delete note"
                   >
