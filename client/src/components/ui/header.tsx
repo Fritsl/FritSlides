@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Project, User } from "@shared/schema";
@@ -11,10 +11,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, ChevronDown, Plus, LogOut, Menu, User as UserIcon, Settings, FolderPlus, FileBox } from "lucide-react";
+import { Loader2, ChevronDown, Plus, LogOut, Menu, User as UserIcon, Settings, FolderPlus, FileBox, Check, X, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
 import { ProjectSelectorDialog } from "./project-selector-dialog";
+import { Input } from "@/components/ui/input";
 
 interface HeaderProps {
   user: User | null;
@@ -22,6 +23,7 @@ interface HeaderProps {
   projects: Project[];
   onSelectProject: (id: number) => void;
   onNewProject: () => void;
+  onUpdateProject?: (id: number, name: string) => void;
 }
 
 export default function Header({ 
@@ -29,12 +31,66 @@ export default function Header({
   currentProject, 
   projects, 
   onSelectProject, 
-  onNewProject 
+  onNewProject,
+  onUpdateProject
 }: HeaderProps) {
   const { logoutMutation } = useAuth();
   const { toast } = useToast();
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
+  const [isEditingProjectName, setIsEditingProjectName] = useState(false);
+  const [projectName, setProjectName] = useState("");
+  const projectNameInputRef = useRef<HTMLInputElement>(null);
+  
+  // Update the project name state when the current project changes
+  useEffect(() => {
+    if (currentProject) {
+      setProjectName(currentProject.name);
+    }
+  }, [currentProject]);
+  
+  // Function to handle project name editing
+  const startEditing = () => {
+    if (currentProject) {
+      setIsEditingProjectName(true);
+      // Focus the input field after rendering
+      setTimeout(() => {
+        if (projectNameInputRef.current) {
+          projectNameInputRef.current.focus();
+          projectNameInputRef.current.select();
+        }
+      }, 10);
+    }
+  };
+  
+  const saveProjectName = () => {
+    if (currentProject && onUpdateProject && projectName.trim()) {
+      onUpdateProject(currentProject.id, projectName.trim());
+      setIsEditingProjectName(false);
+    } else if (!projectName.trim()) {
+      // Reset to the original name if empty
+      setProjectName(currentProject?.name || "");
+      setIsEditingProjectName(false);
+    }
+  };
+  
+  const cancelEditing = () => {
+    // Reset to the original name
+    if (currentProject) {
+      setProjectName(currentProject.name);
+    }
+    setIsEditingProjectName(false);
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveProjectName();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditing();
+    }
+  };
 
   const handleLogout = () => {
     logoutMutation.mutate();
@@ -57,11 +113,45 @@ export default function Header({
     <header className="bg-background border-b border-neutral-subtle shadow-sm">
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex items-center">
-          <h1 className="text-lg font-semibold text-primary">NoteDrop</h1>
-          {currentProject && (
-            <span className="ml-4 text-sm text-neutral-muted hidden md:block">
-              Current Project: <span className="font-medium text-foreground">{currentProject.name}</span>
-            </span>
+          {currentProject ? (
+            isEditingProjectName ? (
+              <div className="flex items-center">
+                <Input
+                  ref={projectNameInputRef}
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onBlur={saveProjectName}
+                  className="max-w-[200px] font-semibold text-lg"
+                />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={saveProjectName} 
+                  className="ml-1 h-8 w-8"
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={cancelEditing} 
+                  className="ml-1 h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <div 
+                className="flex items-center cursor-pointer text-lg font-semibold text-foreground"
+                onClick={startEditing}
+              >
+                <span>{currentProject.name}</span>
+                <Edit className="ml-2 h-4 w-4 text-muted-foreground" />
+              </div>
+            )
+          ) : (
+            <h1 className="text-lg font-semibold text-primary">NoteDrop</h1>
           )}
         </div>
         <div className="flex items-center">

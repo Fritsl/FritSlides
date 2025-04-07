@@ -19,7 +19,7 @@ const projectSchema = z.object({
 
 export default function HomePage() {
   const { user } = useAuth();
-  const { projects, isLoading: isLoadingProjects, createProject } = useProjects();
+  const { projects, isLoading: isLoadingProjects, createProject, updateProject } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const { notes, isLoading: isLoadingNotes } = useNotes(selectedProjectId);
   
@@ -40,6 +40,10 @@ export default function HomePage() {
         form.reset();
       },
     });
+  };
+  
+  const onUpdateProject = (id: number, name: string) => {
+    updateProject.mutate({ id, name });
   };
 
   // Select the first project by default when projects load
@@ -103,10 +107,11 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col">
       <Header 
         user={user} 
-        currentProject={selectedProject} 
+        currentProject={selectedProject || null} 
         projects={projects || []} 
         onSelectProject={(id) => setSelectedProjectId(id)}
         onNewProject={() => setIsNewProjectDialogOpen(true)}
+        onUpdateProject={onUpdateProject}
       />
       
       <div className="flex-1 flex overflow-hidden">
