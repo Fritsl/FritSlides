@@ -120,7 +120,12 @@ export default function PresentMode() {
   // Helper functions for content display
   const formatContent = (content: string) => {
     return content.split('\\n').map((line, i) => (
-      <p key={i} className={i === 0 ? "text-4xl font-bold mb-6" : "text-2xl mb-3"}>{line}</p>
+      <p key={i} className={i === 0 
+        ? "text-5xl font-bold mb-8 tracking-tight drop-shadow-md" 
+        : "text-3xl mb-5 font-light tracking-wide"
+      }>
+        {line}
+      </p>
     ));
   };
   
@@ -164,19 +169,19 @@ export default function PresentMode() {
         }}
       >
         <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
-          <div className="w-full bg-white/90 backdrop-blur rounded-lg p-12 shadow-2xl">
-            <div className="content mb-6">
+          <div className="w-full text-white">
+            <div className="content mb-10">
               {formatContent(currentNote.content)}
             </div>
             
             {/* URL link if present */}
             {currentNote.url && (
-              <div className="mt-6 p-3 bg-blue-50 rounded">
+              <div className="mt-8">
                 <a
                   href={currentNote.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline flex items-center text-xl"
+                  className="text-white/90 hover:text-white flex items-center text-2xl border-b border-white/30 pb-2 w-fit"
                 >
                   <span className="mr-2">🔗</span>
                   {currentNote.linkText || currentNote.url}
@@ -186,7 +191,7 @@ export default function PresentMode() {
             
             {/* YouTube embed if present */}
             {currentNote.youtubeLink && (
-              <div className="mt-6 rounded overflow-hidden aspect-video">
+              <div className="mt-8 rounded overflow-hidden aspect-video bg-black/20 shadow-xl">
                 <iframe
                   className="w-full h-full"
                   src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
@@ -200,9 +205,9 @@ export default function PresentMode() {
             
             {/* Images if present */}
             {currentNote.images && currentNote.images.length > 0 && (
-              <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {currentNote.images.map((image, idx) => (
-                  <div key={idx} className="rounded overflow-hidden shadow-md">
+                  <div key={idx} className="rounded overflow-hidden shadow-xl">
                     <img 
                       src={image} 
                       alt={`Note image ${idx + 1}`} 
