@@ -216,9 +216,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to delete this note" });
       }
       
-      await storage.deleteNote(noteId);
-      res.sendStatus(204);
+      // Attempt to delete the note
+      const result = await storage.deleteNote(noteId);
+      
+      if (result) {
+        res.sendStatus(204);
+      } else {
+        res.status(404).json({ message: "Note could not be deleted or was not found" });
+      }
     } catch (err) {
+      console.error("Error deleting note:", err);
       res.status(500).json({ message: "Failed to delete note" });
     }
   });

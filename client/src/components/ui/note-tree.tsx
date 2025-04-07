@@ -193,11 +193,17 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
     // Set a temporary flag in localStorage to indicate a new note is being created
     localStorage.setItem('newNoteCreated', 'true');
     
-    // @ts-ignore - Types are incorrect for useMutation
-    createNote.mutate({
+    // Cast as any to avoid TypeScript errors from TanStack Query
+    (createNote.mutate as any)({
       content: "",
       parentId: null,
       projectId: projectId,
+      url: "",
+      linkText: "",
+      youtubeLink: "",
+      time: "",
+      images: [],
+      order: 0
     });
   };
 

@@ -138,7 +138,7 @@ export default function NoteItem({
   const handleImageRemove = (url: string) => {
     setFormData(prev => ({
       ...prev,
-      images: prev.images.filter(img => img !== url)
+      images: prev.images.filter((img: string) => img !== url)
     }));
   };
   
@@ -443,12 +443,16 @@ export default function NoteItem({
                       // Create a new note below this one
                       localStorage.setItem('newNoteCreated', 'true');
                       
-                      // @ts-ignore - Types are incorrect for useMutation
-                      createNote.mutate({
+                      (createNote.mutate as any)({
                         projectId: note.projectId,
                         parentId: note.parentId,
                         content: "",
                         order: note.order + 1,
+                        url: "",
+                        linkText: "",
+                        youtubeLink: "",
+                        time: "",
+                        images: []
                       });
                     }}
                     title="Add note below"
@@ -463,12 +467,16 @@ export default function NoteItem({
                       // Create a child note
                       localStorage.setItem('newNoteCreated', 'true');
                       
-                      // @ts-ignore - Types are incorrect for useMutation
-                      createNote.mutate({
+                      (createNote.mutate as any)({
                         projectId: note.projectId,
                         parentId: note.id,
                         content: "",
                         order: 0,
+                        url: "",
+                        linkText: "",
+                        youtubeLink: "",
+                        time: "",
+                        images: []
                       });
                       
                       // Ensure the parent is expanded

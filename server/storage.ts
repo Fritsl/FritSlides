@@ -150,17 +150,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteNote(id: number): Promise<boolean> {
-    // Find all descendant notes recursively using a CTE query
-    await db.execute(sql`
-      WITH RECURSIVE descendants AS (
-        SELECT id FROM notes WHERE id = ${id}
-        UNION
-        SELECT n.id FROM notes n, descendants d WHERE n.parentId = d.id
-      )
-      DELETE FROM notes WHERE id IN (SELECT id FROM descendants)
-    `);
-    
-    return true;
+    try {
+      // First check if the note exists
+      const [noteToDelete] = await db
+        .select()
+        .from(notes)
+        .where(eq(notes.id, id));
+      
+      if (!noteToDelete) {
+        return false;
+      }
+      
+      // Find all descendant notes recursively using a CTE query
+      await db.execute(sql`
+        WITH RECURSIVE descendants AS (
+          SELECT id FROM notes WHERE id = ${id}
+          UNION
+          SELECT n.id FROM notes n, descendants d WHERE n.parentId = d.id
+        )
+        DELETE FROM notes WHERE id IN (SELECT id FROM descendants)
+      `);
+      
+      return true;
+    } catch (error) {
+      console.error("Error deleting note:", error);
+      throw error;
+    }
   }
 
   async updateNoteOrder(id: number, order: number): Promise<boolean> {
