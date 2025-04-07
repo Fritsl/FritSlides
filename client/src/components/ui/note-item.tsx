@@ -599,9 +599,21 @@ export default function NoteItem({
                     <GripVertical className="h-4 w-4 text-white opacity-70" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-white">{note.content.split('\n')[0]}</p>
+                    <p className={`text-white ${
+                      level === 0 ? 'text-xl font-bold' : 
+                      level === 1 ? 'text-lg font-semibold' : 
+                      level === 2 ? 'text-base font-medium' : 
+                      level === 3 ? 'text-base font-normal' : 
+                      'text-sm font-normal'
+                    }`}>
+                      {note.content.split('\n')[0]}
+                    </p>
                     {note.content.split('\n').length > 1 && (
-                      <p className="text-sm text-white text-opacity-80">{note.content.split('\n').slice(1).join('\n')}</p>
+                      <p className={`text-white text-opacity-80 ${
+                        level <= 2 ? 'text-sm' : 'text-xs'
+                      }`}>
+                        {note.content.split('\n').slice(1).join('\n')}
+                      </p>
                     )}
                   </div>
                   <div className="flex space-x-1 ml-2">
