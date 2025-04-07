@@ -34,6 +34,7 @@ interface NoteItemProps {
   onDragEnd: () => void;
   canDrop: (noteId: number) => boolean;
   moveNote: (noteId: number, targetId: number, position: 'before' | 'after' | 'child') => void;
+  createNote: any;
 }
 
 // Item types for drag and drop
@@ -52,6 +53,7 @@ export default function NoteItem({
   onDragEnd,
   canDrop,
   moveNote,
+  createNote,
 }: NoteItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -417,7 +419,6 @@ export default function NoteItem({
                       // Create a new note below this one
                       localStorage.setItem('newNoteCreated', 'true');
                       
-                      const { createNote } = useNotes(projectId);
                       createNote.mutate({
                         parentId: note.parentId,
                         content: "",
@@ -436,7 +437,6 @@ export default function NoteItem({
                       // Create a child note
                       localStorage.setItem('newNoteCreated', 'true');
                       
-                      const { createNote } = useNotes(projectId);
                       createNote.mutate({
                         parentId: note.id,
                         content: "",

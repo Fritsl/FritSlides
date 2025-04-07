@@ -147,6 +147,7 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
             onDragEnd={() => setDraggingNoteId(null)}
             canDrop={sourceId => canDrop(sourceId, note.id)}
             moveNote={moveNote}
+            createNote={createNote}
           />
           
           {/* Render children if expanded */}
@@ -165,7 +166,8 @@ export default function NoteTree({ projectId, notes, isLoading }: NoteTreeProps)
     toggleExpand, 
     canDrop, 
     moveNote, 
-    projectId
+    projectId,
+    createNote
   ]);
 
   // Create a new root note
