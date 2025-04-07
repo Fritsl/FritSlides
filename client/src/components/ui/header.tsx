@@ -184,12 +184,12 @@ export default function Header({
         size="sm"
         variant="ghost"
         className={cn(
-          "min-w-8 h-8 mx-0.5 p-0 rounded-sm hover:opacity-100 text-white font-medium",
-          isActive ? "ring-2 ring-white/20" : ""
+          "min-w-8 h-8 mx-0.5 p-0 rounded-md text-white font-medium border border-transparent",
+          isActive ? "border-white/30 shadow-sm" : "hover:border-white/10"
         )}
         style={{ 
           backgroundColor: isActive ? colorPair.light : colorPair.regular,
-          opacity: isActive ? 1 : 0.7 
+          color: "white"
         }}
         onClick={() => onExpandToLevel?.(level)}
       >
