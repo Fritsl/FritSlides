@@ -416,14 +416,10 @@ export class MemStorage implements IStorage {
     const now = new Date();
     
     // Find max order value for siblings to place this note at the end
-    // Find siblings with the same parent
     const siblings = Array.from(this.notes.values()).filter(
-      (note) => {
-        const noteParentId = note.parentId ?? null;
-        const insertParentId = insertNote.parentId ?? null;
-        return note.projectId === insertNote.projectId && 
-               (noteParentId === insertParentId);
-      }
+      (note: Note) => 
+        note.projectId === insertNote.projectId && 
+        String(note.parentId) === String(insertNote.parentId)
     );
     
     let maxOrder = -1;
@@ -434,13 +430,10 @@ export class MemStorage implements IStorage {
     
     const order = insertNote.order !== undefined ? insertNote.order : maxOrder + 1;
     
-    // Ensure order is a number
-    const numberOrder = typeof order === 'number' ? order : Number(order);
-    
     const note: Note = { 
       ...insertNote, 
       id, 
-      order: numberOrder,
+      order,
       createdAt: now,
       updatedAt: now 
     };
@@ -548,13 +541,10 @@ export class MemStorage implements IStorage {
         newOrder = Math.round(Number(order));
       } else {
         // Find max order value for new siblings to place this note at the end
-        // Find siblings with same parent
         const newSiblings = Array.from(this.notes.values()).filter(
-          (n) => {
-            const noteParentId = n.parentId ?? null;
-            const newParentId = parentId ?? null;
-            return n.projectId === note.projectId && (noteParentId === newParentId);
-          }
+          (n: Note) => 
+            n.projectId === note.projectId && 
+            String(n.parentId) === String(parentId)
         );
         
         let maxOrder = -1;
@@ -593,10 +583,7 @@ export class MemStorage implements IStorage {
     try {
       // Get notes with the same parent, ordered by their current order
       const notesWithSameParent = Array.from(this.notes.values())
-        .filter((note) => 
-          (note.parentId === parentId) || 
-          (note.parentId === null && parentId === null)
-        )
+        .filter((note: Note) => String(note.parentId) === String(parentId))
         .sort((a, b) => Number(a.order) - Number(b.order));
       
       if (!notesWithSameParent.length) return true;
