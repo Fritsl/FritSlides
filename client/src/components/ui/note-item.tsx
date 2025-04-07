@@ -159,7 +159,10 @@ export default function NoteItem({
         
         // Apply edit mode change at the end 
         if (shouldExitEditMode) {
-          console.log(`[Note ${note.id}] Setting isEditing to false`);
+          console.log(`[Note ${note.id}] Setting isEditing to false and marking as user-initiated exit`);
+          // Set the flag that this is a deliberate exit from edit mode
+          // This prevents the note from re-entering edit mode during server sync
+          userExitedEditModeRef.current = true;
           setIsEditing(false);
         } else {
           console.log(`[Note ${note.id}] Keeping edit mode active (isEditing: true)`);
@@ -173,6 +176,8 @@ export default function NoteItem({
   
   // Handle cancel editing
   const handleCancel = () => {
+    console.log(`[Note ${note.id}] Cancel button clicked`);
+    
     setFormData({
       content: note.content,
       url: note.url || "",
@@ -184,9 +189,16 @@ export default function NoteItem({
     
     // Reset newly created state when canceling
     if (isNewlyCreated) {
+      console.log(`[Note ${note.id}] Resetting newly created state`);
       setIsNewlyCreated(false);
     }
     
+    // IMPORTANT CHANGE: Mark this as a deliberate exit from edit mode
+    // to prevent the effect from restoring edit mode during server sync
+    console.log(`[Note ${note.id}] Setting user exited edit mode flag`);
+    userExitedEditModeRef.current = true;
+    
+    console.log(`[Note ${note.id}] Exiting edit mode`);
     setIsEditing(false);
   };
   
@@ -407,11 +419,15 @@ export default function NoteItem({
   // Track editing state with a ref to detect unexpected changes
   const isEditingRef = useRef(isEditing);
   
+  // Intentionally track when a user deliberately exits edit mode
+  const userExitedEditModeRef = useRef(false);
+  
   // Effect to detect change in note data from server and preserve edit mode
   useEffect(() => {
     console.log(`[Note ${note.id}] Note data changed from server`);
     console.log(`[Note ${note.id}] Current state before data change effect - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
     console.log(`[Note ${note.id}] Previous edit state from ref: ${isEditingRef.current}`);
+    console.log(`[Note ${note.id}] User exited edit mode flag: ${userExitedEditModeRef.current}`);
     
     // Only make changes if necessary
     if (isEditing) {
@@ -432,14 +448,20 @@ export default function NoteItem({
           order: note.order,
         };
       });
-    } else if (isEditingRef.current) {
-      // If we were editing but now aren't, this means state was lost in a re-render
+    } else if (isEditingRef.current && !userExitedEditModeRef.current) {
+      // If we were editing but now aren't, AND this wasn't a deliberate exit,
+      // this means state was lost in a re-render
       console.log(`[Note ${note.id}] Edit mode was lost during re-render - restoring it`);
       
       // Restore edit mode
       setTimeout(() => {
         setIsEditing(true);
       }, 0);
+    } else if (userExitedEditModeRef.current) {
+      // If user deliberately exited edit mode, respect that decision
+      console.log(`[Note ${note.id}] Respecting user's decision to exit edit mode`);
+      // Reset the flag for next time
+      userExitedEditModeRef.current = false;
     }
     
     // Update ref to current value for next render
