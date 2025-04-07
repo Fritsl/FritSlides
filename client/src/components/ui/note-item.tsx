@@ -59,6 +59,7 @@ export default function NoteItem({
   createNote,
 }: NoteItemProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isNewlyCreated, setIsNewlyCreated] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteChildren, setDeleteChildren] = useState(false);
   const [dragPosition, setDragPosition] = useState<'before' | 'after' | 'child' | 'first-child' | null>(null);
@@ -100,18 +101,34 @@ export default function NoteItem({
       order: note.order,
     };
     
-    // Check if this is a new note that's just been created
-    const lastCreatedId = localStorage.getItem('lastCreatedNoteId');
-    const isNewlyCreatedNote = parseInt(lastCreatedId || '0') === note.id || 
-                              (note.content === '' && formData.content.trim() !== '');
+    // Note: we're now using the component state isNewlyCreated to track if
+    // this is a new note, which is more reliable than checking localStorage on save
     
     // @ts-ignore - Types are incorrect for useMutation
     updateNote.mutate(updateData, {
       onSuccess: () => {
-        // Only exit edit mode if this isn't a newly created note
-        // For newly created notes, stay in edit mode to let the user keep working
-        if (!isNewlyCreatedNote) {
-          setIsEditing(false);
+        // Persist edit mode for newly created notes
+        // After first successful save of content, we consider it "initialized"
+        if (isNewlyCreated && formData.content.trim() !== '') {
+          // For subsequent saves of a newly created note, we'll still stay in edit mode
+          // But only if the user has made meaningful edits
+          
+          // If user has filled in content AND additional fields, we can assume they want to finish
+          const hasFilledAdditionalFields = 
+            formData.url !== '' || 
+            formData.linkText !== '' || 
+            formData.youtubeLink !== '' || 
+            formData.time !== '' || 
+            formData.images.length > 0;
+          
+          // Only exit edit mode once the user has completely filled the note
+          if (hasFilledAdditionalFields) {
+            setIsNewlyCreated(false);
+            setIsEditing(false);
+          }
+        } else if (!isNewlyCreated) {
+          // For regular notes, exit edit mode after save
+          setIsEditing(false); 
         }
       }
     });
@@ -127,6 +144,12 @@ export default function NoteItem({
       time: note.time || "",
       images: note.images || [],
     });
+    
+    // Reset newly created state when canceling
+    if (isNewlyCreated) {
+      setIsNewlyCreated(false);
+    }
+    
     setIsEditing(false);
   };
   
@@ -305,18 +328,21 @@ export default function NoteItem({
     const newNoteFlag = localStorage.getItem('newNoteCreated');
     const lastCreatedId = localStorage.getItem('lastCreatedNoteId');
     
-    // Check if this note should be in edit mode
-    // Case 1: New note flag is true and content is empty
-    // Case 2: This note matches the lastCreatedNoteId
-    if ((newNoteFlag === 'true' && note.content === '' && !isEditing) || 
-        (lastCreatedId && parseInt(lastCreatedId) === note.id && !isEditing)) {
+    // Determine if this is a newly created note
+    const isNewNoteByFlag = newNoteFlag === 'true' && note.content === '';
+    const isNewNoteById = lastCreatedId && parseInt(lastCreatedId) === note.id;
+    
+    // If this is a newly created note...
+    if ((isNewNoteByFlag || isNewNoteById) && !isEditing) {
+      // Mark this note as newly created
+      setIsNewlyCreated(true);
       
       // Clear the flags that apply to this note
-      if (newNoteFlag === 'true' && note.content === '') {
+      if (isNewNoteByFlag) {
         localStorage.removeItem('newNoteCreated');
       }
       
-      if (lastCreatedId && parseInt(lastCreatedId) === note.id) {
+      if (isNewNoteById) {
         localStorage.removeItem('lastCreatedNoteId');
       }
       
