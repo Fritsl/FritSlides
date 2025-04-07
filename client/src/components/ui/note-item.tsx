@@ -69,6 +69,7 @@ export default function NoteItem({
   
   const noteRef = useRef<HTMLDivElement>(null);
   const contentInputRef = useRef<HTMLTextAreaElement>(null);
+  const noteDataRef = useRef<string | null>(null);
   
   const { updateNote, deleteNote, uploadImage } = useNotes(projectId);
   
@@ -357,52 +358,61 @@ export default function NoteItem({
   
   // Effect to detect change in note data from server and preserve edit mode
   useEffect(() => {
-    // Reduced debug logging
+    // Store reference to current edit state to prevent losing edit mode due to server data changes
+    const wasEditing = isEditingRef.current;
+    const userExited = userExitedEditModeRef.current;
     
-    // Only make changes if necessary
-    if (isEditing) {
-      // We are in edit mode, need to preserve this state
+    // Store current state for next comparison
+    isEditingRef.current = isEditing;
+    
+    // Reset user exit flag after use
+    if (userExited) {
+      userExitedEditModeRef.current = false;
+    }
+    
+    // Return early to avoid infinite render loop
+    // This is crucial - we don't want to trigger setFormData if we don't have to
+    if (!isEditing) {
+      // If we lost edit mode without the user explicitly canceling or saving
+      if (wasEditing && !isEditing && !userExited) {
+        // Return to edit mode and preserve the editing state
+        setTimeout(() => {
+          setIsEditing(true);
+        }, 50);
+      }
+      return;
+    }
+    
+    // Sync form data with server data only when necessary
+    // Create a memo of the current fields to avoid unnecessary rerenders
+    const memoizedFields = JSON.stringify({
+      content: note.content,
+      url: note.url,
+      linkText: note.linkText,
+      youtubeLink: note.youtubeLink,
+      time: note.time,
+      images: note.images
+    });
+    
+    // Store this in a ref to avoid triggering the effect on every render
+    if (!noteDataRef.current || noteDataRef.current !== memoizedFields) {
+      noteDataRef.current = memoizedFields;
       
-      // Update form data with current note values
-      // This preserves any edits the user made locally while server data was updating
-      // We only do this for fields that haven't been modified
-      const formValues = { ...formData };
+      // Check if there are local changes
       let hasLocalChanges = false;
       
-      if (formValues.content === note.content) {
-        formValues.content = note.content;
-      } else {
-        hasLocalChanges = true;
-      }
+      // Create a new form object to check for changes
+      const formValues = {
+        content: note.content || "",
+        url: note.url || "",
+        linkText: note.linkText || "",
+        youtubeLink: note.youtubeLink || "",
+        time: note.time || "",
+        images: [...(note.images || [])]
+      };
       
-      if (formValues.url === (note.url || "")) {
-        formValues.url = note.url || "";
-      } else {
-        hasLocalChanges = true;
-      }
-      
-      if (formValues.linkText === (note.linkText || "")) {
-        formValues.linkText = note.linkText || "";
-      } else {
-        hasLocalChanges = true;
-      }
-      
-      if (formValues.youtubeLink === (note.youtubeLink || "")) {
-        formValues.youtubeLink = note.youtubeLink || "";
-      } else {
-        hasLocalChanges = true;
-      }
-      
-      if (formValues.time === (note.time || "")) {
-        formValues.time = note.time || "";
-      } else {
-        hasLocalChanges = true;
-      }
-      
-      // Copy the array to prevent object reference issues
-      if (JSON.stringify(formValues.images) === JSON.stringify(note.images || [])) {
-        formValues.images = [...(note.images || [])];
-      } else {
+      // Check if content field has been edited
+      if (formData.content !== formValues.content) {
         hasLocalChanges = true;
       }
       
@@ -410,24 +420,8 @@ export default function NoteItem({
       if (!hasLocalChanges) {
         setFormData(formValues);
       }
-    } else if (isEditingRef.current && !isEditing && !userExitedEditModeRef.current) {
-      // We were in edit mode, but now we're not, and it wasn't explicitly requested
-      // by the user (e.g., via Save/Cancel). This could be due to server data changes
-      
-      // Return to edit mode and preserve the editing state
-      setTimeout(() => {
-        setIsEditing(true);
-      }, 50);
     }
-    
-    // Store current state for next comparison
-    isEditingRef.current = isEditing;
-    
-    // Reset user exit flag now that we've handled any state changes
-    if (userExitedEditModeRef.current) {
-      userExitedEditModeRef.current = false;
-    }
-  }, [note, isEditing, isNewlyCreated, formData]);
+  }, [note, isEditing]);
   
   // Check if note has a URL, YouTube link, or images for display purposes
   const hasUrl = !!note.url;
