@@ -143,11 +143,10 @@ export default function Header({
               </div>
             ) : (
               <div 
-                className="flex items-center cursor-pointer text-lg font-semibold text-foreground"
+                className="cursor-pointer text-lg font-semibold text-foreground"
                 onClick={startEditing}
               >
-                <span>{currentProject.name}</span>
-                <Edit className="ml-2 h-4 w-4 text-muted-foreground" />
+                {currentProject.name}
               </div>
             )
           ) : (
