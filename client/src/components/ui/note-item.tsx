@@ -503,7 +503,8 @@ export default function NoteItem({
                         onChange={handleInputChange}
                         rows={2}
                         placeholder="Note content..."
-                        className="w-full p-2 border-neutral-subtle focus:border-primary"
+                        className="w-full p-2 border-neutral-subtle focus:border-primary select-text cursor-text"
+                        style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
                       />
                     </div>
                     
@@ -516,7 +517,8 @@ export default function NoteItem({
                           placeholder="https://..."
                           value={formData.url}
                           onChange={handleInputChange}
-                          className="flex-1"
+                          className="flex-1 select-text cursor-text"
+                          style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
                         />
                       </div>
                       
@@ -528,7 +530,8 @@ export default function NoteItem({
                           placeholder="Link description..."
                           value={formData.linkText}
                           onChange={handleInputChange}
-                          className="flex-1"
+                          className="flex-1 select-text cursor-text"
+                          style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
                         />
                       </div>
                       
@@ -540,7 +543,8 @@ export default function NoteItem({
                           placeholder="YouTube URL..."
                           value={formData.youtubeLink}
                           onChange={handleInputChange}
-                          className="flex-1"
+                          className="flex-1 select-text cursor-text"
+                          style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
                         />
                       </div>
                       
@@ -552,7 +556,8 @@ export default function NoteItem({
                           placeholder="HH:MM"
                           value={formData.time}
                           onChange={handleInputChange}
-                          className="w-24"
+                          className="w-24 select-text cursor-text"
+                          style={{ userSelect: 'text', WebkitUserSelect: 'text' }}
                         />
                       </div>
                       
