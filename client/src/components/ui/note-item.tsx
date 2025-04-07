@@ -81,11 +81,16 @@ export default function NoteItem({
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    console.log(`[Note ${note.id}] Input change - field: ${name}, value: ${value.substring(0, 15)}${value.length > 15 ? '...' : ''}`);
+    console.log(`[Note ${note.id}] Before input change - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
     setFormData(prev => ({ ...prev, [name]: value }));
+    console.log(`[Note ${note.id}] After input change - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
   };
   
   // Handle form submission
   const handleSave = () => {
+    console.log(`[Note ${note.id}] Save button clicked - current state - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
+    
     // Create an update object that matches the UpdateNote type
     const updateData = {
       id: note.id,
@@ -101,19 +106,29 @@ export default function NoteItem({
       order: note.order,
     };
     
-    // Note: we're now using the component state isNewlyCreated to track if
-    // this is a new note, which is more reliable than checking localStorage on save
+    // Set a flag to remember whether this note was in "newly created" mode
+    // This way even if the component rerenders, we'll have the information
+    const wasNewlyCreated = isNewlyCreated;
+    
+    console.log(`[Note ${note.id}] About to update with data:`, updateData);
+    console.log(`[Note ${note.id}] wasNewlyCreated: ${wasNewlyCreated}`);
     
     // @ts-ignore - Types are incorrect for useMutation
     updateNote.mutate(updateData, {
-      onSuccess: () => {
-        // Persist edit mode for newly created notes
-        // After first successful save of content, we consider it "initialized"
-        if (isNewlyCreated && formData.content.trim() !== '') {
-          // For subsequent saves of a newly created note, we'll still stay in edit mode
-          // But only if the user has made meaningful edits
+      onSuccess: (updatedNote) => {
+        console.log(`[Note ${note.id}] Update succeeded`);
+        
+        // Track whether we'll exit edit mode or not
+        let shouldExitEditMode = false;
+        
+        // Persist edit mode for newly created notes with a different logic
+        if (wasNewlyCreated) {
+          console.log(`[Note ${note.id}] This was a newly created note, checking if we should exit edit mode`);
           
-          // If user has filled in content AND additional fields, we can assume they want to finish
+          // We'll stay in edit mode if content is empty or basic
+          const contentIsBasic = formData.content.trim() === '';
+          
+          // We'll exit edit mode if user has filled in content AND additional fields
           const hasFilledAdditionalFields = 
             formData.url !== '' || 
             formData.linkText !== '' || 
@@ -121,15 +136,37 @@ export default function NoteItem({
             formData.time !== '' || 
             formData.images.length > 0;
           
-          // Only exit edit mode once the user has completely filled the note
-          if (hasFilledAdditionalFields) {
+          if (contentIsBasic) {
+            console.log(`[Note ${note.id}] Content is empty/basic, staying in edit mode`);
+            // Stay in edit mode, but mark note as no longer "newly created"
+            // This ensures subsequent interactions work properly
             setIsNewlyCreated(false);
-            setIsEditing(false);
+          } else if (hasFilledAdditionalFields) {
+            console.log(`[Note ${note.id}] Content and additional fields filled, exiting edit mode`);
+            // Exit edit mode if the note is fully formed
+            shouldExitEditMode = true;
+            setIsNewlyCreated(false);
+          } else {
+            console.log(`[Note ${note.id}] Only basic content, staying in edit mode for more edits`);
+            // Keep edit mode for more edits, but note is no longer "newly created"
+            setIsNewlyCreated(false);
           }
-        } else if (!isNewlyCreated) {
+        } else {
+          console.log(`[Note ${note.id}] This was a regular edit, exiting edit mode`);
           // For regular notes, exit edit mode after save
-          setIsEditing(false); 
+          shouldExitEditMode = true;
         }
+        
+        // Apply edit mode change at the end 
+        if (shouldExitEditMode) {
+          console.log(`[Note ${note.id}] Setting isEditing to false`);
+          setIsEditing(false);
+        } else {
+          console.log(`[Note ${note.id}] Keeping edit mode active (isEditing: true)`);
+        }
+      },
+      onError: (error) => {
+        console.log(`[Note ${note.id}] Update failed:`, error);
       }
     });
   };
@@ -325,34 +362,91 @@ export default function NoteItem({
 
   // Effect to check for newly created note flag
   useEffect(() => {
+    console.log(`[Note ${note.id}] Effect for newly created note check running.`);
+    console.log(`[Note ${note.id}] Current state - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
+    
     const newNoteFlag = localStorage.getItem('newNoteCreated');
     const lastCreatedId = localStorage.getItem('lastCreatedNoteId');
+    
+    console.log(`[Note ${note.id}] localStorage flags - newNoteCreated: ${newNoteFlag}, lastCreatedNoteId: ${lastCreatedId}`);
     
     // Determine if this is a newly created note
     const isNewNoteByFlag = newNoteFlag === 'true' && note.content === '';
     const isNewNoteById = lastCreatedId && parseInt(lastCreatedId) === note.id;
     
+    console.log(`[Note ${note.id}] Detection results - isNewNoteByFlag: ${isNewNoteByFlag}, isNewNoteById: ${isNewNoteById}`);
+    
     // If this is a newly created note...
     if ((isNewNoteByFlag || isNewNoteById) && !isEditing) {
+      console.log(`[Note ${note.id}] Detected as newly created note, will enter edit mode`);
+      
       // Mark this note as newly created
       setIsNewlyCreated(true);
       
       // Clear the flags that apply to this note
       if (isNewNoteByFlag) {
+        console.log(`[Note ${note.id}] Clearing newNoteCreated flag`);
         localStorage.removeItem('newNoteCreated');
       }
       
       if (isNewNoteById) {
+        console.log(`[Note ${note.id}] Clearing lastCreatedNoteId flag`);
         localStorage.removeItem('lastCreatedNoteId');
       }
       
       // Small delay to ensure this runs after the component is fully mounted
       setTimeout(() => {
+        console.log(`[Note ${note.id}] Setting isEditing to true after delay`);
         setIsEditing(true);
       }, 50);
+    } else {
+      console.log(`[Note ${note.id}] Not entering edit mode: ${!isNewNoteByFlag && !isNewNoteById ? 'Not identified as new note' : 'Already in edit mode'}`);
     }
-  }, [note.id, note.content, isEditing]);
+  }, [note.id, note.content, isEditing, isNewlyCreated]);
 
+  // Track editing state with a ref to detect unexpected changes
+  const isEditingRef = useRef(isEditing);
+  
+  // Effect to detect change in note data from server and preserve edit mode
+  useEffect(() => {
+    console.log(`[Note ${note.id}] Note data changed from server`);
+    console.log(`[Note ${note.id}] Current state before data change effect - isEditing: ${isEditing}, isNewlyCreated: ${isNewlyCreated}`);
+    console.log(`[Note ${note.id}] Previous edit state from ref: ${isEditingRef.current}`);
+    
+    // Only make changes if necessary
+    if (isEditing) {
+      // We are in edit mode, note that we want to stay here
+      console.log(`[Note ${note.id}] Currently in edit mode - will preserve this state`);
+      
+      // Update form data with new values from the server that might have changed
+      // but preserve user changes that haven't been saved yet
+      setFormData(prev => {
+        // Only update non-edited fields, or fields relevant to structure
+        // We don't want to overwrite what the user is currently editing!
+        return {
+          ...prev,
+          // We'll preserve most fields as they are (user's current edits)
+          // But update any structural fields that might have changed:
+          projectId: note.projectId,
+          parentId: note.parentId,
+          order: note.order,
+        };
+      });
+    } else if (isEditingRef.current) {
+      // If we were editing but now aren't, this means state was lost in a re-render
+      console.log(`[Note ${note.id}] Edit mode was lost during re-render - restoring it`);
+      
+      // Restore edit mode
+      setTimeout(() => {
+        setIsEditing(true);
+      }, 0);
+    }
+    
+    // Update ref to current value for next render
+    isEditingRef.current = isEditing;
+    
+  }, [note, isEditing, isNewlyCreated]); // Include isEditing and isNewlyCreated in deps list
+  
   // Check if note has additional content
   const hasUrl = !!note.url;
   const hasYouTube = !!note.youtubeLink;

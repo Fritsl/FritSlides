@@ -136,34 +136,49 @@ export function useNotes(projectId: number | null) {
 
   const updateNote = useMutation({
     mutationFn: async ({ id, ...note }: Partial<UpdateNote> & { id: number }) => {
+      console.log(`[UPDATE API] Starting API request for note ${id} with data:`, note);
       const res = await apiRequest("PUT", `/api/notes/${id}`, note);
-      return res.json();
+      const result = await res.json();
+      console.log(`[UPDATE API] Received API response for note ${id}:`, result);
+      return result;
     },
     onMutate: async (updatedNote: Partial<UpdateNote> & { id: number }) => {
+      console.log(`[UPDATE MUTATE] Starting optimistic update for note ${updatedNote.id}`);
+      
       // Skip optimistic update if we don't have the notes data yet
-      if (!notes || !projectId) return;
+      if (!notes || !projectId) {
+        console.log(`[UPDATE MUTATE] Skipping optimistic update - no notes or projectId available`);
+        return;
+      }
       
       // Cancel any outgoing refetches
+      console.log(`[UPDATE MUTATE] Canceling existing queries for project ${projectId}`);
       await queryClient.cancelQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
       
       // Snapshot the previous value
       const previousNotes = queryClient.getQueryData<Note[]>([`/api/projects/${projectId}/notes`]);
+      console.log(`[UPDATE MUTATE] Previous notes snapshot taken, count: ${previousNotes?.length || 0}`);
       
       // Optimistically update the UI
       if (previousNotes) {
+        console.log(`[UPDATE MUTATE] Applying optimistic update for note ${updatedNote.id}`);
         const updatedNotes = updateNoteInList(previousNotes, updatedNote);
         queryClient.setQueryData<Note[]>([`/api/projects/${projectId}/notes`], updatedNotes);
+        console.log(`[UPDATE MUTATE] Optimistic update applied successfully`);
       }
       
       return { previousNotes };
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      console.log(`[UPDATE SUCCESS] Update succeeded for note ${variables.id}`, data);
       // Success toast removed to avoid disrupting the user's flow
       // This makes the app feel more responsive and less "noisy"
     },
     onError: (error, variables, context) => {
+      console.log(`[UPDATE ERROR] Failed to update note ${variables.id}:`, error);
       // If the mutation fails, roll back to the previous notes
       if (context?.previousNotes && projectId) {
+        console.log(`[UPDATE ERROR] Rolling back to previous state`);
         queryClient.setQueryData<Note[]>([`/api/projects/${projectId}/notes`], context.previousNotes);
       }
       
@@ -173,9 +188,10 @@ export function useNotes(projectId: number | null) {
         variant: "destructive",
       });
     },
-    onSettled: () => {
-      // Always refetch to make sure we're in sync with the server
+    onSettled: (data, error, variables) => {
+      console.log(`[UPDATE SETTLED] Update operation completed for note ${variables.id}, success=${!error}`);
       if (projectId) {
+        console.log(`[UPDATE SETTLED] Invalidating query cache to ensure we're in sync with server`);
         queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
       }
     }
