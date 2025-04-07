@@ -33,7 +33,7 @@ const createOptimisticNote = (note: Partial<InsertNote>, projectId: number): Not
     linkText: typeof note.linkText === 'string' ? note.linkText : null,
     youtubeLink: typeof note.youtubeLink === 'string' ? note.youtubeLink : null,
     time: typeof note.time === 'string' ? note.time : null,
-    images: Array.isArray(note.images) ? note.images : [],
+    images: Array.isArray(note.images) ? note.images.filter(img => typeof img === 'string') as string[] : [],
     order: (typeof note.order === 'number' || typeof note.order === 'string') ? String(note.order) : "0",
     createdAt: now,
     updatedAt: now

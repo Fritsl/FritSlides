@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   Dialog, 
@@ -9,8 +9,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { AlertCircle, Upload, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Upload, CheckCircle2, Loader2 } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -29,22 +30,42 @@ export function ImportDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [noteCount, setNoteCount] = useState<number | null>(null);
+  const [progress, setProgress] = useState<number>(0);
   
   const importMutation = useMutation({
     mutationFn: async (data: any) => {
+      // Reset progress and save the note count for tracking
+      setProgress(0);
+      if (data.notes && Array.isArray(data.notes)) {
+        setNoteCount(data.notes.length);
+      }
+      
       const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
       return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Set progress to 100% on success
+      setProgress(100);
+      
       // Invalidate notes query to refresh notes list
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
+      
+      // Display import success with count information
       toast({
         title: "Import successful",
-        description: "Your notes have been imported",
+        description: `${data.count} notes have been imported`,
       });
+      
+      // Reset state
+      setNoteCount(null);
       onOpenChange(false);
     },
     onError: (error: Error) => {
+      // Reset count on error
+      setNoteCount(null);
+      setProgress(0);
+      
       toast({
         title: "Import failed",
         description: error.message,
@@ -52,6 +73,33 @@ export function ImportDialog({
       });
     },
   });
+  
+  // Set up an interval for simulated progress when importing
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (importMutation.isPending && noteCount) {
+      // Start at 5% to show immediate feedback
+      setProgress(5);
+      
+      // Simulate progress up to 90% during the pending state
+      // The remaining 10% will be set when the operation completes
+      interval = setInterval(() => {
+        setProgress(prev => {
+          // Increase more quickly at the beginning, then slow down
+          const increment = prev < 30 ? 5 : prev < 60 ? 3 : 1;
+          return Math.min(prev + increment, 90);
+        });
+      }, 300);
+    } else if (!importMutation.isPending && !importMutation.isSuccess) {
+      // Reset progress when not pending and not successful
+      setProgress(0);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [importMutation.isPending, importMutation.isSuccess, noteCount]);
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
@@ -171,25 +219,61 @@ export function ImportDialog({
               <span>{parseError}</span>
             </div>
           )}
+          
+          {/* Progress indicator during import */}
+          {((importMutation.isPending && noteCount) || (progress === 100)) && (
+            <div className="pt-2">
+              <div className="flex justify-between items-center mb-2 text-sm">
+                <span className={progress === 100 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
+                  {progress === 100 ? "Import completed!" : "Importing notes..."}
+                </span>
+                <span className="text-muted-foreground">
+                  {noteCount ? `${noteCount} notes total` : ""}
+                </span>
+              </div>
+              <Progress 
+                value={progress} 
+                className={`h-2 ${progress === 100 ? "bg-green-100 dark:bg-green-900/20" : ""}`} 
+              />
+              <div className="flex items-center justify-center mt-2">
+                {progress === 100 ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
+                    <span className="text-xs text-green-600 dark:text-green-400">All notes imported successfully</span>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin text-primary" />
+                    <span className="text-xs text-muted-foreground">This may take a while for large imports</span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
         
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)}
+            disabled={importMutation.isPending}
+          >
             Cancel
           </Button>
           <Button 
             onClick={handleImport} 
             disabled={!selectedFile || importMutation.isPending}
+            className={importMutation.isPending ? "opacity-80" : ""}
           >
             {importMutation.isPending ? (
               <>
-                <Upload className="h-4 w-4 mr-2 animate-spin" />
-                Importing...
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {noteCount ? `Importing ${noteCount} notes...` : "Importing..."}
               </>
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Import
+                {selectedFile && selectedFile.name ? 'Import' : 'Select File'}
               </>
             )}
           </Button>

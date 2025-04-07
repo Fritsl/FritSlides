@@ -1,0 +1,55 @@
+{
+  "project": {
+    "name": "Sample Import"
+  },
+  "notes": [
+    {
+      "id": 1,
+      "content": "Root note 1",
+      "order": "0",
+      "parentId": null
+    },
+    {
+      "id": 2,
+      "content": "Child note 1.1",
+      "order": "0",
+      "parentId": 1
+    },
+    {
+      "id": 3,
+      "content": "Child note 1.2",
+      "order": "1",
+      "parentId": 1
+    },
+    {
+      "id": 4,
+      "content": "Grandchild note 1.1.1",
+      "order": "0",
+      "parentId": 2
+    },
+    {
+      "id": 5,
+      "content": "Root note 2 with URL",
+      "order": "1",
+      "parentId": null,
+      "url": "https://replit.com",
+      "linkText": "Replit Website"
+    },
+    {
+      "id": 6,
+      "content": "Note with YouTube link",
+      "order": "2",
+      "parentId": null,
+      "youtubeLink": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "time": "1:30"
+    },
+    {
+      "id": 7,
+      "content": "Child note with multiple content types",
+      "order": "0",
+      "parentId": 6,
+      "url": "https://example.com",
+      "linkText": "Example website"
+    }
+  ]
+}

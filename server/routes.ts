@@ -395,6 +395,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create a mapping of old ids to new ids for proper parent references
       const idMap = new Map<number, number>();
       
+      // Calculate total notes for progress tracking
+      const totalNotes = importData.notes.length;
+      let processedNotes = 0;
+      
       // First pass: Create all notes without parent relationships
       for (const note of importData.notes as ImportedNote[]) {
         // Use helper function to convert imported note to insert format
@@ -404,6 +408,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Store the mapping from original id to new id
         idMap.set(note.id, newNote.id);
+        
+        // Update progress counter
+        processedNotes++;
+        
+        // Every 5 notes or at specific thresholds (10%, 25%, 50%, 75%), log progress
+        if (processedNotes % 5 === 0 || 
+            processedNotes === Math.floor(totalNotes * 0.1) ||
+            processedNotes === Math.floor(totalNotes * 0.25) ||
+            processedNotes === Math.floor(totalNotes * 0.5) ||
+            processedNotes === Math.floor(totalNotes * 0.75)) {
+          console.log(`Import progress: ${processedNotes}/${totalNotes} notes processed (${Math.round(processedNotes/totalNotes*100)}%)`);
+        }
       }
       
       // Second pass: Update parent relationships
@@ -421,10 +437,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Return success with count of imported notes
+      // Return success with count and total count for completion display
       res.status(200).json({ 
         message: "Import successful", 
-        count: importData.notes.length 
+        count: importData.notes.length,
+        processed: totalNotes,
+        total: totalNotes
       });
     } catch (err) {
       res.status(500).json({ message: "Failed to import notes" });
