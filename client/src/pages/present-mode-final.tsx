@@ -5,7 +5,7 @@ import { useNotes } from "@/hooks/use-notes";
 import { Note, Project } from "@shared/schema";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Users } from "lucide-react";
-import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, PresentationTheme } from "@/lib/presentation-themes";
+import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, PresentationTheme, START_END_THEME } from "@/lib/presentation-themes";
 import { formatContent, getYoutubeEmbedUrl, calculateLevel, ContentType, getTypographyStyles, generateTypographyStyles } from "@/components/slide-components";
 import { getAdvancedTypographyStyles, generateAdvancedStyles, SlideContentType, FONTS } from "@/lib/advanced-typography";
 import { OverviewSlide } from "@/components/ui/overview-slide";
@@ -245,9 +245,16 @@ export default function PresentModeFixed() {
   const isStartSlide = !!currentNote?.isStartSlide;
   const isEndSlide = !!currentNote?.isEndSlide;
   
-  // Get the theme for the current slide based on its rootIndex
+  // Get the theme for the current slide based on its type and rootIndex
   const theme = useMemo(() => {
     if (!currentNote) return getPresentationTheme(0, 0);
+    
+    // Use special theme for start and end slides
+    if (currentNote.isStartSlide || currentNote.isEndSlide) {
+      return START_END_THEME;
+    }
+    
+    // Use regular theme for other slides based on rootIndex
     return getPresentationTheme(
       currentNote.level || 0,
       currentNote.rootIndex !== undefined ? currentNote.rootIndex : 0

@@ -15,6 +15,19 @@ export type PresentationTheme = {
   patternDescription: string; // Describes the pattern in the theme
 };
 
+// Special theme for start/end slides with a distinct look
+export const START_END_THEME: PresentationTheme = {
+  name: "Midnight Gradient",
+  colors: {
+    base: "#3B82F6",   // Blue 500
+    mid: "#1E3A8A",    // Blue 900
+    dark: "#172554",   // Blue 950
+    accent: "#60A5FA"  // Blue 400
+  },
+  patternType: 'nodes',
+  patternDescription: "Elegant node pattern in #60A5FA at 15% opacity"
+};
+
 // Root themes for presentations, each with their gradient and patterns
 export const PRESENTATION_THEMES: PresentationTheme[] = [
   // Glacier (Sky Blue)
