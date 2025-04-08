@@ -131,19 +131,15 @@ export default function PresentModeFixed() {
     
     // Helper function to recursively add all levels of notes
     const addNoteAndChildren = (note: PresentationNote, currentRootIndex: number) => {
-      // Add the note itself with the root index
-      const noteWithIndex = { ...note, rootIndex: currentRootIndex };
-      result.push(noteWithIndex);
-      
-      // Recursively add all children if any
       if (note.childNotes && note.childNotes.length > 0) {
         // Sort children by order
         const sortedChildren = [...note.childNotes].sort((a, b) => 
           String(a.order).localeCompare(String(b.order))
         );
         
-        // For root notes, add an overview slide showing all direct children
+        // For root notes, replace the normal note with an overview slide
         if (note.level === 0) {
+          // Add an overview slide for root notes with children 
           const overviewSlide: PresentationNote = {
             ...note,
             id: -100 - result.length, // Use a unique negative ID
@@ -152,12 +148,20 @@ export default function PresentModeFixed() {
             rootIndex: currentRootIndex
           };
           result.push(overviewSlide);
+        } else {
+          // For non-root notes, add the regular note
+          const noteWithIndex = { ...note, rootIndex: currentRootIndex };
+          result.push(noteWithIndex);
         }
         
         // Add each child recursively
         sortedChildren.forEach(childNote => {
           addNoteAndChildren(childNote, currentRootIndex);
         });
+      } else {
+        // For notes without children, always add the regular note
+        const noteWithIndex = { ...note, rootIndex: currentRootIndex };
+        result.push(noteWithIndex);
       }
     };
     
