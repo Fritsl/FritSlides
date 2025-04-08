@@ -347,7 +347,7 @@ export default function PresentModeFixed() {
   
   // Render the presentation
   return (
-    <div className="min-h-screen flex flex-col bg-black">
+    <div className="fixed inset-0 w-screen h-screen flex flex-col bg-black overflow-hidden">
       {isLoading || !flattenedNotes.length ? (
         // Loading screen
         <div className="flex-1 flex flex-col items-center justify-center">
@@ -361,7 +361,7 @@ export default function PresentModeFixed() {
         <>
           {/* Slide content area */}
           <div 
-            className="flex-1 flex flex-col items-center justify-center w-full h-full cursor-pointer"
+            className="flex-1 flex flex-col items-center justify-center w-full h-full cursor-pointer overflow-hidden"
             onClick={(e) => {
               // Check if the click was on an interactive element
               const target = e.target as HTMLElement;
@@ -389,50 +389,50 @@ export default function PresentModeFixed() {
               />
             ) : isStartSlide ? (
               // Start slide with project start slogan
-              <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
+              <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-10">
                 <div className="w-full text-white text-center">
-                  <div className="content mb-10">
+                  <div className="content mb-6 sm:mb-10">
                     {formatContent(currentNote.content)}
                   </div>
-                  <div className="mt-16 opacity-70 text-sm">
+                  <div className="mt-8 sm:mt-16 opacity-70 text-sm">
                     {currentProject?.name}
                   </div>
                 </div>
               </div>
             ) : isEndSlide ? (
               // End slide with project end slogan and author
-              <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
+              <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-10">
                 <div className="w-full text-white text-center">
-                  <div className="content mb-10">
+                  <div className="content mb-6 sm:mb-10">
                     {formatContent(currentNote.content)}
                   </div>
                   {currentNote.author && (
-                    <div className="mt-8 opacity-80 text-lg">
+                    <div className="mt-4 sm:mt-8 opacity-80 text-base sm:text-lg">
                       {currentNote.author}
                     </div>
                   )}
-                  <div className="mt-16 opacity-70 text-sm">
+                  <div className="mt-8 sm:mt-16 opacity-70 text-sm">
                     {currentProject?.name}
                   </div>
                 </div>
               </div>
             ) : (
               // Regular slide with content
-              <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10 relative">
+              <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-10 py-6 sm:py-10 relative">
                 {/* Discussion icon overlay */}
                 {currentNote.isDiscussion && (
-                  <div className="absolute top-4 right-4 text-white opacity-80 transition-opacity animate-pulse">
-                    <Users className="h-12 w-12 sm:h-12 sm:w-12 md:h-16 md:w-16" />
+                  <div className="absolute top-2 sm:top-4 right-2 sm:right-4 text-white opacity-80 transition-opacity animate-pulse">
+                    <Users className="h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" />
                   </div>
                 )}
                 <div className="w-full text-white">
-                  <div className="content mb-10">
+                  <div className="content mb-6 sm:mb-10">
                     {formatContent(currentNote.content)}
                   </div>
                   
                   {/* URL link if present - with typography styling */}
                   {currentNote.url && (
-                    <div className="mt-8">
+                    <div className="mt-4 sm:mt-8">
                       <a
                         href={currentNote.url}
                         target="_blank"
@@ -450,7 +450,7 @@ export default function PresentModeFixed() {
                           paddingBottom: '0.5rem',
                           width: 'fit-content'
                         }}
-                        className="hover:text-white"
+                        className="hover:text-white text-sm sm:text-base"
                       >
                         <span className="mr-2">🔗</span>
                         {currentNote.linkText || currentNote.url}
@@ -460,7 +460,7 @@ export default function PresentModeFixed() {
                   
                   {/* YouTube embed if present */}
                   {currentNote.youtubeLink && (
-                    <div className="mt-8 rounded overflow-hidden aspect-video bg-black/20 shadow-xl">
+                    <div className="mt-4 sm:mt-8 rounded overflow-hidden aspect-video bg-black/20 shadow-xl max-w-full">
                       <iframe
                         className="w-full h-full"
                         src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
@@ -474,13 +474,13 @@ export default function PresentModeFixed() {
                   
                   {/* Images if present */}
                   {currentNote.images && currentNote.images.length > 0 && (
-                    <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="mt-4 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
                       {currentNote.images.map((image: string, idx: number) => (
-                        <div key={idx} className="rounded overflow-hidden shadow-xl">
+                        <div key={idx} className="rounded overflow-hidden shadow-xl max-h-[70vh]">
                           <img 
                             src={image} 
                             alt={`Note image ${idx + 1}`} 
-                            className="w-full h-auto object-cover" 
+                            className="w-full h-full object-contain" 
                           />
                         </div>
                       ))}
@@ -492,22 +492,24 @@ export default function PresentModeFixed() {
           </div>
 
           {/* Minimal footer with navigation hints */}
-          <div className="absolute bottom-0 left-0 right-0 text-center p-1 flex justify-between items-center">
-            <div className="w-8"></div>
-            <p className="text-white/30 text-[10px]">
-              {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • 
-              {isStartSlide ? 'Start' : isEndSlide ? 'End' : isOverviewSlide ? 'Chapter overview' : ''} • 
-              Click or → to advance • ← back • ESC to exit
+          <div className="absolute bottom-0 left-0 right-0 text-center p-1 px-2 flex justify-between items-center bg-black/30 backdrop-blur-sm">
+            <div className="w-4 sm:w-8"></div>
+            <p className="text-white/40 text-[8px] sm:text-[10px] whitespace-nowrap overflow-hidden overflow-ellipsis">
+              <span className="hidden sm:inline">{currentProject?.name} • </span>
+              {currentSlideIndex + 1}/{flattenedNotes.length}
+              <span className="hidden xs:inline"> • {isStartSlide ? 'Start' : isEndSlide ? 'End' : isOverviewSlide ? 'Overview' : ''}</span> • 
+              <span className="hidden sm:inline">Click or → to advance • ← back • ESC to exit</span>
+              <span className="inline sm:hidden">Tap to advance</span>
             </p>
             <button 
               onClick={(e) => {
                 e.stopPropagation(); // Prevent triggering next slide
                 requestFullscreen();
               }}
-              className="w-6 h-6 flex items-center justify-center text-white/20 hover:text-white/60 opacity-60 hover:opacity-100 transition-opacity"
+              className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/70 opacity-70 hover:opacity-100 transition-opacity"
               title="Enter fullscreen (F)"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 3 21 3 21 9"></polyline>
                 <polyline points="9 21 3 21 3 15"></polyline>
                 <line x1="21" y1="3" x2="14" y2="10"></line>
@@ -518,29 +520,29 @@ export default function PresentModeFixed() {
           
           {/* Time tracking dots */}
           {timeDotsVisible && (
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10">
+            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div 
-                      className="relative h-8 flex items-center justify-center"
+                      className="relative h-6 sm:h-8 flex items-center justify-center"
                       style={{ 
                         // Calculate width based on maximum potential offset
-                        width: '250px' // 25 slides * 5px + center area
+                        width: '200px' // 25 slides * 4px + center area
                       }}
                     >
                       {/* Black dot (target position) */}
                       <div 
-                        className="absolute w-3 h-3 rounded-full bg-black/50 transition-all duration-300"
+                        className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-black/60 transition-all duration-300"
                         style={{
-                          transform: `translateX(${getSlideDifference() * -5}px)`,
+                          transform: `translateX(${getSlideDifference() * -4}px)`,
                           left: '50%'
                         }}
                       />
                       
                       {/* White dot (current position) */}
                       <div 
-                        className="absolute w-3 h-3 rounded-full bg-white/50 transition-all duration-300"
+                        className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white/60 transition-all duration-300"
                         style={{
                           left: '50%',
                           transform: 'translateX(-50%)'
@@ -548,7 +550,7 @@ export default function PresentModeFixed() {
                       />
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-black/80 text-white text-xs">
+                  <TooltipContent side="top" className="bg-black/90 text-white text-[10px] sm:text-xs p-2 sm:p-3">
                     <div className="text-center">
                       <div>
                         <span className="opacity-80">Now:</span> {currentNote?.time ? `${currentNote.time}` : 'No time marker'} 
@@ -559,7 +561,7 @@ export default function PresentModeFixed() {
                           {getNextTimedSlide()?.content.length! > 20 ? '...' : ''} @ {getNextTimedSlide()?.time}
                         </div>
                       )}
-                      <div className="mt-1 text-xs opacity-70">
+                      <div className="mt-1 text-[9px] sm:text-xs opacity-70">
                         {getSlideDifference() > 0 ? `${getSlideDifference()} slides ahead of schedule` :
                          getSlideDifference() < 0 ? `${Math.abs(getSlideDifference())} slides behind schedule` :
                          'On schedule'}

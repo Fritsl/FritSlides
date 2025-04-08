@@ -333,7 +333,7 @@ export default function PresentMode() {
   
   // Render the presentation
   return (
-    <div className="min-h-screen flex flex-col bg-black">
+    <div className="fixed inset-0 w-screen h-screen flex flex-col bg-black overflow-hidden">
       {isLoading || !flattenedNotes.length ? (
         // Loading screen
         <div className="flex-1 flex flex-col items-center justify-center">
@@ -347,7 +347,7 @@ export default function PresentMode() {
         <>
           {/* Slide content area */}
           <div 
-            className="flex-1 flex flex-col items-center justify-center w-full h-full cursor-pointer"
+            className="flex-1 flex flex-col items-center justify-center w-full h-full cursor-pointer overflow-hidden"
             onClick={(e) => {
               // Check if the click was on an interactive element
               const target = e.target as HTMLElement;
