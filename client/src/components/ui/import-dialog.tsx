@@ -37,21 +37,52 @@ export function ImportDialog({
   const [currentStatus, setCurrentStatus] = useState<string>("");
   const logContainerRef = useRef<HTMLDivElement>(null);
   
+  // Create a ref to hold the status update interval
+  const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   const importMutation = useMutation({
     mutationFn: async (data: any) => {
       // Reset progress and save the note count for tracking
       setProgress(0);
       setStatusLog([]);
       
+      // Clear any existing intervals
+      if (statusIntervalRef.current) {
+        clearInterval(statusIntervalRef.current);
+        statusIntervalRef.current = null;
+      }
+      
       if (data.notes && Array.isArray(data.notes)) {
         setNoteCount(data.notes.length);
         // Add first status message
         setCurrentStatus(`Starting import of ${data.notes.length} notes...`);
         setStatusLog(prev => [...prev, `Starting import of ${data.notes.length} notes...`]);
+        
+        // Add additional periodic status updates during the request
+        statusIntervalRef.current = setInterval(() => {
+          const timestamp = new Date().toLocaleTimeString();
+          const message = `Import in progress... (${timestamp})`;
+          setStatusLog(prev => [...prev, message]);
+          setCurrentStatus(message);
+        }, 3000); // Update every 3 seconds
       }
       
-      const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
-      return await res.json();
+      try {
+        const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
+        // Clear the interval when the request completes
+        if (statusIntervalRef.current) {
+          clearInterval(statusIntervalRef.current);
+          statusIntervalRef.current = null;
+        }
+        return await res.json();
+      } catch (error) {
+        // Also clear on error
+        if (statusIntervalRef.current) {
+          clearInterval(statusIntervalRef.current);
+          statusIntervalRef.current = null;
+        }
+        throw error;
+      }
     },
     onSuccess: (data) => {
       // Set progress to 100% on success
@@ -143,6 +174,16 @@ export function ImportDialog({
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
   }, [statusLog]);
+  
+  // Clean up any intervals when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (statusIntervalRef.current) {
+        clearInterval(statusIntervalRef.current);
+        statusIntervalRef.current = null;
+      }
+    };
+  }, []);
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
