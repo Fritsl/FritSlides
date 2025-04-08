@@ -43,33 +43,6 @@ export function ImportDialog({
   // State for import ID from server
   const [importId, setImportId] = useState<string | null>(null);
   
-  // Add a function to poll for import status
-  const pollImportStatus = async (importId: string) => {
-    try {
-      const res = await apiRequest("GET", `/api/projects/${projectId}/import-status?id=${importId}`);
-      const data = await res.json();
-      
-      // Update our UI with the detailed status from the server
-      if (data.status) {
-        setCurrentStatus(data.status);
-        if (data.statusLog && Array.isArray(data.statusLog)) {
-          setStatusLog(data.statusLog);
-        }
-        
-        // Update progress based on actual server progress
-        if (typeof data.progress === 'number') {
-          setProgress(data.progress);
-        }
-        
-        return data.completed;
-      }
-      return false;
-    } catch (error) {
-      console.error("Error polling import status:", error);
-      return false;
-    }
-  };
-  
   const importMutation = useMutation({
     mutationFn: async (data: any) => {
       // Reset progress and save the note count for tracking
@@ -94,19 +67,27 @@ export function ImportDialog({
           const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
           const importData = await res.json();
           
+          console.log("Import started with response:", importData);
+          
           // Check if the server returned an import ID for status polling
           if (importData.importId) {
+            console.log("Got import ID:", importData.importId);
             setImportId(importData.importId);
+            
+            // Set initial progress to show something is happening
+            setProgress(5);
             
             // Start polling for real-time status updates
             statusIntervalRef.current = setInterval(async () => {
               try {
                 // Poll the server for current status
+                console.log("Polling status for import ID:", importData.importId);
                 const statusRes = await apiRequest(
                   "GET", 
                   `/api/projects/${projectId}/import-status?id=${importData.importId}`
                 );
                 const statusData = await statusRes.json();
+                console.log("Status update received:", statusData);
                 
                 // Update our UI with the server's status information
                 if (statusData.statusLog && Array.isArray(statusData.statusLog)) {
@@ -123,6 +104,7 @@ export function ImportDialog({
                 
                 // If import is completed, clear the polling interval
                 if (statusData.completed) {
+                  console.log("Import completed, stopping polling");
                   if (statusIntervalRef.current) {
                     clearInterval(statusIntervalRef.current);
                     statusIntervalRef.current = null;
@@ -132,6 +114,18 @@ export function ImportDialog({
                 console.error("Error polling import status:", pollError);
               }
             }, 1000); // Poll every second
+          } else {
+            console.warn("No import ID received from server");
+            // Fallback to basic progress if no import ID is provided
+            setProgress(10);
+            // Just simulate progress as a fallback
+            let progressInterval = setInterval(() => {
+              setProgress(prev => {
+                if (prev < 90) return prev + 5;
+                clearInterval(progressInterval);
+                return prev;
+              });
+            }, 2000);
           }
           
           return importData;
@@ -141,6 +135,7 @@ export function ImportDialog({
             clearInterval(statusIntervalRef.current);
             statusIntervalRef.current = null;
           }
+          console.error("Error during import:", error);
           throw error;
         }
       } else {

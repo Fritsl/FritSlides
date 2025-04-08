@@ -431,9 +431,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate overall import progress
       let progress = 0;
       if (importStatus.totalNotes > 0) {
-        // Up to 60% for note creation, 30% for parent relationships, 10% for completion
-        const baseProgress = Math.min(60, Math.round((importStatus.processedNotes / importStatus.totalNotes) * 60));
-        progress = importStatus.completed ? 100 : baseProgress;
+        // More accurate progress calculation:
+        // - Up to 60% for note creation (phase 1)
+        // - 30% for parent relationships (phase 2)
+        // - 10% for normalization and completion
+        let baseProgress = Math.min(60, Math.round((importStatus.processedNotes / importStatus.totalNotes) * 60));
+        
+        // If we're complete, always show 100%
+        if (importStatus.completed) {
+          progress = 100;
+        } else {
+          // Check status log to determine phases
+          const lastStatus = importStatus.statusLog.length > 0 ? 
+            importStatus.statusLog[importStatus.statusLog.length - 1] : "";
+            
+          if (lastStatus.includes("Phase 2:")) {
+            // We're in phase 2 (parent relationships)
+            // Extract progress from status message if possible
+            const phase2Match = lastStatus.match(/Phase 2: Processed (\d+)\/(\d+)/);
+            if (phase2Match && phase2Match.length >= 3) {
+              const [_, processed, total] = phase2Match;
+              const phase2Progress = Math.round((parseInt(processed) / parseInt(total)) * 30);
+              progress = 60 + Math.min(30, phase2Progress);
+            } else {
+              // Fallback to just adding some progress to phase 1
+              progress = 60 + 10; // Show some progress in phase 2
+            }
+          } else if (lastStatus.includes("normalizing") || lastStatus.includes("Normalizing")) {
+            // Final normalization phase
+            progress = 90;
+          } else {
+            // Still in phase 1 (note creation)
+            progress = baseProgress;
+          }
+        }
+        
+        console.log(`Import ${importId} progress: ${progress}%, processedNotes: ${importStatus.processedNotes}/${importStatus.totalNotes}`);
       }
       
       // Return current status
@@ -639,6 +672,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const percent = Math.round((notesProcessed / notesWithParents.length) * 100);
               const elapsed = ((Date.now() - phase2Start) / 1000).toFixed(1);
               addStatus(`Phase 2: Processed ${notesProcessed}/${notesWithParents.length} notes (${percent}%, ${elapsed}s elapsed)`);
+              
+              // Update the import status to reflect phase 2 progress
+              const currentStatus = importStatusMap.get(importId);
+              if (currentStatus) {
+                // For phase 2, we continue from 60% to 90% (30% for this phase)
+                const phase2Progress = Math.round((notesProcessed / notesWithParents.length) * 30);
+                currentStatus.progress = 60 + Math.min(30, phase2Progress);
+                importStatusMap.set(importId, currentStatus);
+              }
             }
             
             // Add a small delay between batches to reduce database contention
@@ -658,10 +700,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // After all parent updates, normalize the orders for each parent
         addStatus(`Post-processing: Normalizing note orders for all parents`);
+        
+        // Update status to show we're in the normalization phase (90%)
+        const normStatus = importStatusMap.get(importId);
+        if (normStatus) {
+          normStatus.progress = 90;
+          importStatusMap.set(importId, normStatus);
+        }
+        
+        // Process each parent one at a time
+        let normalizedParentCount = 0;
+        const totalParentsToNormalize = notesByParent.size;
+        
         for (const parentId of notesByParent.keys()) {
           const success = await storage.normalizeNoteOrders(parentId);
+          normalizedParentCount++;
+          
           if (!success) {
             addStatus(`⚠️ Warning: Could not normalize orders for parent ${parentId}`);
+          }
+          
+          // Provide periodic progress updates
+          if (normalizedParentCount % 5 === 0 || normalizedParentCount === totalParentsToNormalize) {
+            const normPercent = Math.round((normalizedParentCount / totalParentsToNormalize) * 100);
+            addStatus(`Post-processing: Normalized ${normalizedParentCount}/${totalParentsToNormalize} parent groups (${normPercent}%)`);
+            
+            // Update progress between 90-99%
+            const normStatus = importStatusMap.get(importId);
+            if (normStatus) {
+              const normProgress = Math.round((normalizedParentCount / totalParentsToNormalize) * 9);
+              normStatus.progress = 90 + Math.min(9, normProgress);
+              importStatusMap.set(importId, normStatus);
+            }
           }
         }
       } catch (error) {
