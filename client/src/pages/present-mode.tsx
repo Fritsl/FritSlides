@@ -6,12 +6,13 @@ import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Edit, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { getLevelColor } from "@/lib/colors";
+import { getPresentationTheme, getThemeBackgroundStyle, PresentationTheme } from "@/lib/presentation-themes";
 import { Note, Project } from "@shared/schema";
 
-// Extended note type with level information for presentation
+// Extended note type with level and theme information for presentation
 interface PresentationNote extends Note {
   level?: number;
+  rootIndex?: number; // Index of the root note this belongs to - for theming
 }
 
 export default function PresentMode() {
@@ -40,8 +41,18 @@ export default function PresentMode() {
   useEffect(() => {
     if (!notes) return;
     
+    // Find all root notes (parent is null)
+    const rootNotes = [...notes]
+      .filter(note => note.parentId === null)
+      .sort((a, b) => Number(a.order) - Number(b.order));
+    
     // Helper function to flatten notes recursively in a depth-first manner
-    const flattenNotes = (notesList: Note[], parentId: number | null = null, level = 0): PresentationNote[] => {
+    const flattenNotes = (
+      notesList: Note[], 
+      parentId: number | null = null, 
+      level = 0, 
+      rootIndex = 0
+    ): PresentationNote[] => {
       const result: PresentationNote[] = [];
       
       // Sort notes by their order field
@@ -51,19 +62,39 @@ export default function PresentMode() {
       
       // Add each note and then its children
       for (const note of sortedNotes) {
-        // Add the current note with its level information
-        const noteWithLevel: PresentationNote = { ...note, level };
+        // Add the current note with its level and root index information
+        const noteWithLevel: PresentationNote = { 
+          ...note, 
+          level, 
+          rootIndex: parentId === null ? rootIndex : undefined 
+        };
         result.push(noteWithLevel);
         
-        // Recursively add children
-        const children = flattenNotes(notesList, note.id, level + 1);
+        // Recursively add children - they inherit the root index for theming
+        const children = flattenNotes(notesList, note.id, level + 1, rootIndex);
         result.push(...children);
       }
       
       return result;
     };
     
-    const flattened = flattenNotes(notes);
+    // Process each root note with its own index
+    let flattened: PresentationNote[] = [];
+    rootNotes.forEach((rootNote, index) => {
+      // Add the root note and its children with its index
+      const rootAndChildren = flattenNotes(notes, null, 0, index);
+      
+      // Only add the current root note and its children
+      const thisRootAndChildren = rootAndChildren.filter(
+        note => note.id === rootNote.id || 
+                notes.some(n => n.id === note.id && 
+                             (n.parentId === rootNote.id || 
+                              notes.some(p => p.id === n.parentId && p.parentId === rootNote.id)))
+      );
+      
+      flattened = [...flattened, ...thisRootAndChildren];
+    });
+    
     setFlattenedNotes(flattened);
     
     // Reset current slide to beginning when notes change
@@ -150,7 +181,44 @@ export default function PresentMode() {
   // Get the current note to display
   const currentNote = flattenedNotes[currentSlideIndex];
   const level = currentNote.level || 0;
-  const levelColor = getLevelColor(level);
+  
+  // Get the root index for theme (if it's null, use parent's rootIndex or default to 0)
+  const findRootIndex = (note: PresentationNote): number => {
+    if (note.rootIndex !== undefined) return note.rootIndex;
+    
+    // If note is a child, find its parent to get root index
+    if (note.parentId) {
+      // First try to find parent in already flattened notes (faster)
+      const parentInFlattened = flattenedNotes.find(n => n.id === note.parentId);
+      if (parentInFlattened && parentInFlattened.rootIndex !== undefined) {
+        return parentInFlattened.rootIndex;
+      }
+      
+      // Otherwise, try to find the root ancestor if notes are available
+      // By this point we know notes are available since we are rendering a note
+      let currentParentId = note.parentId;
+      let currentNote = notes!.find(n => n.id === currentParentId);
+      
+      while (currentNote && currentNote.parentId) {
+        currentParentId = currentNote.parentId;
+        currentNote = notes!.find(n => n.id === currentParentId);
+      }
+      
+      // Find index of this root note
+      if (currentNote) {
+        const rootNotes = notes!.filter(n => n.parentId === null)
+          .sort((a, b) => Number(a.order) - Number(b.order));
+        return rootNotes.findIndex(n => n.id === currentNote!.id);
+      }
+    }
+    
+    // Default to 0 if we can't determine
+    return 0;
+  };
+  
+  const rootIndex = findRootIndex(currentNote);
+  const theme = getPresentationTheme(level, rootIndex);
+  const themeStyles = getThemeBackgroundStyle(theme);
   
   // Helper functions for content display
   const formatContent = (content: string) => {
@@ -213,10 +281,7 @@ export default function PresentMode() {
             goToNextSlide();
           }
         }}
-        style={{ 
-          backgroundColor: levelColor.regular,
-          backgroundImage: `linear-gradient(135deg, ${levelColor.regular} 0%, ${levelColor.light} 100%)` 
-        }}
+        style={themeStyles}
       >
         <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
           <div className="w-full text-white">
