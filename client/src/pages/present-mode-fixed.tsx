@@ -100,11 +100,11 @@ export default function PresentModeFixed() {
     const result: PresentationNote[] = [];
     
     // Add a start slide for the project
-    const project = projects.find((p) => p.id === projectId);
+    const project = projects?.find((p) => p.id === projectId);
     if (project) {
       const startSlide: PresentationNote = {
         id: -1, // Use negative ID to avoid conflicts
-        projectId,
+        projectId: projectId ?? 0,
         content: `${project.name}`,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -131,37 +131,36 @@ export default function PresentModeFixed() {
     
     // Helper function to recursively add all levels of notes
     const addNoteAndChildren = (note: PresentationNote, currentRootIndex: number) => {
-      if (note.childNotes && note.childNotes.length > 0) {
-        // Sort children by order
-        const sortedChildren = [...note.childNotes].sort((a, b) => 
-          String(a.order).localeCompare(String(b.order))
-        );
-        
-        // For root notes, replace the normal note with an overview slide
-        if (note.level === 0) {
-          // Add an overview slide for root notes with children 
-          const overviewSlide: PresentationNote = {
-            ...note,
-            id: -100 - result.length, // Use a unique negative ID
-            isOverviewSlide: true,
-            childNotes: sortedChildren,
-            rootIndex: currentRootIndex
-          };
-          result.push(overviewSlide);
-        } else {
-          // For non-root notes, add the regular note
-          const noteWithIndex = { ...note, rootIndex: currentRootIndex };
-          result.push(noteWithIndex);
-        }
-        
-        // Add each child recursively
+      // Check if this note has children
+      const hasChildren = note.childNotes && note.childNotes.length > 0;
+      
+      // Sort children by order if any exist
+      const sortedChildren = hasChildren 
+        ? [...note.childNotes!].sort((a, b) => String(a.order).localeCompare(String(b.order)))
+        : [];
+      
+      // Process based on whether this is a root note and if it has children
+      if (note.level === 0 && hasChildren) {
+        // Root note with children - generate overview slide ONLY (no regular slide)
+        const overviewSlide: PresentationNote = {
+          ...note,
+          id: -100 - result.length, // Use a unique negative ID
+          isOverviewSlide: true,
+          childNotes: sortedChildren,
+          rootIndex: currentRootIndex
+        };
+        result.push(overviewSlide);
+      } else if (note.level !== 0 || !hasChildren) {
+        // Either a non-root note OR a root note WITHOUT children - add as regular slide
+        const noteWithIndex = { ...note, rootIndex: currentRootIndex };
+        result.push(noteWithIndex);
+      }
+      
+      // Process all children recursively
+      if (hasChildren) {
         sortedChildren.forEach(childNote => {
           addNoteAndChildren(childNote, currentRootIndex);
         });
-      } else {
-        // For notes without children, always add the regular note
-        const noteWithIndex = { ...note, rootIndex: currentRootIndex };
-        result.push(noteWithIndex);
       }
     };
     
@@ -175,7 +174,7 @@ export default function PresentModeFixed() {
     if (project) {
       const endSlide: PresentationNote = {
         id: -2, // Use negative ID to avoid conflicts
-        projectId,
+        projectId: projectId ?? 0,
         content: `End of presentation`,
         createdAt: new Date(),
         updatedAt: new Date(),
