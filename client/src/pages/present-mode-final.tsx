@@ -292,6 +292,36 @@ export default function PresentModeFixed() {
     }
   };
   
+  // Function to find the index of the next/previous root note or start/end slide
+  const findRootNoteIndex = (direction: 'next' | 'prev'): number => {
+    if (!flattenedNotes.length) return currentSlideIndex;
+    
+    // Define what we consider "major slides" - includes Start, End and Overview slides
+    const isMajorSlide = (note: PresentationNote): boolean => 
+      Boolean(note.isStartSlide || note.isEndSlide || note.isOverviewSlide);
+    
+    // Find all major slide indexes
+    const majorSlideIndexes = flattenedNotes
+      .map((note, index) => ({ note, index }))
+      .filter(({ note }) => isMajorSlide(note))
+      .map(({ index }) => index);
+    
+    // If no special slides found, return current index
+    if (majorSlideIndexes.length === 0) return currentSlideIndex;
+    
+    if (direction === 'next') {
+      // Find the next major slide after current position
+      const nextIndex = majorSlideIndexes.find(index => index > currentSlideIndex);
+      // If found, return it. Otherwise return the first major slide (loop around)
+      return nextIndex !== undefined ? nextIndex : majorSlideIndexes[0];
+    } else {
+      // Find the previous major slides before current position (in reverse order)
+      const prevIndexes = majorSlideIndexes.filter(index => index < currentSlideIndex).reverse();
+      // If found, return the first previous. Otherwise return the last major slide (loop around)
+      return prevIndexes.length > 0 ? prevIndexes[0] : majorSlideIndexes[majorSlideIndexes.length - 1];
+    }
+  };
+  
   // Keyboard event listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -302,6 +332,14 @@ export default function PresentModeFixed() {
           break;
         case "ArrowLeft":
           goToPrevSlide();
+          break;
+        case "ArrowDown":
+          // Jump to next root note or special slide
+          setCurrentSlideIndex(findRootNoteIndex('next'));
+          break;
+        case "ArrowUp":
+          // Jump to previous root note or special slide
+          setCurrentSlideIndex(findRootNoteIndex('prev'));
           break;
         case "Escape":
           exitPresentation();
@@ -693,8 +731,8 @@ export default function PresentModeFixed() {
               <span className="hidden sm:inline">{currentProject?.name} • </span>
               {currentSlideIndex + 1}/{flattenedNotes.length}
               <span className="hidden xs:inline"> • {isStartSlide ? 'Start' : isEndSlide ? 'End' : isOverviewSlide ? 'Overview' : ''}</span> • 
-              <span className="hidden sm:inline">Click or → to advance • ← back • ESC to exit</span>
-              <span className="inline sm:hidden">Tap to advance</span>
+              <span className="hidden sm:inline">Click or → to advance • ← back • ↑↓ jump between sections • ESC to exit</span>
+              <span className="inline sm:hidden">Tap to advance • ↑↓ jump sections</span>
             </p>
             <FullscreenToggle 
               buttonClassName="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100"
