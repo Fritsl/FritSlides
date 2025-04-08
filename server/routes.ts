@@ -423,16 +423,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Import status not found" });
       }
       
-      // For debugging: log the current import status
-      console.log(`Serving import status for ${importId}:`, {
-        completed: importStatus.completed,
-        progress: importStatus.progress,
-        statusLog: importStatus.statusLog.length > 0 ? 
-          importStatus.statusLog[importStatus.statusLog.length - 1] : 'No logs',
-        totalNotes: importStatus.totalNotes,
-        processedNotes: importStatus.processedNotes
-      });
-      
       // Check if user has permission
       if (importStatus.userId !== req.user!.id || importStatus.projectId !== projectId) {
         return res.status(403).json({ message: "Not authorized to view this import status" });
@@ -659,61 +649,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let notesProcessed = 0;
         const totalParents = notesByParent.size;
         
-        // IMPROVED: Process each parent group one at a time with more safeguards
-        // Sort parent IDs numerically to process in consistent order (helps prevent deadlocks)
-        const sortedEntries = Array.from(notesByParent.entries())
-          .sort((a, b) => a[0] - b[0]);
-        
-        for (const [parentId, notes] of sortedEntries) {
+        // Process each parent group one at a time
+        for (const [parentId, notes] of notesByParent.entries()) {
           // Smaller batches for each parent group
-          const PARENT_BATCH_SIZE = 5; // Reduce batch size for better atomicity
+          const PARENT_BATCH_SIZE = 10;
           
-          // Sort notes by ID to ensure consistent processing order
-          const sortedNotes = [...notes].sort((a, b) => a.id - b.id);
-          
-          for (let i = 0; i < sortedNotes.length; i += PARENT_BATCH_SIZE) {
-            const batch = sortedNotes.slice(i, i + PARENT_BATCH_SIZE);
+          for (let i = 0; i < notes.length; i += PARENT_BATCH_SIZE) {
+            const batch = notes.slice(i, i + PARENT_BATCH_SIZE);
             
-            // Add more delay between retries
-            let retries = 0;
-            let success = false;
+            // Process this small batch
+            const success = await storage.updateNoteParentsBatch(batch);
             
-            while (!success && retries < 3) {
-              try {
-                // Process this small batch
-                success = await storage.updateNoteParentsBatch(batch);
-                
-                if (!success && retries < 2) {
-                  // If failed but we can retry, add a delay and try again
-                  addStatus(`Retry #${retries + 1} for parent ${parentId} batch (resolving contention)`);
-                  await new Promise(resolve => setTimeout(resolve, 500 * (retries + 1)));
-                  retries++;
-                } else if (!success) {
-                  // Failed after all retries
-                  addStatus(`⚠️ Warning: Batch update for parent ${parentId} had issues after ${retries} retries`);
-                  break;
-                }
-              } catch (error) {
-                console.error(`Error processing batch for parent ${parentId}:`, error);
-                if (retries < 2) {
-                  // Log the error but keep trying
-                  addStatus(`Retry #${retries + 1} after error on parent ${parentId}`);
-                  await new Promise(resolve => setTimeout(resolve, 800 * (retries + 1)));
-                  retries++;
-                } else {
-                  // Failed after all retries
-                  addStatus(`⚠️ Warning: Failed to process batch for parent ${parentId} after ${retries} retries`);
-                  success = false;
-                  break;
-                }
-              }
+            if (!success) {
+              addStatus(`⚠️ Warning: Batch update for parent ${parentId} had issues - will continue with next batch`);
             }
             
             // Update processing counters
             notesProcessed += batch.length;
             
             // Provide status updates
-            if (i % 10 === 0 || i + PARENT_BATCH_SIZE >= sortedNotes.length) {
+            if (i % 20 === 0 || i + PARENT_BATCH_SIZE >= notes.length) {
               const percent = Math.round((notesProcessed / notesWithParents.length) * 100);
               const elapsed = ((Date.now() - phase2Start) / 1000).toFixed(1);
               addStatus(`Phase 2: Processed ${notesProcessed}/${notesWithParents.length} notes (${percent}%, ${elapsed}s elapsed)`);
@@ -728,8 +683,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
             
-            // Always add a small delay between batches to reduce database contention
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // Add a small delay between batches to reduce database contention
+            if (notes.length > 20 && i + PARENT_BATCH_SIZE < notes.length) {
+              await new Promise(resolve => setTimeout(resolve, 50));
+            }
           }
           
           parentsProcessed++;
