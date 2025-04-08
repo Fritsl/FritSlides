@@ -68,57 +68,14 @@ export default function Header({
   const { toast } = useToast();
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
-  const [isEditingProjectName, setIsEditingProjectName] = useState(false);
-  const [projectName, setProjectName] = useState("");
-  const projectNameInputRef = useRef<HTMLInputElement>(null);
-  
-  // Update the project name state when the current project changes
-  useEffect(() => {
+  // Function to open project settings
+  const openProjectSettings = () => {
     if (currentProject) {
-      setProjectName(currentProject.name);
-    }
-  }, [currentProject]);
-  
-  // Function to handle project name editing
-  const startEditing = () => {
-    if (currentProject) {
-      setIsEditingProjectName(true);
-      // Focus the input field after rendering
-      setTimeout(() => {
-        if (projectNameInputRef.current) {
-          projectNameInputRef.current.focus();
-          projectNameInputRef.current.select();
-        }
-      }, 10);
-    }
-  };
-  
-  const saveProjectName = () => {
-    if (currentProject && onUpdateProject && projectName.trim()) {
-      onUpdateProject(currentProject.id, projectName.trim());
-      setIsEditingProjectName(false);
-    } else if (!projectName.trim()) {
-      // Reset to the original name if empty
-      setProjectName(currentProject?.name || "");
-      setIsEditingProjectName(false);
-    }
-  };
-  
-  const cancelEditing = () => {
-    // Reset to the original name
-    if (currentProject) {
-      setProjectName(currentProject.name);
-    }
-    setIsEditingProjectName(false);
-  };
-  
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      saveProjectName();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelEditing();
+      // Dispatch a custom event that can be caught by parent components
+      const event = new CustomEvent('openProjectSettings', {
+        detail: { projectId: currentProject.id }
+      });
+      window.dispatchEvent(event);
     }
   };
 
@@ -207,67 +164,24 @@ export default function Header({
       <div className="flex items-center justify-between px-4 py-2">
         <div className="flex items-center">
           {currentProject ? (
-            isEditingProjectName ? (
-              <div className="flex items-center">
-                <Input
-                  ref={projectNameInputRef}
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  onBlur={saveProjectName}
-                  className="max-w-[200px] font-semibold text-lg bg-slate-800 border-slate-700 text-white"
-                />
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={saveProjectName} 
-                  className="ml-1 h-8 w-8 text-white hover:bg-slate-800"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={cancelEditing} 
-                  className="ml-1 h-8 w-8 text-white hover:bg-slate-800"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+            <div className="flex items-center">
+              <div 
+                className="cursor-pointer text-lg font-semibold text-white"
+                onClick={openProjectSettings}
+                title="Click to open Project Settings"
+              >
+                {currentProject.name}
               </div>
-            ) : (
-              <div className="flex items-center">
-                <div 
-                  className="cursor-pointer text-lg font-semibold text-white"
-                  onClick={startEditing}
-                >
-                  {currentProject.name}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="ml-1 h-8 w-8 text-white hover:bg-slate-800"
-                  onClick={() => {
-                    // Open project settings dialog instead of just editing name
-                    if (currentProject) {
-                      const form = new FormData();
-                      form.append('name', currentProject.name);
-                      form.append('startSlogan', currentProject.startSlogan || '');
-                      form.append('endSlogan', currentProject.endSlogan || '');
-                      form.append('author', currentProject.author || '');
-                      
-                      // Dispatch a custom event that can be caught by parent components
-                      const event = new CustomEvent('openProjectSettings', {
-                        detail: { projectId: currentProject.id }
-                      });
-                      window.dispatchEvent(event);
-                    }
-                  }}
-                  title="Project Settings"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </div>
-            )
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-1 h-8 w-8 text-white hover:bg-slate-800"
+                onClick={openProjectSettings}
+                title="Project Settings"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </div>
           ) : (
             <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">NoteDrop</h1>
           )}
