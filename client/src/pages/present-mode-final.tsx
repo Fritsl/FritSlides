@@ -426,44 +426,40 @@ export default function PresentModeFixed() {
                       </div>
                     </div>
                   ) : isEndSlide ? (
-                    // End slide with project end slogan and author
+                    // End slide with project end slogan
                     <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center">
                       <div className="w-full text-white">
-                        {/* End content using advanced typography scaling */}
-                        <div className="slide-content flex flex-col items-center justify-center mb-6">
+                        {/* Title using all capitals, centered, Roboto font - matching Start Slide style */}
+                        <div className="slide-content flex flex-col items-center justify-center">
                           <div 
-                            className="text-center mb-4"
-                            style={generateTypographyStyles(getTypographyStyles(
-                              ContentType.Title,
-                              0,
-                              currentNote.content.length
-                            ))}
+                            className="text-center"
+                            style={{
+                              fontFamily: '"Roboto", sans-serif',
+                              fontSize: 'clamp(2.5rem, 8vw, 5rem)',
+                              fontWeight: 700,
+                              letterSpacing: '0.05em',
+                              textTransform: 'uppercase',
+                              lineHeight: 1.2,
+                              textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                            }}
                           >
-                            {formatContent(currentNote.content)}
+                            {currentNote.content}
                           </div>
                         </div>
+                        
+                        {/* Author attribution if available */}
                         {currentNote.author && (
                           <div 
-                            className="mt-6 text-center opacity-90"
-                            style={generateTypographyStyles(getTypographyStyles(
-                              ContentType.Subheading,
-                              1,
-                              currentNote.author.length
-                            ))}
+                            className="mt-12 text-center opacity-80"
+                            style={{
+                              fontFamily: '"Roboto", sans-serif',
+                              fontSize: 'clamp(1rem, 3vw, 1.5rem)',
+                              fontWeight: 400
+                            }}
                           >
                             {currentNote.author}
                           </div>
                         )}
-                        <div 
-                          className="mt-12 text-center opacity-70"
-                          style={generateTypographyStyles(getTypographyStyles(
-                            ContentType.Regular,
-                            0,
-                            currentProject?.name?.length || 0
-                          ))}
-                        >
-                          {currentProject?.name}
-                        </div>
                       </div>
                     </div>
                   ) : (
