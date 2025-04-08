@@ -652,7 +652,7 @@ export default function PresentMode() {
               {/* Images if present */}
               {currentNote.images && currentNote.images.length > 0 && (
                 <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {currentNote.images.map((image, idx) => (
+                  {currentNote.images.map((image: string, idx: number) => (
                     <div key={idx} className="rounded overflow-hidden shadow-xl">
                       <img 
                         src={image} 

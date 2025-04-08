@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useProjects } from "@/hooks/use-projects";
 import { useNotes, useNoteEditing } from "@/hooks/use-notes";
+import { useLastOpenedProject } from "@/hooks/use-last-project";
 import { useLocation } from "wouter";
 import Header from "@/components/ui/header";
 import NoteTree from "@/components/ui/note-tree";
@@ -30,6 +31,7 @@ export default function HomePage() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const { notes, isLoading: isLoadingNotes } = useNotes(selectedProjectId);
   const { editingNoteId } = useNoteEditing();
+  const { lastOpenedProject, isLoading: isLoadingLastProject } = useLastOpenedProject();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   
@@ -44,12 +46,26 @@ export default function HomePage() {
   // Create a hidden anchor element for downloads
   const downloadLinkRef = useRef<HTMLAnchorElement | null>(null);
 
-  // Select the first project by default when projects load
+  // Load the last opened project or default to the first one
   useEffect(() => {
-    if (projects?.length && !selectedProjectId && !isLoadingProjects) {
+    if (isLoadingProjects || isLoadingLastProject) return;
+    
+    // Only select a project if none is currently selected
+    if (!selectedProjectId && projects && projects.length > 0) {
+      // Try to use the last opened project first
+      if (lastOpenedProject && lastOpenedProject.lastOpenedProjectId) {
+        // Check if the project still exists in the list
+        const projectExists = projects.some(p => p.id === lastOpenedProject.lastOpenedProjectId);
+        if (projectExists) {
+          setSelectedProjectId(lastOpenedProject.lastOpenedProjectId);
+          return;
+        }
+      }
+      
+      // Fallback to the first project if no last project is found or it doesn't exist anymore
       setSelectedProjectId(projects[0].id);
     }
-  }, [projects, selectedProjectId, isLoadingProjects]);
+  }, [projects, lastOpenedProject, selectedProjectId, isLoadingProjects, isLoadingLastProject]);
   
   // Get selected project
   const selectedProject = projects?.find(p => p.id === selectedProjectId);
@@ -109,6 +125,19 @@ export default function HomePage() {
         setIsNewProjectDialogOpen(false);
         setSelectedProjectId(newProject.id);
         form.reset();
+        
+        // Update the last opened project in the database
+        if (user) {
+          fetch('/api/user/lastProject', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ projectId: newProject.id }),
+          }).catch(error => {
+            console.error('Error updating last opened project:', error);
+          });
+        }
       },
     });
   };
@@ -287,7 +316,22 @@ export default function HomePage() {
         currentProject={selectedProject || null} 
         projects={projects || []} 
         notes={notes || []}
-        onSelectProject={(id) => setSelectedProjectId(id)}
+        onSelectProject={(id) => {
+          setSelectedProjectId(id);
+          
+          // Update the last opened project in the database
+          if (user) {
+            fetch('/api/user/lastProject', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ projectId: id }),
+            }).catch(error => {
+              console.error('Error updating last opened project:', error);
+            });
+          }
+        }}
         onNewProject={() => setIsNewProjectDialogOpen(true)}
         onUpdateProject={onUpdateProject}
         onExpandToLevel={(level) => setExpandLevel(level)}

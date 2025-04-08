@@ -134,4 +134,64 @@ export function setupAuth(app: Express) {
       res.sendStatus(401);
     }
   });
+  
+  // Get user's last opened project
+  app.get("/api/user/lastProject", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    try {
+      const user = await storage.getUser(req.user!.id);
+      
+      if (!user || !user.lastOpenedProjectId) {
+        return res.status(200).json({ lastOpenedProjectId: null });
+      }
+      
+      // Get the project to ensure it still exists
+      const project = await storage.getProject(user.lastOpenedProjectId);
+      
+      if (!project) {
+        // If project doesn't exist anymore, clear the lastOpenedProjectId
+        await storage.updateLastOpenedProject(req.user!.id, null);
+        return res.status(200).json({ lastOpenedProjectId: null });
+      }
+      
+      res.status(200).json({ lastOpenedProjectId: user.lastOpenedProjectId });
+    } catch (err) {
+      console.error("Error getting last opened project:", err);
+      res.status(500).json({ message: "Failed to get last opened project" });
+    }
+  });
+  
+  // Update user's last opened project
+  app.post("/api/user/lastProject", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    
+    const { projectId } = req.body;
+    
+    // Validate projectId
+    if (projectId === undefined || projectId === null) {
+      return res.status(400).json({ message: "Project ID is required" });
+    }
+    
+    try {
+      // Check if the project exists
+      const project = await storage.getProject(projectId);
+      
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      // Update the user's last opened project
+      const success = await storage.updateLastOpenedProject(req.user!.id, projectId);
+      
+      if (success) {
+        return res.status(200).json({ message: "Last opened project updated" });
+      } else {
+        return res.status(500).json({ message: "Failed to update last opened project" });
+      }
+    } catch (err) {
+      console.error("Error updating last opened project:", err);
+      res.status(500).json({ message: "Failed to update last opened project" });
+    }
+  });
 }

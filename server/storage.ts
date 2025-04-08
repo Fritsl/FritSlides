@@ -20,6 +20,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateLastOpenedProject(userId: number, projectId: number): Promise<boolean>;
   
   // Project operations
   getProjects(userId: number): Promise<Project[]>;
@@ -66,6 +67,20 @@ export class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
+  }
+  
+  async updateLastOpenedProject(userId: number, projectId: number): Promise<boolean> {
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set({ lastOpenedProjectId: projectId })
+        .where(eq(users.id, userId))
+        .returning();
+      return !!updatedUser;
+    } catch (error) {
+      console.error("Error updating last opened project:", error);
+      return false;
+    }
   }
 
   // Project operations
@@ -366,9 +381,18 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
+    const user: User = { ...insertUser, id, lastOpenedProjectId: null };
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateLastOpenedProject(userId: number, projectId: number): Promise<boolean> {
+    const user = this.users.get(userId);
+    if (!user) return false;
+    
+    const updatedUser = { ...user, lastOpenedProjectId: projectId };
+    this.users.set(userId, updatedUser);
+    return true;
   }
 
   // Project operations

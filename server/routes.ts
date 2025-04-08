@@ -143,6 +143,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to access this project's notes" });
       }
       
+      // Update the last opened project ID for this user
+      await storage.updateLastOpenedProject(req.user!.id, projectId);
+      
       const notes = await storage.getNotes(projectId);
       res.json(notes);
     } catch (err) {
