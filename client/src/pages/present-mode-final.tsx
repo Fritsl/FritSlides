@@ -434,13 +434,13 @@ export default function PresentModeFixed() {
                           </div>
                         </div>
                         
-                        {/* Root notes with colored bullets and numbers */}
+                        {/* Root notes with bullets and numbers - same color for all bullets */}
                         {rootNotes && rootNotes.length > 0 && (
                           <div className="flex flex-col items-center mt-8 space-y-6">
                             <div className="flex flex-col space-y-4 items-start">
                               {rootNotes.map((rootNote, index) => {
-                                const theme = getPresentationTheme(0, index);
-                                const accentColor = theme.colors.base;
+                                // Use the same START_END_THEME color for all bullets
+                                const accentColor = START_END_THEME.colors.base;
                                 
                                 return (
                                   <div key={rootNote.id} className="flex items-center group">
