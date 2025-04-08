@@ -406,28 +406,22 @@ export default function PresentModeFixed() {
                     // Start slide with project start slogan
                     <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center">
                       <div className="w-full text-white">
-                        {/* Title using advanced typography scaling */}
-                        <div className="slide-content flex flex-col items-center justify-center mb-6">
+                        {/* Title using all capitals, centered, Roboto font */}
+                        <div className="slide-content flex flex-col items-center justify-center">
                           <div 
-                            className="text-center mb-4"
-                            style={generateTypographyStyles(getTypographyStyles(
-                              ContentType.Title,
-                              0,
-                              currentNote.content.length
-                            ))}
+                            className="text-center"
+                            style={{
+                              fontFamily: '"Roboto", sans-serif',
+                              fontSize: 'clamp(2.5rem, 8vw, 5rem)',
+                              fontWeight: 700,
+                              letterSpacing: '0.05em',
+                              textTransform: 'uppercase',
+                              lineHeight: 1.2,
+                              textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                            }}
                           >
-                            {formatContent(currentNote.content)}
+                            {currentNote.content}
                           </div>
-                        </div>
-                        <div 
-                          className="mt-12 text-center opacity-70"
-                          style={generateTypographyStyles(getTypographyStyles(
-                            ContentType.Regular,
-                            0,
-                            currentProject?.name?.length || 0
-                          ))}
-                        >
-                          {currentProject?.name}
                         </div>
                       </div>
                     </div>
