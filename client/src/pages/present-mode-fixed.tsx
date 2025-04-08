@@ -236,24 +236,7 @@ export default function PresentModeFixed() {
     }
   };
   
-  const requestFullscreen = () => {
-    const docElement = document.documentElement;
-    if (docElement.requestFullscreen) {
-      docElement.requestFullscreen()
-        .then(() => setIsFullscreen(true))
-        .catch(err => console.error("Fullscreen request was rejected:", err));
-    } else {
-      console.warn("Fullscreen API is not supported");
-    }
-  };
-  
   const exitPresentation = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
-        .then(() => setIsFullscreen(false))
-        .catch(err => console.error("Error exiting fullscreen:", err));
-    }
-    
     // Navigate back to the project page
     if (projectId) {
       setLocation(`/project/${projectId}`);
@@ -275,10 +258,6 @@ export default function PresentModeFixed() {
           break;
         case "Escape":
           exitPresentation();
-          break;
-        case "f":
-        case "F":
-          requestFullscreen();
           break;
         case "t":
         case "T":

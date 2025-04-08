@@ -2,6 +2,87 @@ import React, { useState, useEffect } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+// Global state to track CSS fullscreen mode
+const globalState = {
+  isFullscreenMode: false,
+  listeners: new Set<(isFullscreen: boolean) => void>()
+};
+
+// Function to notify all listeners of state change
+function notifyFullscreenChange(isFullscreen: boolean) {
+  globalState.isFullscreenMode = isFullscreen;
+  globalState.listeners.forEach(listener => listener(isFullscreen));
+}
+
+// Apply CSS fullscreen to the app container
+function applyCSSFullscreen(isFullscreen: boolean) {
+  const appElement = document.querySelector('#root') || document.body;
+  
+  if (isFullscreen) {
+    // Save current scroll position
+    const scrollY = window.scrollY;
+    
+    // Apply fullscreen styles
+    document.body.style.overflow = 'hidden';
+    appElement.classList.add('css-fullscreen-mode');
+    
+    // Create and append the fullscreen overlay if it doesn't exist
+    let overlay = document.getElementById('css-fullscreen-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'css-fullscreen-overlay';
+      overlay.style.position = 'fixed';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.width = '100vw';
+      overlay.style.height = '100vh';
+      overlay.style.backgroundColor = '#000';
+      overlay.style.zIndex = '9998';
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      document.body.appendChild(overlay);
+
+      // Move the app element into the overlay as a direct child
+      const appClone = appElement.cloneNode(true) as HTMLElement;
+      appClone.id = 'css-fullscreen-content';
+      appClone.style.width = '100%';
+      appClone.style.height = '100%';
+      appClone.style.overflow = 'auto';
+      appClone.style.position = 'relative';
+      appClone.style.zIndex = '9999';
+      
+      // Hide the original
+      if (appElement instanceof HTMLElement) {
+        appElement.style.visibility = 'hidden';
+      }
+      
+      // Add the clone to the overlay
+      overlay.appendChild(appClone);
+      
+      // Restore scroll position
+      setTimeout(() => {
+        window.scrollTo(0, scrollY);
+      }, 0);
+    }
+  } else {
+    // Remove fullscreen styles
+    document.body.style.overflow = '';
+    appElement.classList.remove('css-fullscreen-mode');
+    
+    // Remove the overlay
+    const overlay = document.getElementById('css-fullscreen-overlay');
+    if (overlay) {
+      document.body.removeChild(overlay);
+    }
+    
+    // Make the original visible again
+    if (appElement instanceof HTMLElement) {
+      appElement.style.visibility = 'visible';
+    }
+  }
+}
+
 interface FullscreenToggleProps {
   className?: string;
   iconClassName?: string;
@@ -15,60 +96,46 @@ export function FullscreenToggle({
   buttonClassName = '',
   showTooltip = true
 }: FullscreenToggleProps) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(globalState.isFullscreenMode);
 
-  // Update fullscreen state when it changes outside this component
+  // Register this component as a listener for fullscreen state changes
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(
-        document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).mozFullScreenElement ||
-        (document as any).msFullscreenElement
-      ));
+    const listener = (isFullscreenMode: boolean) => {
+      setIsFullscreen(isFullscreenMode);
     };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-
+    
+    globalState.listeners.add(listener);
+    
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+      globalState.listeners.delete(listener);
     };
   }, []);
 
-  const toggleFullscreen = async () => {
-    try {
-      if (!isFullscreen) {
-        // Enter fullscreen
-        const element = document.documentElement;
-        if (element.requestFullscreen) {
-          await element.requestFullscreen();
-        } else if ((element as any).webkitRequestFullscreen) {
-          await (element as any).webkitRequestFullscreen();
-        } else if ((element as any).mozRequestFullScreen) {
-          await (element as any).mozRequestFullScreen();
-        } else if ((element as any).msRequestFullscreen) {
-          await (element as any).msRequestFullscreen();
-        }
-      } else {
-        // Exit fullscreen
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
-        } else if ((document as any).webkitExitFullscreen) {
-          await (document as any).webkitExitFullscreen();
-        } else if ((document as any).mozCancelFullScreen) {
-          await (document as any).mozCancelFullScreen();
-        } else if ((document as any).msExitFullscreen) {
-          await (document as any).msExitFullscreen();
-        }
+  // Keyboard shortcut for toggling fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      } else if (e.key === 'Escape' && isFullscreen) {
+        toggleFullscreen();
       }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen]);
+
+  const toggleFullscreen = () => {
+    try {
+      // Toggle the fullscreen mode using our CSS approach
+      const newState = !isFullscreen;
+      applyCSSFullscreen(newState);
+      notifyFullscreenChange(newState);
     } catch (err) {
-      console.error('Error toggling fullscreen:', err);
+      console.error('Error toggling CSS fullscreen:', err);
     }
   };
 
