@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Note } from '@shared/schema';
-import { PresentationTheme, getAccentColor, isPortraitImage, isYoutubeShorts } from '@/lib/presentation-themes';
+import { 
+  PresentationTheme, 
+  getAccentColor, 
+  isPortraitImage, 
+  isYoutubeShorts,
+  PRESENTATION_THEMES
+} from '@/lib/presentation-themes';
 import { Link, MessageCircle, Clock, ArrowRight } from 'lucide-react';
 import { 
   getTypographyStyles, 
@@ -105,8 +111,24 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
   const limitedChildNotes = childNotes.slice(0, 6);
   const hasMoreChildren = childNotes.length > 6;
   
-  // Accent color for markers and icons
-  const accentColor = getAccentColor(theme);
+  // Get the next color theme for bullets to make them stand out
+  const getNextThemeColor = (currentTheme: PresentationTheme): string => {
+    // Find the current theme index in the presentation themes array
+    const currentIndex = PRESENTATION_THEMES.findIndex(t => t.name === currentTheme.name);
+    
+    // If we can't find the theme or it's the START_END_THEME, use a default contrasting color
+    if (currentIndex === -1) {
+      // For START_END_THEME (blue), use the Sand theme's orange color for contrast
+      return "#F97316"; // Orange 500
+    }
+    
+    // Get the next theme in the array (with wraparound)
+    const nextIndex = (currentIndex + 1) % PRESENTATION_THEMES.length;
+    return PRESENTATION_THEMES[nextIndex].colors.base;
+  };
+  
+  // Accent color for markers and icons - use next theme color for better contrast
+  const accentColor = getNextThemeColor(theme);
   
   // If still determining layout, show a loading indicator
   if (isLoading) {
