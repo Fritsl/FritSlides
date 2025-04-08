@@ -37,6 +37,9 @@ export interface IStorage {
   deleteNote(id: number): Promise<boolean>;
   updateNoteOrder(id: number, order: number | string): Promise<boolean>;
   updateNoteParent(id: number, parentId: number | null, order?: number | string): Promise<boolean>;
+  
+  // Optimized batch version for imports
+  updateNoteParentsBatch(updates: {id: number, parentId: number | null, order?: number | string}[]): Promise<boolean>;
   normalizeNoteOrders(parentId: number | null): Promise<boolean>;
   
   // Session store
@@ -313,6 +316,61 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error("Error updating note parent:", error);
       throw error;
+    }
+  }
+  
+  async updateNoteParentsBatch(updates: {id: number, parentId: number | null, order?: number | string}[]): Promise<boolean> {
+    try {
+      // Track unique parent IDs that need normalization after updates
+      const parentsToNormalize = new Set<number | null>();
+      
+      // Use a transaction for better performance and data integrity
+      await db.transaction(async (tx) => {
+        // Process updates in batches for better performance
+        const batchSize = 25;
+        
+        for (let i = 0; i < updates.length; i += batchSize) {
+          const batch = updates.slice(i, i + batchSize);
+          
+          // Process all updates in the current batch
+          await Promise.all(batch.map(async ({ id, parentId, order }) => {
+            // Convert order to a number if provided, or use a default
+            const orderValue = order !== undefined ? Number(order) : 999999;
+            
+            await tx.update(notes)
+              .set({ 
+                parentId, 
+                order: orderValue,
+                updatedAt: new Date() 
+              })
+              .where(eq(notes.id, id));
+            
+            // Add this parent to the list that needs normalization
+            parentsToNormalize.add(parentId);
+            
+            // Optional: Log progress periodically to avoid console spam
+            if (i % 25 === 0 || i === updates.length - 1) {
+              console.log(`Batch parent update progress: ${Math.min(i + batchSize, updates.length)}/${updates.length}`);
+            }
+          }));
+        }
+      });
+      
+      console.log(`Successfully updated ${updates.length} note parents in batch mode`);
+      
+      // After all updates, normalize the order values for each affected parent
+      // We skip this during large imports as it's done at the end
+      if (updates.length < 100) {
+        // Apply normalization to all affected parents
+        for (const parentId of parentsToNormalize) {
+          await this.normalizeNoteOrders(parentId);
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error in batch update of note parents:", error);
+      return false;
     }
   }
   
@@ -624,6 +682,58 @@ export class MemStorage implements IStorage {
     } catch (error) {
       console.error("Error updating note parent in MemStorage:", error);
       throw error;
+    }
+  }
+  
+  async updateNoteParentsBatch(updates: {id: number, parentId: number | null, order?: number | string}[]): Promise<boolean> {
+    try {
+      // Track unique parent IDs that need normalization after updates
+      const parentsToNormalize = new Set<number | null>();
+      
+      // For MemStorage, we can process all updates at once
+      for (let i = 0; i < updates.length; i++) {
+        const { id, parentId, order } = updates[i];
+        const note = this.notes.get(id);
+        if (!note) continue;
+        
+        // Store old parent for normalization
+        const oldParentId = note.parentId;
+        if (oldParentId !== parentId) {
+          parentsToNormalize.add(oldParentId);
+        }
+        parentsToNormalize.add(parentId);
+        
+        // Convert order to a number or use a default
+        const orderValue = order !== undefined ? Number(order) : 999999;
+        
+        // Update the note with its new parent and order
+        const updatedNote = { 
+          ...note, 
+          parentId, 
+          order: orderValue,
+          updatedAt: new Date() 
+        };
+        
+        this.notes.set(id, updatedNote);
+        
+        // Log progress periodically
+        if (i % 25 === 0 || i === updates.length - 1) {
+          console.log(`Batch parent update progress (memory): ${i + 1}/${updates.length}`);
+        }
+      }
+      
+      // After all updates, normalize the order values for each affected parent
+      // We skip this during large imports as it's done at the end
+      if (updates.length < 100) {
+        for (const parentId of parentsToNormalize) {
+          await this.normalizeNoteOrders(parentId);
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error in batch update of note parents in MemStorage:", error);
+      return false;
     }
   }
   

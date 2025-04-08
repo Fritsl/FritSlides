@@ -82,15 +82,32 @@ export function ImportDialog({
       // Start at 5% to show immediate feedback
       setProgress(5);
       
-      // Simulate progress up to 90% during the pending state
+      // Simulate progress up to 60% for first pass (note creation)
+      // Then 60-90% for second pass (parent relationships)
       // The remaining 10% will be set when the operation completes
       interval = setInterval(() => {
         setProgress(prev => {
-          // Increase more quickly at the beginning, then slow down
-          const increment = prev < 30 ? 5 : prev < 60 ? 3 : 1;
-          return Math.min(prev + increment, 90);
+          // First phase (note creation) - faster progress
+          if (prev < 60) {
+            const increment = prev < 30 ? 5 : 3;
+            return Math.min(prev + increment, 60);
+          } 
+          // Second phase (slower for parent relationships)
+          else {
+            // Slower progress during parent relationship processing
+            return Math.min(prev + 0.5, 90);
+          }
         });
-      }, 300);
+      }, 200);
+
+      // Add extra info for users about long imports
+      if (noteCount > 50) {
+        toast({
+          title: "Large Import Detected",
+          description: "This import may take a few minutes. The app will remain functional during import.",
+          duration: 6000,
+        });
+      }
     } else if (!importMutation.isPending && !importMutation.isSuccess) {
       // Reset progress when not pending and not successful
       setProgress(0);
@@ -99,7 +116,7 @@ export function ImportDialog({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [importMutation.isPending, importMutation.isSuccess, noteCount]);
+  }, [importMutation.isPending, importMutation.isSuccess, noteCount, toast]);
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
@@ -244,7 +261,11 @@ export function ImportDialog({
                 ) : (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin text-primary" />
-                    <span className="text-xs text-muted-foreground">This may take a while for large imports</span>
+                    <span className="text-xs text-muted-foreground">
+                  {noteCount && noteCount > 50 
+                    ? "Large import in progress - this may take a few minutes" 
+                    : "This may take a moment to complete"}
+                </span>
                   </>
                 )}
               </div>

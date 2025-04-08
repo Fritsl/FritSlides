@@ -448,20 +448,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Second pass: Update parent relationships
-      for (const note of importData.notes as ImportedNote[]) {
-        // Make sure parentId is a valid number before using it
-        const parentId = typeof note.parentId === 'number' ? note.parentId : null;
+      // Second pass: Update parent relationships using batch processing for better performance
+      const notesWithParents = importData.notes.filter(note => 
+        typeof note.parentId === 'number' && 
+        idMap.has(note.parentId as number)
+      );
+      
+      console.log(`Starting parent relationship updates for ${notesWithParents.length} notes using batch processing`);
+      
+      // Build a batch update array for all parent relationships
+      const parentUpdates: {id: number, parentId: number | null, order?: number | string}[] = [];
+      
+      for (let i = 0; i < notesWithParents.length; i++) {
+        const note = notesWithParents[i];
+        const parentId = note.parentId as number; // We already filtered for numbers
         
-        if (parentId !== null && idMap.has(parentId)) {
-          const newId = idMap.get(note.id);
-          const newParentId = idMap.get(parentId);
+        const newId = idMap.get(note.id);
+        const newParentId = idMap.get(parentId);
+        
+        if (newId !== undefined && newParentId !== undefined) {
+          // Pass the original note's order if available, or derive from position
+          const orderValue = typeof note.order !== 'undefined' ? 
+            note.order : 
+            typeof note.position === 'number' ? 
+            note.position : 
+            i; // Use index as fallback
           
-          if (newId !== undefined && newParentId !== undefined) {
-            await storage.updateNoteParent(newId, newParentId);
-          }
+          // Add to batch updates instead of processing individually
+          parentUpdates.push({
+            id: newId,
+            parentId: newParentId,
+            order: orderValue
+          });
         }
       }
+      
+      // Process all parent updates in a single batch operation
+      console.log(`Processing ${parentUpdates.length} parent updates in batch mode`);
+      await storage.updateNoteParentsBatch(parentUpdates);
+      
+      console.log(`Completed all parent relationship updates`);
       
       // Return success with count and total count for completion display
       return res.status(200).json({ 
