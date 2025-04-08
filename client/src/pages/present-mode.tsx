@@ -9,6 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { getPresentationTheme, getThemeBackgroundStyle, PresentationTheme } from "@/lib/presentation-themes";
 import { OverviewSlide } from "@/components/ui/overview-slide";
 import { Note, Project } from "@shared/schema";
+import { 
+  getTypographyStyles, 
+  generateTypographyStyles, 
+  ContentType, 
+  determineContentType 
+} from "@/lib/presentation-typography";
 
 // Extended note type with level, theme, and child information for presentation
 interface PresentationNote extends Note {
@@ -236,16 +242,44 @@ export default function PresentMode() {
   const theme = getPresentationTheme(level, rootIndex);
   const themeStyles = getThemeBackgroundStyle(theme);
   
-  // Helper functions for content display
+  // Helper functions for content display using typography system
   const formatContent = (content: string) => {
-    return content.split('\\n').map((line, i) => (
-      <p key={i} className={i === 0 
-        ? "text-5xl font-bold mb-8 tracking-tight drop-shadow-md" 
-        : "text-3xl mb-5 font-light tracking-wide"
-      }>
-        {line}
-      </p>
-    ));
+    const lines = content.split('\\n');
+    
+    // Determine if this is a root level note (level 0)
+    const isRootNote = level === 0;
+    const hasChildren = currentNote.hasChildren || false;
+    
+    // Determine content type based on note level and if it has children
+    const contentType = determineContentType(isRootNote, hasChildren);
+    
+    return lines.map((line, i) => {
+      // First line uses heading typography, subsequent lines use body typography
+      const lineContentType = i === 0 ? contentType : ContentType.Regular;
+      
+      // Get typography settings based on content type, level, and text length
+      const typography = getTypographyStyles(
+        lineContentType,
+        level, 
+        line.length
+      );
+      
+      // Generate the CSS styles
+      const styles = generateTypographyStyles(typography);
+      
+      // Add margins and drop shadow
+      const combinedStyles = {
+        ...styles,
+        marginBottom: i === 0 ? '2rem' : '1.25rem',
+        textShadow: i === 0 ? '0 2px 4px rgba(0,0,0,0.2)' : 'none'
+      };
+      
+      return (
+        <p key={i} style={combinedStyles}>
+          {line}
+        </p>
+      );
+    });
   };
   
   // Convert YouTube time to seconds for embedding
@@ -318,14 +352,27 @@ export default function PresentMode() {
                 {formatContent(currentNote.content)}
               </div>
               
-              {/* URL link if present */}
+              {/* URL link if present - with typography styling */}
               {currentNote.url && (
                 <div className="mt-8">
                   <a
                     href={currentNote.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-white/90 hover:text-white flex items-center text-2xl border-b border-white/30 pb-2 w-fit"
+                    style={{
+                      ...generateTypographyStyles(getTypographyStyles(
+                        ContentType.Regular,
+                        level + 1,
+                        (currentNote.linkText || currentNote.url).length
+                      )),
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+                      paddingBottom: '0.5rem',
+                      width: 'fit-content'
+                    }}
+                    className="hover:text-white"
                   >
                     <span className="mr-2">🔗</span>
                     {currentNote.linkText || currentNote.url}

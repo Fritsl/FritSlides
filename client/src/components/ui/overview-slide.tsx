@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Note } from '@shared/schema';
 import { PresentationTheme, getAccentColor, isPortraitImage, isYoutubeShorts } from '@/lib/presentation-themes';
 import { Link, MessageCircle } from 'lucide-react';
+import { 
+  getTypographyStyles, 
+  generateTypographyStyles, 
+  ContentType, 
+  determineContentType 
+} from '@/lib/presentation-typography';
 
 interface OverviewSlideProps {
   parentNote: Note;
@@ -70,13 +76,28 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
     return `https://www.youtube.com/embed/${videoId}?autoplay=0${startTime}`;
   };
   
-  // Format the parent note content as title
+  // Format the parent note content as title using typography system
   const formatTitle = () => {
     // Split by newlines and use first line as title
     const lines = parentNote.content.split('\\n');
+    const titleText = lines[0];
+    
+    // Determine the content type (should be Section for overview slides)
+    const contentType = ContentType.Section;
+    
+    // Get font settings based on the level and content length
+    const typography = getTypographyStyles(
+      contentType, 
+      0, // Level is usually 0 for section headers
+      titleText.length
+    );
+    
+    // Generate CSS styles
+    const styles = generateTypographyStyles(typography);
+    
     return (
-      <h1 className="text-5xl font-bold mb-10 tracking-tight drop-shadow-md text-center">
-        {lines[0]}
+      <h1 style={styles} className="mb-10 drop-shadow-md text-center">
+        {titleText}
       </h1>
     );
   };
@@ -142,7 +163,14 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                   style={{ backgroundColor: accentColor }}
                 />
                 <div className="flex-1">
-                  <p className="text-2xl font-light">{note.content.split('\\n')[0]}</p>
+                  {/* Use typography system for child item content */}
+                  <p style={generateTypographyStyles(getTypographyStyles(
+                    ContentType.Regular,
+                    1, // Level 1 for child items in overview
+                    note.content.split('\\n')[0].length
+                  ))}>
+                    {note.content.split('\\n')[0]}
+                  </p>
                   <div className="flex mt-1 space-x-2">
                     {note.url && (
                       <div className="text-white/70">
@@ -187,7 +215,14 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
               style={{ backgroundColor: accentColor }}
             />
             <div className="flex-1">
-              <p className="text-2xl font-light">{note.content.split('\\n')[0]}</p>
+              {/* Use typography system for child item content in single column layout */}
+              <p style={generateTypographyStyles(getTypographyStyles(
+                ContentType.Regular,
+                1, // Level 1 for child items in overview
+                note.content.split('\\n')[0].length
+              ))}>
+                {note.content.split('\\n')[0]}
+              </p>
               <div className="flex mt-1 space-x-2">
                 {note.url && (
                   <div className="text-white/70">
