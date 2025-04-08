@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Note } from '@shared/schema';
 import { PresentationTheme, getAccentColor, isPortraitImage, isYoutubeShorts } from '@/lib/presentation-themes';
-import { Link, MessageCircle } from 'lucide-react';
+import { Link, MessageCircle, Clock, ArrowRight } from 'lucide-react';
 import { 
   getTypographyStyles, 
   generateTypographyStyles, 
@@ -85,14 +85,19 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
     // Use responsive classes instead of dynamic typography
     return (
       <h1 
-        className="text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-4 sm:mb-6 drop-shadow-md font-semibold"
+        className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-4 sm:mb-6 drop-shadow-md font-bold"
         style={{
           fontFamily: '"Roboto", sans-serif',
           lineHeight: 1.2,
           letterSpacing: '0.02em',
           overflowWrap: 'break-word',
           hyphens: 'auto',
-          maxWidth: '100%'
+          maxWidth: '100%',
+          background: `linear-gradient(to right, rgba(255,255,255,1), rgba(255,255,255,0.8))`,
+          backgroundClip: 'text',
+          WebkitBackgroundClip: 'text',
+          color: 'transparent',
+          textShadow: '0 2px 4px rgba(0,0,0,0.3)'
         }}
       >
         {titleText}
@@ -120,15 +125,15 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
   if (mediaLayout !== 'none') {
     const mediaColumnClass = 
       mediaLayout === 'portrait' || mediaLayout === 'shorts' 
-        ? 'w-full sm:w-[280px] md:w-[350px]' 
-        : 'w-full sm:w-1/2';
+        ? 'w-full sm:w-[320px] md:w-[380px]' 
+        : 'w-full sm:w-2/5';
     
     return (
       <div className="flex flex-col sm:flex-row h-full w-full overflow-hidden">
         {/* Media column - full width on mobile, sized appropriately on larger screens */}
-        <div className={`${mediaColumnClass} p-3 sm:p-6 flex items-center justify-center ${mediaLayout === 'portrait' || mediaLayout === 'shorts' ? 'max-h-[30vh] sm:max-h-none' : ''}`}>
+        <div className={`${mediaColumnClass} p-3 sm:p-6 flex items-center justify-center ${mediaLayout === 'portrait' || mediaLayout === 'shorts' ? 'max-h-[35vh] sm:max-h-none' : ''}`}>
           {mediaLayout === 'video' || mediaLayout === 'shorts' ? (
-            <div className="w-full h-auto aspect-video rounded-lg overflow-hidden shadow-xl">
+            <div className="w-full h-auto aspect-video rounded-xl overflow-hidden shadow-2xl bg-black/30 border border-white/10">
               <iframe
                 className="w-full h-full"
                 src={getYoutubeEmbedUrl(parentNote.youtubeLink || '', parentNote.time)}
@@ -139,7 +144,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
               />
             </div>
           ) : parentNote.images && parentNote.images.length > 0 ? (
-            <div className="rounded-lg overflow-hidden shadow-xl max-h-[20vh] sm:max-h-none">
+            <div className="rounded-xl overflow-hidden shadow-2xl max-h-[35vh] sm:max-h-none border border-white/20">
               <img 
                 src={parentNote.images[0]} 
                 alt="Slide image"
@@ -151,53 +156,90 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
         
         {/* Content column */}
         <div className="flex-1 p-3 sm:p-6 flex flex-col overflow-hidden">
-          <div className="text-center sm:text-left">
+          <div className="text-center sm:text-left mb-4 sm:mb-6">
             {formatTitle()}
           </div>
           
-          <div className="flex flex-col space-y-2 sm:space-y-4 overflow-y-auto">
-            {limitedChildNotes.map((note, index) => (
-              <div key={note.id} className="flex items-start">
-                <div 
-                  className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-1.5 sm:mt-2 mr-2 sm:mr-4 flex-shrink-0" 
-                  style={{ backgroundColor: accentColor }}
-                />
-                <div className="flex-1">
-                  {/* Use typography system with smaller text on mobile */}
-                  <p 
-                    className="text-sm sm:text-base md:text-lg lg:text-xl"
-                    style={{
-                      fontFamily: '"Roboto", sans-serif',
-                      fontWeight: 400,
-                      lineHeight: 1.4,
-                      letterSpacing: '0.01em',
-                    }}
-                  >
-                    {note.content.split('\\n')[0]}
-                  </p>
-                  <div className="flex mt-1 space-x-2">
-                    {note.url && (
-                      <div className="text-white/70">
-                        <Link size={12} className="w-3 h-3 sm:w-4 sm:h-4" />
-                      </div>
-                    )}
-                    {(note.content.toLowerCase().includes('discuss') || 
-                      note.content.toLowerCase().includes('discussion')) && (
-                      <div className="text-white/70">
-                        <MessageCircle size={12} className="w-3 h-3 sm:w-4 sm:h-4" />
-                      </div>
-                    )}
+          <div className="flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
+            {limitedChildNotes.map((note, index) => {
+              // Check if note has time marker
+              const hasTimeMarker = note.time && note.time.trim().length > 0;
+              
+              return (
+                <div key={note.id} className="flex items-start group">
+                  {/* Fancy interactive marker */}
+                  <div className="relative">
+                    <div 
+                      className="w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-1.5 mr-3 sm:mr-4 flex-shrink-0 transition-all duration-300 group-hover:scale-125" 
+                      style={{ 
+                        backgroundColor: accentColor,
+                        boxShadow: "0 0 8px rgba(255, 255, 255, 0.4)"
+                      }}
+                    />
+                    {/* Animating pulse effect */}
+                    <div 
+                      className="absolute top-0 left-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
+                      style={{ backgroundColor: accentColor }}
+                    ></div>
+                  </div>
+                  
+                  <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-lg p-3 transition-all duration-300 group-hover:bg-white/15">
+                    {/* Child note content */}
+                    <p 
+                      className="text-sm sm:text-base md:text-lg lg:text-xl font-medium"
+                      style={{
+                        fontFamily: '"Roboto", sans-serif',
+                        lineHeight: 1.4,
+                        letterSpacing: '0.01em',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                      }}
+                    >
+                      {note.content.split('\\n')[0]}
+                    </p>
+                    
+                    {/* Icons for additional features */}
+                    <div className="flex mt-2 space-x-3 text-white/80 flex-wrap">
+                      {note.url && (
+                        <div className="flex items-center text-white/80">
+                          <Link size={14} className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
+                          <span className="text-xs">Link</span>
+                        </div>
+                      )}
+                      
+                      {(note.content.toLowerCase().includes('discuss') || 
+                        note.content.toLowerCase().includes('discussion')) && (
+                        <div className="flex items-center text-white/80">
+                          <MessageCircle size={14} className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
+                          <span className="text-xs">Discussion</span>
+                        </div>
+                      )}
+                      
+                      {hasTimeMarker && (
+                        <div className="flex items-center text-white/80">
+                          <Clock size={14} className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
+                          <span className="text-xs">{note.time}</span>
+                        </div>
+                      )}
+                      
+                      {note.youtubeLink && (
+                        <div className="flex items-center text-white/80 ml-auto">
+                          <div className="text-xs bg-red-600/80 px-1.5 py-0.5 rounded">YouTube</div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             
             {hasMoreChildren && (
-              <div className="flex items-center mt-2">
-                <div 
-                  className="w-2 h-2 sm:w-3 sm:h-3 opacity-0 mr-2 sm:mr-4 flex-shrink-0" 
-                />
-                <p className="text-xl sm:text-2xl text-white/70">...</p>
+              <div className="flex items-center justify-center mt-3">
+                <div className="flex items-center space-x-1 px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-sm">
+                  <p className="text-xs sm:text-sm text-white/90 font-medium">
+                    +{childNotes.length - limitedChildNotes.length} more slides
+                  </p>
+                  <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                </div>
               </div>
             )}
           </div>
@@ -209,53 +251,90 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
   // Single column layout for slides without media - fully responsive
   return (
     <div className="flex flex-col h-full w-full max-w-4xl mx-auto p-3 sm:p-6 overflow-hidden">
-      <div className="text-center mb-3 sm:mb-6">
+      <div className="text-center mb-6 sm:mb-10">
         {formatTitle()}
       </div>
       
-      <div className="flex flex-col space-y-2 sm:space-y-4 overflow-y-auto">
-        {limitedChildNotes.map((note, index) => (
-          <div key={note.id} className="flex items-start">
-            <div 
-              className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-1.5 sm:mt-2 mr-2 sm:mr-4 flex-shrink-0" 
-              style={{ backgroundColor: accentColor }}
-            />
-            <div className="flex-1">
-              {/* Use responsive sizing with direct CSS rather than dynamic typography */}
-              <p 
-                className="text-sm sm:text-base md:text-lg lg:text-xl"
-                style={{
-                  fontFamily: '"Roboto", sans-serif',
-                  fontWeight: 400,
-                  lineHeight: 1.4,
-                  letterSpacing: '0.01em',
-                }}
-              >
-                {note.content.split('\\n')[0]}
-              </p>
-              <div className="flex mt-1 space-x-2">
-                {note.url && (
-                  <div className="text-white/70">
-                    <Link size={12} className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </div>
-                )}
-                {(note.content.toLowerCase().includes('discuss') || 
-                  note.content.toLowerCase().includes('discussion')) && (
-                  <div className="text-white/70">
-                    <MessageCircle size={12} className="w-3 h-3 sm:w-4 sm:h-4" />
-                  </div>
-                )}
+      <div className="flex flex-col space-y-3 sm:space-y-5 overflow-y-auto max-w-3xl mx-auto">
+        {limitedChildNotes.map((note, index) => {
+          // Check if note has time marker
+          const hasTimeMarker = note.time && note.time.trim().length > 0;
+          
+          return (
+            <div key={note.id} className="flex items-start group">
+              {/* Fancy interactive marker */}
+              <div className="relative">
+                <div 
+                  className="w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-1.5 mr-3 sm:mr-5 flex-shrink-0 transition-all duration-300 group-hover:scale-125" 
+                  style={{ 
+                    backgroundColor: accentColor,
+                    boxShadow: "0 0 8px rgba(255, 255, 255, 0.4)"
+                  }}
+                />
+                {/* Animating pulse effect */}
+                <div 
+                  className="absolute top-0 left-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
+                  style={{ backgroundColor: accentColor }}
+                ></div>
+              </div>
+              
+              <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-lg p-3 sm:p-4 transition-all duration-300 group-hover:bg-white/15">
+                {/* Child note content */}
+                <p 
+                  className="text-base sm:text-lg md:text-xl lg:text-2xl font-medium"
+                  style={{
+                    fontFamily: '"Roboto", sans-serif',
+                    lineHeight: 1.4,
+                    letterSpacing: '0.01em',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  {note.content.split('\\n')[0]}
+                </p>
+                
+                {/* Icons for additional features */}
+                <div className="flex mt-2 space-x-3 text-white/80">
+                  {note.url && (
+                    <div className="flex items-center text-white/80">
+                      <Link size={14} className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
+                      <span className="text-xs sm:text-sm">Link</span>
+                    </div>
+                  )}
+                  
+                  {(note.content.toLowerCase().includes('discuss') || 
+                    note.content.toLowerCase().includes('discussion')) && (
+                    <div className="flex items-center text-white/80">
+                      <MessageCircle size={14} className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
+                      <span className="text-xs sm:text-sm">Discussion</span>
+                    </div>
+                  )}
+                  
+                  {hasTimeMarker && (
+                    <div className="flex items-center text-white/80">
+                      <Clock size={14} className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
+                      <span className="text-xs sm:text-sm">{note.time}</span>
+                    </div>
+                  )}
+                  
+                  {note.youtubeLink && (
+                    <div className="flex items-center text-white/80 ml-auto">
+                      <div className="text-xs sm:text-sm bg-red-600/80 px-2 py-0.5 rounded">YouTube</div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         
         {hasMoreChildren && (
-          <div className="flex items-center mt-2">
-            <div 
-              className="w-2 h-2 sm:w-3 sm:h-3 opacity-0 mr-2 sm:mr-4 flex-shrink-0" 
-            />
-            <p className="text-xl sm:text-2xl text-white/70">...</p>
+          <div className="flex items-center justify-center mt-4 mx-auto">
+            <div className="flex items-center space-x-2 px-5 py-2 rounded-full bg-white/20 backdrop-blur-sm">
+              <p className="text-sm sm:text-base text-white/90 font-medium">
+                +{childNotes.length - limitedChildNotes.length} more slides
+              </p>
+              <ArrowRight className="w-4 h-4" />
+            </div>
           </div>
         )}
       </div>
