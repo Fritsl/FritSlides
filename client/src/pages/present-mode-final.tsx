@@ -439,8 +439,8 @@ export default function PresentModeFixed() {
                           <div className="flex flex-col items-center mt-8 space-y-6">
                             <div className="flex flex-col space-y-4 items-start">
                               {rootNotes.map((rootNote, index) => {
-                                // Use the same START_END_THEME color for all bullets
-                                const accentColor = START_END_THEME.colors.base;
+                                // Use a vibrant color from Pearl theme to make bullets stand out more
+                                const accentColor = "#D946EF"; // Fuchsia 500 from Pearl theme
                                 
                                 return (
                                   <div key={rootNote.id} className="flex items-center group">
