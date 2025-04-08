@@ -7,7 +7,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/comp
 import { Users } from "lucide-react";
 import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, PresentationTheme } from "@/lib/presentation-themes";
 import { formatContent, getYoutubeEmbedUrl, calculateLevel, ContentType, getTypographyStyles, generateTypographyStyles } from "@/components/slide-components";
-import { getAdvancedTypographyStyles, generateAdvancedStyles, SlideContentType } from "@/lib/advanced-typography";
+import { getAdvancedTypographyStyles, generateAdvancedStyles, SlideContentType, FONTS } from "@/lib/advanced-typography";
 import { OverviewSlide } from "@/components/ui/overview-slide";
 import { FullscreenToggle } from "@/components/ui/fullscreen-toggle";
 import screenfull from "screenfull";
@@ -82,6 +82,9 @@ export default function PresentModeFixed() {
     return projects.find((p) => p.id === projectId) || null;
   }, [projects, projectId]);
   
+  // Store root notes for display on the start slide
+  const [rootNotes, setRootNotes] = useState<PresentationNote[]>([]);
+  
   // Process notes into presentation format
   const flattenedNotes = useMemo(() => {
     if (!notes || notes.length === 0) return [];
@@ -93,13 +96,13 @@ export default function PresentModeFixed() {
     });
     
     // First pass: calculate levels and identify parent-child relationships
-    const rootNotes: PresentationNote[] = [];
+    const rootNotesArray: PresentationNote[] = [];
     notes.forEach(note => {
       const presentationNote = notesMap.get(note.id)!;
       if (note.parentId === null) {
         // This is a root-level note
         presentationNote.level = 0;
-        rootNotes.push(presentationNote);
+        rootNotesArray.push(presentationNote);
       } else {
         // This is a child note, find its parent and update it
         const parent = notesMap.get(note.parentId);
@@ -111,7 +114,7 @@ export default function PresentModeFixed() {
         } else {
           // If parent not found (data inconsistency), treat as root
           presentationNote.level = 0;
-          rootNotes.push(presentationNote);
+          rootNotesArray.push(presentationNote);
         }
       }
     });
@@ -150,7 +153,10 @@ export default function PresentModeFixed() {
     }
     
     // Sort root notes by order
-    rootNotes.sort((a, b) => String(a.order).localeCompare(String(b.order)));
+    rootNotesArray.sort((a, b) => String(a.order).localeCompare(String(b.order)));
+    
+    // Set the root notes for use in the start slide
+    setRootNotes(rootNotesArray);
     
     // Use a rootIndex to keep track of which root note each slide belongs to
     // This is used for consistent theming of related slides
@@ -195,7 +201,7 @@ export default function PresentModeFixed() {
     };
     
     // Process each root note and all its descendants
-    rootNotes.forEach(rootNote => {
+    rootNotesArray.forEach(rootNote => {
       addNoteAndChildren(rootNote, rootIndex);
       rootIndex++; // Increment for the next root branch
     });
@@ -404,11 +410,11 @@ export default function PresentModeFixed() {
                       theme={theme}
                     />
                   ) : isStartSlide ? (
-                    // Start slide with project start slogan
+                    // Start slide with project start slogan and root notes
                     <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center">
                       <div className="w-full text-white">
                         {/* Title using advanced typography system */}
-                        <div className="slide-content flex flex-col items-center justify-center">
+                        <div className="slide-content flex flex-col items-center justify-center mb-12">
                           <div 
                             className="text-center"
                             style={generateAdvancedStyles(getAdvancedTypographyStyles(
@@ -420,6 +426,51 @@ export default function PresentModeFixed() {
                             {currentNote.content}
                           </div>
                         </div>
+                        
+                        {/* Root notes with colored bullets and numbers */}
+                        {rootNotes && rootNotes.length > 0 && (
+                          <div className="flex flex-col items-center mt-8 space-y-6">
+                            <div className="flex flex-col space-y-4 items-start">
+                              {rootNotes.map((rootNote, index) => {
+                                const theme = getPresentationTheme(0, index);
+                                const accentColor = theme.colors.base;
+                                
+                                return (
+                                  <div key={rootNote.id} className="flex items-center group">
+                                    <div className="relative mr-4">
+                                      {/* Numbered bullet with theme color */}
+                                      <div 
+                                        className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+                                        style={{ 
+                                          backgroundColor: accentColor,
+                                          boxShadow: "0 0 10px rgba(255, 255, 255, 0.5)"
+                                        }}
+                                      >
+                                        <span className="text-white font-bold">{index + 1}</span>
+                                      </div>
+                                      {/* Pulse effect on hover */}
+                                      <div 
+                                        className="absolute top-0 left-0 w-10 h-10 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
+                                        style={{ backgroundColor: accentColor }}
+                                      ></div>
+                                    </div>
+                                    
+                                    {/* Root note title */}
+                                    <div 
+                                      className="text-white text-xl md:text-2xl font-medium"
+                                      style={{
+                                        fontFamily: FONTS.body,
+                                        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                      }}
+                                    >
+                                      {rootNote.content.split('\n')[0]}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : isEndSlide ? (
