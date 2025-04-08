@@ -482,12 +482,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         idMap.has(note.parentId as number)
       );
       
-      // Build a batch update array for all parent relationships
-      const parentUpdates: {id: number, parentId: number | null, order?: number | string}[] = [];
+      // Group notes by parent ID to reduce database contention
+      const notesByParent: Map<number, {id: number, parentId: number, order: number | string}[]> = new Map();
       
       for (let i = 0; i < notesWithParents.length; i++) {
         const note = notesWithParents[i];
-        const parentId = note.parentId as number; // We already filtered for numbers
+        const parentId = note.parentId as number; 
         
         const newId = idMap.get(note.id);
         const newParentId = idMap.get(parentId);
@@ -500,8 +500,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             note.position : 
             i; // Use index as fallback
           
-          // Add to batch updates instead of processing individually
-          parentUpdates.push({
+          // Group by parent ID
+          if (!notesByParent.has(newParentId)) {
+            notesByParent.set(newParentId, []);
+          }
+          
+          notesByParent.get(newParentId)?.push({
             id: newId,
             parentId: newParentId,
             order: orderValue
@@ -509,38 +513,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Process all parent updates in a single batch operation
-      addStatus(`Processing ${parentUpdates.length} parent relationships in batch mode`);
+      // Process parent groups sequentially to avoid deadlocks
+      addStatus(`Processing notes grouped by ${notesByParent.size} parents to prevent deadlocks`);
       
-      // Monitor batch progress through custom implementation
       try {
-        // Track the progress of parent relationship updates
         let parentsProcessed = 0;
-        const updateParentsWithProgress = async () => {
-          // Process in smaller batches of 25 for better progress tracking
-          const PARENT_BATCH_SIZE = 25;
+        let notesProcessed = 0;
+        const totalParents = notesByParent.size;
+        
+        // Process each parent group one at a time
+        for (const [parentId, notes] of notesByParent.entries()) {
+          // Smaller batches for each parent group
+          const PARENT_BATCH_SIZE = 10;
           
-          for (let i = 0; i < parentUpdates.length; i += PARENT_BATCH_SIZE) {
-            const batch = parentUpdates.slice(i, i + PARENT_BATCH_SIZE);
+          for (let i = 0; i < notes.length; i += PARENT_BATCH_SIZE) {
+            const batch = notes.slice(i, i + PARENT_BATCH_SIZE);
             
             // Process this small batch
-            await storage.updateNoteParentsBatch(batch);
+            const success = await storage.updateNoteParentsBatch(batch);
             
-            // Update progress
-            parentsProcessed += batch.length;
+            if (!success) {
+              addStatus(`⚠️ Warning: Batch update for parent ${parentId} had issues - will continue with next batch`);
+            }
             
-            // Status update for each batch
-            if (i % 50 === 0 || parentsProcessed >= parentUpdates.length) {
-              const percent = Math.round((parentsProcessed / parentUpdates.length) * 100);
+            // Update processing counters
+            notesProcessed += batch.length;
+            
+            // Provide status updates
+            if (i % 20 === 0 || i + PARENT_BATCH_SIZE >= notes.length) {
+              const percent = Math.round((notesProcessed / notesWithParents.length) * 100);
               const elapsed = ((Date.now() - phase2Start) / 1000).toFixed(1);
-              addStatus(`Phase 2: Processed ${parentsProcessed}/${parentUpdates.length} parent relationships (${percent}%, ${elapsed}s elapsed)`);
+              addStatus(`Phase 2: Processed ${notesProcessed}/${notesWithParents.length} notes (${percent}%, ${elapsed}s elapsed)`);
+            }
+            
+            // Add a small delay between batches to reduce database contention
+            if (notes.length > 20 && i + PARENT_BATCH_SIZE < notes.length) {
+              await new Promise(resolve => setTimeout(resolve, 50));
             }
           }
-        };
+          
+          parentsProcessed++;
+          
+          // Status update for each parent
+          if (parentsProcessed % 5 === 0 || parentsProcessed === totalParents) {
+            const parentPercent = Math.round((parentsProcessed / totalParents) * 100);
+            addStatus(`Completed parent group ${parentsProcessed}/${totalParents} (${parentPercent}%)`);
+          }
+        }
         
-        await updateParentsWithProgress();
+        // After all parent updates, normalize the orders for each parent
+        addStatus(`Post-processing: Normalizing note orders for all parents`);
+        for (const parentId of notesByParent.keys()) {
+          const success = await storage.normalizeNoteOrders(parentId);
+          if (!success) {
+            addStatus(`⚠️ Warning: Could not normalize orders for parent ${parentId}`);
+          }
+        }
       } catch (error) {
-        console.error("Error in batch parent updates:", error);
+        console.error("Error in parent relationship updates:", error);
         addStatus(`Error during parent relationship updates: ${error}`);
       }
       

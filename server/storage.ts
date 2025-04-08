@@ -324,16 +324,16 @@ export class DatabaseStorage implements IStorage {
       // Track unique parent IDs that need normalization after updates
       const parentsToNormalize = new Set<number | null>();
       
-      // Use a transaction for better performance and data integrity
-      await db.transaction(async (tx) => {
-        // Process updates in batches for better performance
-        const batchSize = 25;
+      // Process updates in smaller, sequential batches to prevent deadlocks
+      const batchSize = 10; // Smaller batch size to reduce deadlock risk
+      
+      for (let i = 0; i < updates.length; i += batchSize) {
+        const batch = updates.slice(i, i + batchSize);
         
-        for (let i = 0; i < updates.length; i += batchSize) {
-          const batch = updates.slice(i, i + batchSize);
-          
-          // Process all updates in the current batch
-          await Promise.all(batch.map(async ({ id, parentId, order }) => {
+        // Use a separate transaction for each small batch
+        await db.transaction(async (tx) => {
+          // Process updates sequentially within each batch to avoid concurrency issues
+          for (const { id, parentId, order } of batch) {
             // Convert order to a number if provided, or use a default
             const orderValue = order !== undefined ? Number(order) : 999999;
             
@@ -347,26 +347,24 @@ export class DatabaseStorage implements IStorage {
             
             // Add this parent to the list that needs normalization
             parentsToNormalize.add(parentId);
-            
-            // Optional: Log progress periodically to avoid console spam
-            if (i % 25 === 0 || i === updates.length - 1) {
-              console.log(`Batch parent update progress: ${Math.min(i + batchSize, updates.length)}/${updates.length}`);
-            }
-          }));
+          }
+        });
+        
+        // Optional: Log progress periodically to avoid console spam
+        if (i % 20 === 0 || i + batchSize >= updates.length) {
+          console.log(`Batch parent update progress: ${Math.min(i + batchSize, updates.length)}/${updates.length}`);
         }
-      });
-      
-      console.log(`Successfully updated ${updates.length} note parents in batch mode`);
-      
-      // After all updates, normalize the order values for each affected parent
-      // We skip this during large imports as it's done at the end
-      if (updates.length < 100) {
-        // Apply normalization to all affected parents
-        for (const parentId of parentsToNormalize) {
-          await this.normalizeNoteOrders(parentId);
+        
+        // Add a small delay between batches to reduce database contention
+        if (updates.length > 50 && i + batchSize < updates.length) {
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
       }
       
+      console.log(`Successfully updated ${updates.length} note parents in batch mode`);
+      
+      // For large imports, we'll skip immediate normalization to avoid deadlocks
+      // It will be done as a separate step at the end of the import process
       return true;
     } catch (error) {
       console.error("Error in batch update of note parents:", error);
@@ -385,22 +383,38 @@ export class DatabaseStorage implements IStorage {
       
       if (!notesWithSameParent.length) return true;
       
-      // Use a transaction to ensure all updates happen atomically
-      await db.transaction(async (tx) => {
-        // Reassign orders in sequence (0, 1, 2, etc.)
-        for (let i = 0; i < notesWithSameParent.length; i++) {
-          const note = notesWithSameParent[i];
-          await tx
-            .update(notes)
-            .set({ order: i, updatedAt: new Date() })
-            .where(eq(notes.id, note.id));
+      // Process in small batches to avoid deadlocks
+      const batchSize = 10;
+      for (let startIdx = 0; startIdx < notesWithSameParent.length; startIdx += batchSize) {
+        const endIdx = Math.min(startIdx + batchSize, notesWithSameParent.length);
+        const batch = notesWithSameParent.slice(startIdx, endIdx);
+        
+        // Use a transaction for each small batch
+        await db.transaction(async (tx) => {
+          // Process sequentially within each transaction
+          for (let i = 0; i < batch.length; i++) {
+            const note = batch[i];
+            const newOrder = startIdx + i; // Maintain global ordering
+            
+            await tx
+              .update(notes)
+              .set({ order: newOrder, updatedAt: new Date() })
+              .where(eq(notes.id, note.id));
+          }
+        });
+        
+        // Small delay between batches to reduce database contention
+        if (notesWithSameParent.length > 30 && endIdx < notesWithSameParent.length) {
+          await new Promise(resolve => setTimeout(resolve, 20));
         }
-      });
+      }
       
       return true;
     } catch (error) {
       console.error("Error normalizing note orders:", error);
-      throw error;
+      // Return false instead of throwing to make error handling more graceful
+      // This is a non-critical operation that can be retried later
+      return false;
     }
   }
 }
