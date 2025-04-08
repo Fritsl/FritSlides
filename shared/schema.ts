@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, jsonb, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, jsonb, numeric, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -28,6 +28,7 @@ export const notes = pgTable("notes", {
   linkText: text("linkText"),
   youtubeLink: text("youtubeLink"),
   time: text("time"),
+  isDiscussion: boolean("isDiscussion").default(false),
   images: jsonb("images").$type<string[]>().default([]),
   order: numeric("order", { precision: 10, scale: 2 }).notNull().default("0"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

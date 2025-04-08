@@ -4,7 +4,7 @@ import { useProjects } from "@/hooks/use-projects";
 import { useNotes } from "@/hooks/use-notes";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Edit, X, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit, X, Clock, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getPresentationTheme, getThemeBackgroundStyle, PresentationTheme } from "@/lib/presentation-themes";
 import { OverviewSlide } from "@/components/ui/overview-slide";
@@ -154,6 +154,7 @@ export default function PresentMode() {
         linkText: null,
         youtubeLink: null,
         images: null,
+        isDiscussion: false,
         isStartSlide: true,
       };
       flattened.push(startSlide);
@@ -192,6 +193,7 @@ export default function PresentMode() {
         linkText: null,
         youtubeLink: null,
         images: null,
+        isDiscussion: false,
         isEndSlide: true,
         author: currentProject.author,
       };
@@ -593,7 +595,13 @@ export default function PresentMode() {
           </div>
         ) : (
           // Regular slide with content
-          <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
+          <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10 relative">
+            {/* Discussion icon overlay */}
+            {currentNote.isDiscussion && (
+              <div className="absolute top-4 right-4 text-white opacity-80 transition-opacity animate-pulse">
+                <Users className="h-12 w-12 sm:h-12 sm:w-12 md:h-16 md:w-16" />
+              </div>
+            )}
             <div className="w-full text-white">
               <div className="content mb-10">
                 {formatContent(currentNote.content)}

@@ -26,6 +26,7 @@ import {
   X,
   Loader2,
   MoveVertical,
+  Users,
 } from "lucide-react";
 
 interface NoteItemProps {
@@ -96,6 +97,7 @@ export default function NoteItem({
     linkText: note.linkText || "",
     youtubeLink: note.youtubeLink || "",
     time: note.time || "",
+    isDiscussion: note.isDiscussion || false,
     images: note.images || [],
   });
   
@@ -116,6 +118,7 @@ export default function NoteItem({
       linkText: formData.linkText || null,
       youtubeLink: formData.youtubeLink || null,
       time: formData.time || null,
+      isDiscussion: formData.isDiscussion || false,
       images: formData.images,
       // Include other required fields that we're not changing
       projectId: note.projectId,
@@ -155,6 +158,7 @@ export default function NoteItem({
       linkText: note.linkText || "",
       youtubeLink: note.youtubeLink || "",
       time: note.time || "",
+      isDiscussion: note.isDiscussion || false,
       images: note.images || [],
     });
     
@@ -407,6 +411,7 @@ export default function NoteItem({
       linkText: note.linkText,
       youtubeLink: note.youtubeLink,
       time: note.time,
+      isDiscussion: note.isDiscussion,
       images: note.images
     });
     
@@ -424,6 +429,7 @@ export default function NoteItem({
         linkText: note.linkText || "",
         youtubeLink: note.youtubeLink || "",
         time: note.time || "",
+        isDiscussion: note.isDiscussion || false,
         images: [...(note.images || [])]
       };
       
@@ -649,6 +655,21 @@ export default function NoteItem({
                 </div>
               </div>
               
+              {/* Discussion toggle - marks slide for interactive discussion */}
+              <div className="flex items-center">
+                <label className="font-medium text-white w-16 text-xs">Discussion</label>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={formData.isDiscussion}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isDiscussion: checked }))}
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                  <div className="text-gray-400 text-[10px]">
+                    mark as discussion point
+                  </div>
+                </div>
+              </div>
+              
               {/* Image field */}
               <div className="flex flex-col">
                 <label className="font-medium text-white mb-1 text-xs">Images</label>
@@ -727,6 +748,11 @@ export default function NoteItem({
                       <Clock className="h-4 w-4" />
                     </div>
                   )}
+                  {note.isDiscussion && (
+                    <div className="text-blue-200" title="Discussion slide">
+                      <Users className="h-4 w-4" />
+                    </div>
+                  )}
                   <button
                     className={`p-1 text-white hover:text-white ml-1 ${!hasChildren && 'opacity-0'}`}
                     onClick={toggleExpand}
@@ -770,6 +796,7 @@ export default function NoteItem({
                         linkText: "",
                         youtubeLink: "",
                         time: "",
+                        isDiscussion: false,
                         images: []
                       });
                     }}
@@ -796,6 +823,7 @@ export default function NoteItem({
                         linkText: "",
                         youtubeLink: "",
                         time: "",
+                        isDiscussion: false,
                         images: []
                       });
                       
