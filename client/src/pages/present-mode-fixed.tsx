@@ -109,7 +109,7 @@ export default function PresentModeFixed() {
       const startSlide: PresentationNote = {
         id: -1, // Use negative ID to avoid conflicts
         projectId: projectId ?? 0,
-        content: `${project.name}`,
+        content: `${project.name}\n\n*DEBUG*: START SLIDE (ID:-1, Level:0, Special:START)`,
         createdAt: new Date(),
         updatedAt: new Date(),
         order: "",
@@ -122,7 +122,7 @@ export default function PresentModeFixed() {
         images: null,
         level: 0,
         isStartSlide: true,
-        // Debug info
+        // Keep debug info for consistent API
         debugInfo: "START SLIDE"
       };
       result.push(startSlide);
@@ -154,8 +154,8 @@ export default function PresentModeFixed() {
           isOverviewSlide: true,
           childNotes: sortedChildren,
           rootIndex: currentRootIndex,
-          // Debug info
-          debugInfo: `OVERVIEW SLIDE (level=${note.level}, hasChildren=${hasChildren})`
+          // Append debug info to the content itself so it's visible
+          content: note.content + `\n\n*DEBUG*: OVERVIEW SLIDE (ID:${note.id}, Level:${note.level}, HasChildren:${hasChildren ? 'YES' : 'NO'})`
         };
         result.push(overviewSlide);
       } else if (note.level !== 0 || !hasChildren) {
@@ -163,8 +163,8 @@ export default function PresentModeFixed() {
         const noteWithIndex = { 
           ...note, 
           rootIndex: currentRootIndex,
-          // Debug info
-          debugInfo: `REGULAR SLIDE (level=${note.level}, hasChildren=${hasChildren})`
+          // Append debug info to the content itself so it's visible
+          content: note.content + `\n\n*DEBUG*: REGULAR SLIDE (ID:${note.id}, Level:${note.level}, HasChildren:${hasChildren ? 'YES' : 'NO'})`
         };
         result.push(noteWithIndex);
       }
@@ -188,7 +188,7 @@ export default function PresentModeFixed() {
       const endSlide: PresentationNote = {
         id: -2, // Use negative ID to avoid conflicts
         projectId: projectId ?? 0,
-        content: `End of presentation`,
+        content: `End of presentation\n\n*DEBUG*: END SLIDE (ID:-2, Level:0, Special:END)`,
         createdAt: new Date(),
         updatedAt: new Date(),
         order: "",
@@ -201,7 +201,9 @@ export default function PresentModeFixed() {
         images: null,
         level: 0,
         isEndSlide: true,
-        author: project.author
+        author: project.author,
+        // Add debug info for consistency
+        debugInfo: "END SLIDE"
       };
       result.push(endSlide);
     }
@@ -384,35 +386,7 @@ export default function PresentModeFixed() {
             {/* Modified slides with injected debug info */}
             {currentNote && (
               <div className="flex flex-col h-full w-full">
-                {/* DEBUG INFO DIRECTLY IN CONTENT */}
-                <div className="bg-black text-white p-4 border-b-4 border-red-600 font-mono text-left">
-                  <h2 className="text-yellow-400 font-bold text-xl mb-2 text-center underline">DEBUG INFO</h2>
-                  <div className="mb-2">
-                    <div><span className="text-green-400 font-bold">Slide:</span> {currentSlideIndex + 1}/{flattenedNotes.length}</div>
-                    <div><span className="text-green-400 font-bold">ID:</span> {currentNote.id}</div>
-                    <div><span className="text-green-400 font-bold">Level:</span> {currentNote.level}</div>
-                    <div><span className="text-green-400 font-bold">Has Children:</span> {(currentNote.childNotes?.length || 0) > 0 ? 'YES' : 'NO'}</div>
-                    <div><span className="text-green-400 font-bold">Type:</span> {isOverviewSlide ? 'OVERVIEW' : isStartSlide ? 'START' : isEndSlide ? 'END' : 'REGULAR'}</div>
-                    <div><span className="text-green-400 font-bold">Debug Info:</span> {currentNote.debugInfo || 'none'}</div>
-                  </div>
-                  <div className="text-xs">
-                    <div className="text-yellow-400 font-bold mb-1">ALL SLIDES:</div>
-                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
-                      {flattenedNotes.slice(0, 20).map((note, idx) => (
-                        <React.Fragment key={idx}>
-                          <div className={idx === currentSlideIndex ? 'text-yellow-400 font-bold' : 'text-gray-400'}>
-                            {idx + 1}.
-                          </div>
-                          <div className={idx === currentSlideIndex ? 'text-yellow-400 font-bold' : 'text-gray-400'}>
-                            {note.isStartSlide ? 'START' : note.isEndSlide ? 'END' : note.isOverviewSlide ? 'OVERVIEW' : 'REGULAR'} - 
-                            {note.content.slice(0, 15)}{note.content.length > 15 ? '...' : ''} -
-                            (Lvl:{note.level}, HasChildren:{(note.childNotes?.length || 0) > 0 ? 'Y' : 'N'})
-                          </div>
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                {/* Debug info is now embedded in the slide content itself */}
                 
                 {/* ACTUAL SLIDE CONTENT */}
                 <div className="flex-grow flex items-center justify-center">
