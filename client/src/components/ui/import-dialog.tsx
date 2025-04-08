@@ -65,6 +65,13 @@ export function ImportDialog({
         try {
           // Start the import process
           const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
+          
+          // Check for HTTP error status
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ message: "Unknown server error" }));
+            throw new Error(errorData.message || `Server error: ${res.status}`);
+          }
+          
           const importData = await res.json();
           
           console.log("Import started with response:", importData);
@@ -78,6 +85,9 @@ export function ImportDialog({
             setProgress(5);
             
             // Start polling for real-time status updates
+            let consecutiveErrors = 0;
+            const MAX_CONSECUTIVE_ERRORS = 5;
+            
             statusIntervalRef.current = setInterval(async () => {
               try {
                 // Poll the server for current status
@@ -86,6 +96,21 @@ export function ImportDialog({
                   "GET", 
                   `/api/projects/${projectId}/import-status?id=${importData.importId}`
                 );
+                
+                // Check for HTTP error status when polling
+                if (!statusRes.ok) {
+                  consecutiveErrors++;
+                  console.warn(`Import status poll error (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS}):`, statusRes.status);
+                  
+                  if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    throw new Error("Import status polling failed too many times");
+                  }
+                  return; // Skip this iteration but keep polling
+                }
+                
+                // Reset error counter on success
+                consecutiveErrors = 0;
+                
                 const statusData = await statusRes.json();
                 console.log("Status update received:", statusData);
                 
@@ -110,12 +135,49 @@ export function ImportDialog({
                     statusIntervalRef.current = null;
                   }
                 }
-              } catch (pollError) {
+              } catch (error) {
+                const pollError = error as Error;
                 console.error("Error polling import status:", pollError);
+                setStatusLog(prev => [...prev, `Error during status update: ${pollError.message || 'Unknown error'}`]);
+                
+                // For serious errors, stop polling after too many failures
+                consecutiveErrors++;
+                if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                  // Instead of stopping completely, switch to a simulated progress mode
+                  // This way the user still sees some indication that import might be running
+                  if (statusIntervalRef.current) {
+                    clearInterval(statusIntervalRef.current);
+                    statusIntervalRef.current = null;
+                  }
+                  
+                  setCurrentStatus("Real-time status updates unavailable. Import may still be running.");
+                  setStatusLog(prev => [...prev, 
+                    "Warning: Status polling failed. Switching to estimated progress.",
+                    "Import is likely still running in the background."
+                  ]);
+                  
+                  // Start a simulated progress timer that moves slower than normal
+                  // This provides visual feedback while the real import might still be happening
+                  let currentSimProgress = progress;
+                  let simulatedProgressInterval = setInterval(() => {
+                    setProgress(prev => {
+                      // Move more slowly as we get higher, and cap at 95%
+                      // This ensures we don't show "complete" unless we actually get confirmation
+                      if (prev < 30) return Math.min(95, prev + 3);
+                      if (prev < 60) return Math.min(95, prev + 2);
+                      if (prev < 90) return Math.min(95, prev + 0.5);
+                      clearInterval(simulatedProgressInterval);
+                      return prev;
+                    });
+                  }, 3000); // Update every 3 seconds (slower than real updates)
+                }
               }
             }, 1000); // Poll every second
           } else {
             console.warn("No import ID received from server");
+            // Add warning to status log
+            setStatusLog(prev => [...prev, "Warning: No import ID received from server. Status updates will be limited."]);
+            
             // Fallback to basic progress if no import ID is provided
             setProgress(10);
             // Just simulate progress as a fallback
@@ -169,15 +231,24 @@ export function ImportDialog({
       setNoteCount(null);
     },
     onError: (error: Error) => {
-      // Reset status on error
-      setNoteCount(null);
+      // Add error to status log so it's visible in the dialog
+      setStatusLog(prev => [
+        ...prev, 
+        `Error: ${error.message}`,
+        "Import process failed. Please try again with a smaller file or contact support."
+      ]);
+      
+      // Update UI state but don't reset everything so user can see the error
       setProgress(0);
-      setCurrentStatus("Import failed");
+      setCurrentStatus("Import failed: " + error.message);
+      
+      // Keep the note count so user knows how many notes were attempted
       
       toast({
         title: "Import failed",
         description: error.message,
         variant: "destructive",
+        duration: 5000, // Show longer for error messages
       });
     },
   });
