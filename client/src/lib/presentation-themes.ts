@@ -143,3 +143,29 @@ export function getThemeBackgroundStyle(theme: PresentationTheme) {
     textShadow: '-1.5px 1.5px 1.5px rgba(0, 0, 0, 0.4)'
   };
 }
+
+// Detect if an image is portrait or landscape based on aspect ratio
+export function isPortraitImage(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      // If height > width, it's portrait
+      resolve(img.height > img.width);
+    };
+    img.onerror = () => {
+      // Default to landscape on error
+      resolve(false);
+    };
+    img.src = url;
+  });
+}
+
+// Detect if a YouTube URL is for a Shorts video (typically vertical format)
+export function isYoutubeShorts(url: string): boolean {
+  return url.includes('/shorts/');
+}
+
+// Get accent color for markers and accents from theme
+export function getAccentColor(theme: PresentationTheme): string {
+  return theme.colors.base;
+}

@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Edit, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getPresentationTheme, getThemeBackgroundStyle, PresentationTheme } from "@/lib/presentation-themes";
+import { OverviewSlide } from "@/components/ui/overview-slide";
 import { Note, Project } from "@shared/schema";
 
-// Extended note type with level and theme information for presentation
+// Extended note type with level, theme, and child information for presentation
 interface PresentationNote extends Note {
   level?: number;
   rootIndex?: number; // Index of the root note this belongs to - for theming
+  childNotes?: PresentationNote[]; // Direct child notes for overview slides
+  hasChildren?: boolean; // Flag to indicate this note has children
 }
 
 export default function PresentMode() {
@@ -46,6 +49,13 @@ export default function PresentMode() {
       .filter(note => note.parentId === null)
       .sort((a, b) => Number(a.order) - Number(b.order));
     
+    // Helper function to get direct children of a note
+    const getDirectChildren = (noteId: number): Note[] => {
+      return [...notes]
+        .filter(note => note.parentId === noteId)
+        .sort((a, b) => Number(a.order) - Number(b.order));
+    };
+    
     // Helper function to flatten notes recursively in a depth-first manner
     const flattenNotes = (
       notesList: Note[], 
@@ -62,11 +72,17 @@ export default function PresentMode() {
       
       // Add each note and then its children
       for (const note of sortedNotes) {
-        // Add the current note with its level and root index information
+        // Get direct children for this note
+        const directChildren = getDirectChildren(note.id);
+        const hasChildren = directChildren.length > 0;
+        
+        // Add the current note with its level, root index, and children information
         const noteWithLevel: PresentationNote = { 
           ...note, 
           level, 
-          rootIndex: parentId === null ? rootIndex : undefined 
+          rootIndex: parentId === null ? rootIndex : undefined,
+          hasChildren,
+          childNotes: hasChildren ? directChildren as PresentationNote[] : undefined
         };
         result.push(noteWithLevel);
         
@@ -261,6 +277,9 @@ export default function PresentMode() {
     return `https://www.youtube.com/embed/${videoId}?autoplay=0${startTime}`;
   };
 
+  // Check if this is an overview slide (a note with children)
+  const isOverviewSlide = currentNote.hasChildren && currentNote.childNotes && currentNote.childNotes.length > 0;
+  
   return (
     <div className="min-h-screen flex flex-col bg-black">
       {/* Slide content - Full screen with no UI */}
@@ -283,64 +302,77 @@ export default function PresentMode() {
         }}
         style={themeStyles}
       >
-        <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
-          <div className="w-full text-white">
-            <div className="content mb-10">
-              {formatContent(currentNote.content)}
+        {/* Render appropriate slide based on if it's an overview slide or regular slide */}
+        {isOverviewSlide ? (
+          // Overview slide with chapter markers
+          <OverviewSlide 
+            parentNote={currentNote} 
+            childNotes={currentNote.childNotes!}
+            theme={theme}
+          />
+        ) : (
+          // Regular slide with content
+          <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
+            <div className="w-full text-white">
+              <div className="content mb-10">
+                {formatContent(currentNote.content)}
+              </div>
+              
+              {/* URL link if present */}
+              {currentNote.url && (
+                <div className="mt-8">
+                  <a
+                    href={currentNote.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white/90 hover:text-white flex items-center text-2xl border-b border-white/30 pb-2 w-fit"
+                  >
+                    <span className="mr-2">🔗</span>
+                    {currentNote.linkText || currentNote.url}
+                  </a>
+                </div>
+              )}
+              
+              {/* YouTube embed if present */}
+              {currentNote.youtubeLink && (
+                <div className="mt-8 rounded overflow-hidden aspect-video bg-black/20 shadow-xl">
+                  <iframe
+                    className="w-full h-full"
+                    src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
+                    title="YouTube video"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                </div>
+              )}
+              
+              {/* Images if present */}
+              {currentNote.images && currentNote.images.length > 0 && (
+                <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {currentNote.images.map((image, idx) => (
+                    <div key={idx} className="rounded overflow-hidden shadow-xl">
+                      <img 
+                        src={image} 
+                        alt={`Note image ${idx + 1}`} 
+                        className="w-full h-auto object-cover" 
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            
-            {/* URL link if present */}
-            {currentNote.url && (
-              <div className="mt-8">
-                <a
-                  href={currentNote.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/90 hover:text-white flex items-center text-2xl border-b border-white/30 pb-2 w-fit"
-                >
-                  <span className="mr-2">🔗</span>
-                  {currentNote.linkText || currentNote.url}
-                </a>
-              </div>
-            )}
-            
-            {/* YouTube embed if present */}
-            {currentNote.youtubeLink && (
-              <div className="mt-8 rounded overflow-hidden aspect-video bg-black/20 shadow-xl">
-                <iframe
-                  className="w-full h-full"
-                  src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
-                  title="YouTube video"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              </div>
-            )}
-            
-            {/* Images if present */}
-            {currentNote.images && currentNote.images.length > 0 && (
-              <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {currentNote.images.map((image, idx) => (
-                  <div key={idx} className="rounded overflow-hidden shadow-xl">
-                    <img 
-                      src={image} 
-                      alt={`Note image ${idx + 1}`} 
-                      className="w-full h-auto object-cover" 
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </div>
       
       {/* Minimal footer with navigation hints */}
       <div className="absolute bottom-0 left-0 right-0 text-center p-1 flex justify-between items-center">
         <div className="w-8"></div>
         <p className="text-white/30 text-[10px]">
-          {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • Click or → to advance • ← back • ESC to exit
+          {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • 
+          {isOverviewSlide ? 'Chapter overview' : ''} • 
+          Click or → to advance • ← back • ESC to exit
         </p>
         <button 
           onClick={(e) => {
