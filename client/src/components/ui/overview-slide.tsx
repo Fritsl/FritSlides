@@ -166,7 +166,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                   {/* Fancy interactive marker */}
                   <div className="relative">
                     <div 
-                      className="w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-1.5 mr-3 sm:mr-4 flex-shrink-0 transition-all duration-300 group-hover:scale-125" 
+                      className="w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-2.5 mr-3 sm:mr-4 flex-shrink-0 transition-all duration-300 group-hover:scale-125" 
                       style={{ 
                         backgroundColor: accentColor,
                         boxShadow: "0 0 8px rgba(255, 255, 255, 0.4)"
@@ -174,7 +174,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                     />
                     {/* Animating pulse effect */}
                     <div 
-                      className="absolute top-0 left-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
+                      className="absolute top-2.5 left-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
                       style={{ backgroundColor: accentColor }}
                     ></div>
                   </div>
@@ -261,7 +261,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
               {/* Fancy interactive marker */}
               <div className="relative">
                 <div 
-                  className="w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-1.5 mr-3 sm:mr-5 flex-shrink-0 transition-all duration-300 group-hover:scale-125" 
+                  className="w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-2.5 mr-3 sm:mr-5 flex-shrink-0 transition-all duration-300 group-hover:scale-125" 
                   style={{ 
                     backgroundColor: accentColor,
                     boxShadow: "0 0 8px rgba(255, 255, 255, 0.4)"
@@ -269,7 +269,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                 />
                 {/* Animating pulse effect */}
                 <div 
-                  className="absolute top-0 left-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
+                  className="absolute top-2.5 left-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
                   style={{ backgroundColor: accentColor }}
                 ></div>
               </div>
