@@ -109,7 +109,7 @@ export default function PresentModeFixed() {
       const startSlide: PresentationNote = {
         id: -1, // Use negative ID to avoid conflicts
         projectId: projectId ?? 0,
-        content: `${project.name}\n\n*DEBUG*: START SLIDE (ID:-1, Level:0, Special:START)`,
+        content: `${project.name}`,
         createdAt: new Date(),
         updatedAt: new Date(),
         order: "",
@@ -121,9 +121,7 @@ export default function PresentModeFixed() {
         isDiscussion: null,
         images: null,
         level: 0,
-        isStartSlide: true,
-        // Keep debug info for consistent API
-        debugInfo: "START SLIDE"
+        isStartSlide: true
       };
       result.push(startSlide);
     }
@@ -153,18 +151,14 @@ export default function PresentModeFixed() {
           id: -100 - result.length, // Use a unique negative ID
           isOverviewSlide: true,
           childNotes: sortedChildren,
-          rootIndex: currentRootIndex,
-          // Append debug info to the content itself so it's visible
-          content: note.content + `\n\n*DEBUG*: OVERVIEW SLIDE (ID:${note.id}, Level:${note.level}, HasChildren:${hasChildren ? 'YES' : 'NO'})`
+          rootIndex: currentRootIndex
         };
         result.push(overviewSlide);
       } else if (note.level !== 0 || !hasChildren) {
         // Either a non-root note OR a root note WITHOUT children - add as regular slide
         const noteWithIndex = { 
           ...note, 
-          rootIndex: currentRootIndex,
-          // Append debug info to the content itself so it's visible
-          content: note.content + `\n\n*DEBUG*: REGULAR SLIDE (ID:${note.id}, Level:${note.level}, HasChildren:${hasChildren ? 'YES' : 'NO'})`
+          rootIndex: currentRootIndex
         };
         result.push(noteWithIndex);
       }
@@ -188,7 +182,7 @@ export default function PresentModeFixed() {
       const endSlide: PresentationNote = {
         id: -2, // Use negative ID to avoid conflicts
         projectId: projectId ?? 0,
-        content: `End of presentation\n\n*DEBUG*: END SLIDE (ID:-2, Level:0, Special:END)`,
+        content: `End of presentation`,
         createdAt: new Date(),
         updatedAt: new Date(),
         order: "",
@@ -201,9 +195,7 @@ export default function PresentModeFixed() {
         images: null,
         level: 0,
         isEndSlide: true,
-        author: project.author,
-        // Add debug info for consistency
-        debugInfo: "END SLIDE"
+        author: project.author
       };
       result.push(endSlide);
     }
@@ -505,20 +497,9 @@ export default function PresentModeFixed() {
           </div>
 
           {/* Minimal footer with navigation hints */}
-          {/* Add super obvious debug banner above footer */}
-          <div className="absolute bottom-10 left-0 right-0 bg-black text-white p-4 text-center">
-            <h3 className="text-red-500 font-bold text-xl mb-2">DEBUG INFO</h3>
-            <p>Slide {currentSlideIndex + 1}/{flattenedNotes.length} | 
-               Type: {isOverviewSlide ? 'OVERVIEW' : isStartSlide ? 'START' : isEndSlide ? 'END' : 'REGULAR'} | 
-               ID: {currentNote?.id} | 
-               Level: {currentNote?.level} | 
-               Children: {(currentNote?.childNotes?.length || 0) > 0 ? 'YES' : 'NO'}</p>
-          </div>
-
           <div className="absolute bottom-0 left-0 right-0 text-center p-1 px-2 flex justify-between items-center bg-black/30 backdrop-blur-sm">
             <div className="w-4 sm:w-8"></div>
             <p className="text-white/40 text-[8px] sm:text-[10px] whitespace-nowrap overflow-hidden overflow-ellipsis">
-              <span className="text-red-500 font-bold">Sausage</span> •
               <span className="hidden sm:inline">{currentProject?.name} • </span>
               {currentSlideIndex + 1}/{flattenedNotes.length}
               <span className="hidden xs:inline"> • {isStartSlide ? 'Start' : isEndSlide ? 'End' : isOverviewSlide ? 'Overview' : ''}</span> • 
