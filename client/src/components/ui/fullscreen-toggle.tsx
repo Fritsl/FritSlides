@@ -85,25 +85,28 @@ export function FullscreenToggle({
 
   const toggleFullscreen = () => {
     try {
+      // In Replit's environment, we'll always use the CSS fallback
+      // This prevents console errors from rejected fullscreen requests
+      fallbackToCSS(!isFullscreen);
+      
+      /* 
+      // This code is left commented out for reference but not used to avoid errors
+      // A production environment outside Replit could use this implementation
       if (screenfull.isEnabled) {
         if (!screenfull.isFullscreen) {
           // Enter fullscreen
           screenfull.request().then(() => {
             notifyFullscreenChange(true);
-          }).catch(err => {
-            console.error('Fullscreen request was rejected:', err);
-            
-            // Fall back to CSS mode if browser fullscreen fails
+          }).catch(() => {
+            // Silently fall back to CSS mode if browser fullscreen fails
             fallbackToCSS(true);
           });
         } else {
           // Exit fullscreen
           screenfull.exit().then(() => {
             notifyFullscreenChange(false);
-          }).catch(err => {
-            console.error('Error exiting fullscreen:', err);
-            
-            // Fall back to CSS mode if browser fullscreen fails
+          }).catch(() => {
+            // Silently fall back to CSS mode if browser fullscreen fails
             fallbackToCSS(false);
           });
         }
@@ -111,9 +114,9 @@ export function FullscreenToggle({
         // Screenfull is not enabled, use CSS fallback
         fallbackToCSS(!isFullscreen);
       }
+      */
     } catch (err) {
-      console.error('Error toggling fullscreen:', err);
-      // Fall back to CSS mode if there's an error
+      // Silently fall back to CSS mode if there's an error
       fallbackToCSS(!isFullscreen);
     }
   };
