@@ -58,9 +58,6 @@ export default function PresentModeFixed() {
   }, [projects, projectId]);
   
   // Process notes into presentation format
-  // Always show debug overlay
-  const debugMode = true; // Fixed to true
-
   const flattenedNotes = useMemo(() => {
     if (!notes || notes.length === 0) return [];
     
@@ -338,13 +335,8 @@ export default function PresentModeFixed() {
   };
   
   // Render the presentation
-  // Debug mode is always on
-  // All debug info is now displayed directly in the slide content
-
   return (
     <div className="fixed inset-0 w-screen h-screen flex flex-col bg-black overflow-hidden">
-      {/* Debug information is now shown directly inside slides */}
-
       {isLoading || !flattenedNotes.length ? (
         // Loading screen
         <div className="flex-1 flex flex-col items-center justify-center">
@@ -376,12 +368,8 @@ export default function PresentModeFixed() {
             }}
             style={themeStyles}
           >
-            {/* Modified slides with injected debug info */}
             {currentNote && (
               <div className="flex flex-col h-full w-full">
-                {/* Debug info is now embedded in the slide content itself */}
-                
-                {/* ACTUAL SLIDE CONTENT */}
                 <div className="flex-grow flex items-center justify-center">
                   {isOverviewSlide ? (
                     // Overview slide with chapter markers
@@ -410,7 +398,7 @@ export default function PresentModeFixed() {
                         <div 
                           className="mt-12 text-center opacity-70"
                           style={generateTypographyStyles(getTypographyStyles(
-                            ContentType.Caption,
+                            ContentType.Body,
                             0,
                             currentProject?.name?.length || 0
                           ))}
@@ -451,7 +439,7 @@ export default function PresentModeFixed() {
                         <div 
                           className="mt-12 text-center opacity-70"
                           style={generateTypographyStyles(getTypographyStyles(
-                            ContentType.Caption,
+                            ContentType.Body,
                             0,
                             currentProject?.name?.length || 0
                           ))}
@@ -516,7 +504,7 @@ export default function PresentModeFixed() {
                                     rel="noopener noreferrer"
                                     style={{
                                       ...generateTypographyStyles(getTypographyStyles(
-                                        ContentType.Caption,
+                                        ContentType.Body,
                                         level,
                                         (currentNote.linkText || currentNote.url).length
                                       )),
@@ -623,7 +611,7 @@ export default function PresentModeFixed() {
                                   rel="noopener noreferrer"
                                   style={{
                                     ...generateTypographyStyles(getTypographyStyles(
-                                      ContentType.Caption,
+                                      ContentType.Body,
                                       level,
                                       (currentNote.linkText || currentNote.url).length
                                     )),
@@ -666,8 +654,6 @@ export default function PresentModeFixed() {
               showTooltip={false}
             />
           </div>
-          
-          {/* Debug overlay removed - we're now using the inline debug display instead */}
           
           {/* Time tracking dots */}
           {timeDotsVisible && (

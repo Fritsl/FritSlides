@@ -14,15 +14,65 @@ export enum ContentType {
   Code = 'code',
 }
 
-// Formats the note content with basic Markdown support
+// Formats the note content with enhanced Markdown support
 export function formatContent(content: string): React.ReactNode {
   if (!content) return null;
   
+  // Configure Marked options for better slide formatting
+  marked.setOptions({
+    gfm: true,
+    breaks: true,
+    headerIds: false,
+  });
+  
+  // Apply custom styles using CSS to avoid TypeScript issues with the Marked renderer
+  const customStyles = `
+    <style>
+      .markdown-content ul, .markdown-content ol {
+        text-align: left;
+        width: 100%;
+        max-width: 40rem;
+        margin: 0 auto;
+      }
+      .markdown-content li {
+        margin-bottom: 0.5em;
+      }
+      .markdown-content p {
+        margin-bottom: 1rem;
+      }
+      .markdown-content h1 { font-weight: 700; margin-bottom: 1rem; }
+      .markdown-content h2 { font-weight: 600; margin-bottom: 1rem; }
+      .markdown-content h3 { font-weight: 500; margin-bottom: 1rem; }
+      .markdown-content h4 { font-weight: 500; margin-bottom: 1rem; }
+      .markdown-content h5 { font-weight: 400; margin-bottom: 1rem; }
+      .markdown-content h6 { font-weight: 400; margin-bottom: 1rem; }
+      .markdown-content pre {
+        text-align: left;
+        padding: 1em;
+        background: rgba(0,0,0,0.2);
+        border-radius: 8px;
+        max-width: 100%;
+        overflow-x: auto;
+      }
+      .markdown-content blockquote {
+        text-align: center;
+        font-style: italic;
+        padding: 0.5em 2em;
+        border-left: 4px solid rgba(255,255,255,0.2);
+        max-width: 40rem;
+        margin: 1rem auto;
+      }
+    </style>
+  `;
+  
   // Sanitize and convert Markdown to HTML
   const sanitized = DOMPurify.sanitize(content);
-  const html = marked(sanitized);
+  const htmlContent = marked(sanitized);
   
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+  // Combine custom styles with the parsed markdown
+  const fullHtml = customStyles + htmlContent;
+  
+  return <div className="markdown-content" dangerouslySetInnerHTML={{ __html: fullHtml }} />;
 }
 
 // Function to construct a YouTube embed URL

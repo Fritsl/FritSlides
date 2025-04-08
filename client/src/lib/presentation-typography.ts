@@ -1,10 +1,11 @@
-// Typography system for presentation mode
-// Creates visual hierarchy with IBM Plex Sans and Bebas Neue fonts
+// Advanced Typography System for Presentation Mode
+// Creates dynamic visual hierarchy with responsive sizing
 
 // Font family definitions
 export const FONTS = {
   primary: "'IBM Plex Sans', sans-serif",
-  display: "'Bebas Neue', sans-serif"
+  display: "'Bebas Neue', sans-serif",
+  monospace: "'IBM Plex Mono', monospace"
 };
 
 // Font weight definitions
@@ -16,11 +17,16 @@ export const WEIGHTS = {
   bold: 700
 };
 
-// Type of content determines if we use primary or display font
+// Content type determines typography styling
 export enum ContentType {
-  Root = 'root',       // Root level note (level 0)
-  Regular = 'regular', // Standard content
-  Section = 'section'  // Section header (section marker)
+  Title = 'title',           // Main title slides (start/end/special)
+  Heading = 'heading',       // High-level section headers
+  Subheading = 'subheading', // Secondary headers
+  Body = 'body',             // Regular content
+  List = 'list',             // Bullet points
+  Code = 'code',             // Code blocks
+  Quote = 'quote',           // Quotations
+  Caption = 'caption'        // Smaller supplementary text
 }
 
 // Font size scaling rules based on depth and content length
@@ -30,7 +36,9 @@ export interface FontSettings {
   size: string;
   letterSpacing?: string;
   lineHeight?: string;
-  textTransform?: 'uppercase' | 'none';
+  textTransform?: 'uppercase' | 'lowercase' | 'capitalize' | 'none';
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
+  maxWidth?: string;
 }
 
 /**
@@ -40,111 +48,292 @@ export interface FontSettings {
 export function getTypographyStyles(
   contentType: ContentType,
   level: number = 0,
-  contentLength: number = 0
+  contentLength: number = 0,
+  hasMedia: boolean = false
 ): FontSettings {
-  // Short content gets larger fonts
-  const isShort = contentLength <= 50;
+  // Content length classifications for better scaling
+  const isVeryShort = contentLength <= 15;  // Single word or short phrase
+  const isShort = contentLength <= 50;      // Short sentence
+  const isMedium = contentLength <= 120;    // Average paragraph
+  const isLong = contentLength > 120;       // Long form text
   
-  // Default settings for regular content
+  // Base settings shared across all types
   const defaults: FontSettings = {
     family: FONTS.primary,
     weight: WEIGHTS.regular,
     size: '1.5rem',
     lineHeight: '1.5',
     letterSpacing: 'normal',
-    textTransform: 'none'
+    textTransform: 'none',
+    textAlign: 'center',
+    maxWidth: '80%'
   };
   
-  // Display font for root, start, end slides
-  if (contentType === ContentType.Root) {
+  // Adjust font size based on hierarchy level (0 = largest, 5+ = smallest)
+  const levelScaleFactor = Math.max(0.5, 1 - (level * 0.1));
+  
+  // Adjust size further based on presence of media (images/videos)
+  const mediaScaleFactor = hasMedia ? 0.85 : 1;
+  
+  // Title slides (start, end, special)
+  if (contentType === ContentType.Title) {
     return {
       family: FONTS.display,
-      weight: WEIGHTS.regular,
-      size: isShort ? '10rem' : '9rem',
+      weight: WEIGHTS.bold,
+      size: calculateTitleSize(contentLength, level),
       lineHeight: '1.1',
       letterSpacing: '0.02em',
-      textTransform: 'uppercase'
+      textTransform: 'capitalize',
+      textAlign: 'center',
+      maxWidth: '90%'
     };
   }
   
-  // Section headers (parent notes with children)
-  if (contentType === ContentType.Section) {
-    // Use display font with size based on level
+  // Headings (main section headers)
+  if (contentType === ContentType.Heading) {
     return {
-      family: FONTS.display,
-      weight: WEIGHTS.regular,
-      size: getSectionSize(level, isShort),
-      lineHeight: '1.1',
-      letterSpacing: '0.02em',
-      textTransform: 'uppercase'
+      family: isVeryShort ? FONTS.display : FONTS.primary,
+      weight: WEIGHTS.bold,
+      size: calculateHeadingSize(contentLength, level),
+      lineHeight: '1.2',
+      letterSpacing: '0.01em',
+      textTransform: isVeryShort ? 'capitalize' : 'none',
+      textAlign: 'center',
+      maxWidth: '85%'
     };
   }
   
-  // Regular content - IBM Plex Sans with size based on level
-  return {
-    family: FONTS.primary,
-    weight: getContentWeight(level),
-    size: getContentSize(level, isShort),
-    lineHeight: '1.5',
-    letterSpacing: 'normal',
-    textTransform: 'none'
-  };
+  // Subheadings
+  if (contentType === ContentType.Subheading) {
+    return {
+      family: FONTS.primary,
+      weight: WEIGHTS.semibold,
+      size: calculateSubheadingSize(contentLength, level),
+      lineHeight: '1.3',
+      letterSpacing: '0.01em',
+      textTransform: 'none',
+      textAlign: 'center',
+      maxWidth: '80%'
+    };
+  }
+  
+  // Regular content
+  if (contentType === ContentType.Body) {
+    return {
+      family: FONTS.primary,
+      weight: WEIGHTS.regular,
+      size: calculateBodySize(contentLength, level, hasMedia),
+      lineHeight: '1.5',
+      letterSpacing: 'normal',
+      textTransform: 'none',
+      textAlign: isLong ? 'left' : 'center',
+      maxWidth: isLong ? '75%' : '80%'
+    };
+  }
+  
+  // List items
+  if (contentType === ContentType.List) {
+    return {
+      family: FONTS.primary,
+      weight: WEIGHTS.regular,
+      size: calculateListSize(contentLength, level),
+      lineHeight: '1.4',
+      letterSpacing: 'normal',
+      textTransform: 'none',
+      textAlign: 'left',
+      maxWidth: '80%'
+    };
+  }
+  
+  // Code blocks
+  if (contentType === ContentType.Code) {
+    return {
+      family: FONTS.monospace,
+      weight: WEIGHTS.regular,
+      size: calculateCodeSize(contentLength),
+      lineHeight: '1.4',
+      letterSpacing: '-0.01em',
+      textTransform: 'none',
+      textAlign: 'left',
+      maxWidth: '100%'
+    };
+  }
+  
+  // Quotes
+  if (contentType === ContentType.Quote) {
+    return {
+      family: FONTS.primary,
+      weight: WEIGHTS.medium,
+      size: calculateQuoteSize(contentLength, level),
+      lineHeight: '1.4',
+      letterSpacing: '0.01em',
+      textTransform: 'none',
+      textAlign: 'center',
+      maxWidth: '80%'
+    };
+  }
+  
+  // Captions
+  if (contentType === ContentType.Caption) {
+    return {
+      family: FONTS.primary,
+      weight: WEIGHTS.light,
+      size: '1rem',
+      lineHeight: '1.3',
+      letterSpacing: '0.01em',
+      textTransform: 'none',
+      textAlign: 'center',
+      maxWidth: '70%'
+    };
+  }
+  
+  // Default to regular body text if no match
+  return defaults;
 }
 
 /**
- * Gets the appropriate font size for section headers based on level and content length
+ * Size calculators for each content type
+ * These calculate ideal font sizes based on content length and hierarchy level
  */
-function getSectionSize(level: number, isShort: boolean): string {
-  switch (level) {
-    case 0:
-      return isShort ? '10rem' : '9rem';
-    case 1:
-      return isShort ? '9rem' : '8rem';
-    case 2:
-      return isShort ? '8rem' : '7rem';
-    case 3:
-      return isShort ? '7rem' : '6rem';
-    case 4:
-      return '5rem';
-    default:
-      return '4rem';
+
+// Title sizing (main titles, start/end slides)
+function calculateTitleSize(contentLength: number, level: number): string {
+  // Base sizes that will be adjusted
+  let baseSize;
+  
+  if (contentLength <= 10) {
+    baseSize = 7.5; // Very short titles get largest font
+  } else if (contentLength <= 25) {
+    baseSize = 6.5; // Short titles
+  } else if (contentLength <= 50) {
+    baseSize = 5.5; // Medium titles
+  } else if (contentLength <= 100) {
+    baseSize = 4.5; // Long titles
+  } else {
+    baseSize = 3.5; // Very long titles
+  }
+  
+  // Scale down by 10% per level
+  const scaleFactor = Math.max(0.6, 1 - (level * 0.1));
+  const finalSize = baseSize * scaleFactor;
+  
+  return `${finalSize}rem`;
+}
+
+// Heading sizing (section headers, key points)
+function calculateHeadingSize(contentLength: number, level: number): string {
+  let baseSize;
+  
+  if (contentLength <= 15) {
+    baseSize = 4.5; // Very short headings
+  } else if (contentLength <= 30) {
+    baseSize = 3.8; // Short headings
+  } else if (contentLength <= 60) {
+    baseSize = 3.2; // Medium headings
+  } else {
+    baseSize = 2.8; // Long headings
+  }
+  
+  // Scale down by 15% per level
+  const scaleFactor = Math.max(0.55, 1 - (level * 0.15));
+  const finalSize = baseSize * scaleFactor;
+  
+  return `${finalSize}rem`;
+}
+
+// Subheading sizing
+function calculateSubheadingSize(contentLength: number, level: number): string {
+  let baseSize;
+  
+  if (contentLength <= 20) {
+    baseSize = 3.2; // Short subheadings
+  } else if (contentLength <= 50) {
+    baseSize = 2.8; // Medium subheadings
+  } else {
+    baseSize = 2.4; // Long subheadings
+  }
+  
+  // Scale down by 15% per level
+  const scaleFactor = Math.max(0.5, 1 - (level * 0.15));
+  const finalSize = baseSize * scaleFactor;
+  
+  return `${finalSize}rem`;
+}
+
+// Body text sizing
+function calculateBodySize(contentLength: number, level: number, hasMedia: boolean): string {
+  let baseSize;
+  
+  if (contentLength <= 30) {
+    baseSize = 2.6; // Very short content
+  } else if (contentLength <= 80) {
+    baseSize = 2.2; // Short content
+  } else if (contentLength <= 160) {
+    baseSize = 1.9; // Medium content
+  } else if (contentLength <= 300) {
+    baseSize = 1.7; // Long content
+  } else {
+    baseSize = 1.5; // Very long content
+  }
+  
+  // Scale down by 12% per level
+  const levelFactor = Math.max(0.65, 1 - (level * 0.12));
+  
+  // Reduce size further if we have media
+  const mediaFactor = hasMedia ? 0.85 : 1;
+  
+  const finalSize = baseSize * levelFactor * mediaFactor;
+  
+  return `${finalSize}rem`;
+}
+
+// List item sizing
+function calculateListSize(contentLength: number, level: number): string {
+  let baseSize;
+  
+  if (contentLength <= 30) {
+    baseSize = 2.4; // Short list items
+  } else if (contentLength <= 80) {
+    baseSize = 2.0; // Medium list items
+  } else {
+    baseSize = 1.8; // Long list items
+  }
+  
+  // Scale down by 10% per level
+  const scaleFactor = Math.max(0.7, 1 - (level * 0.1));
+  const finalSize = baseSize * scaleFactor;
+  
+  return `${finalSize}rem`;
+}
+
+// Code block sizing
+function calculateCodeSize(contentLength: number): string {
+  if (contentLength <= 50) {
+    return '1.8rem'; // Short code snippets
+  } else if (contentLength <= 150) {
+    return '1.5rem'; // Medium code snippets
+  } else {
+    return '1.3rem'; // Long code blocks
   }
 }
 
-/**
- * Gets the appropriate font size for regular content based on level and content length
- */
-function getContentSize(level: number, isShort: boolean): string {
-  switch (level) {
-    case 0:
-      return isShort ? '3rem' : '2.75rem';
-    case 1:
-      return isShort ? '2.5rem' : '2.25rem';
-    case 2:
-      return isShort ? '2rem' : '1.75rem';
-    case 3:
-      return '1.5rem';
-    case 4:
-      return '1.25rem';
-    default:
-      return '1rem';
+// Quote sizing
+function calculateQuoteSize(contentLength: number, level: number): string {
+  let baseSize;
+  
+  if (contentLength <= 50) {
+    baseSize = 2.6; // Short quotes
+  } else if (contentLength <= 120) {
+    baseSize = 2.2; // Medium quotes
+  } else {
+    baseSize = 1.9; // Long quotes
   }
-}
-
-/**
- * Gets the appropriate font weight based on hierarchy level
- */
-function getContentWeight(level: number): number {
-  switch (level) {
-    case 0:
-      return WEIGHTS.bold;
-    case 1:
-      return WEIGHTS.semibold;
-    case 2:
-      return WEIGHTS.medium;
-    default:
-      return WEIGHTS.regular;
-  }
+  
+  // Scale down by 10% per level
+  const scaleFactor = Math.max(0.6, 1 - (level * 0.1));
+  const finalSize = baseSize * scaleFactor;
+  
+  return `${finalSize}rem`;
 }
 
 /**
@@ -158,17 +347,59 @@ export function generateTypographyStyles(settings: FontSettings): React.CSSPrope
     lineHeight: settings.lineHeight,
     letterSpacing: settings.letterSpacing,
     textTransform: settings.textTransform,
+    textAlign: settings.textAlign,
+    maxWidth: settings.maxWidth,
+    margin: settings.textAlign === 'center' ? '0 auto' : undefined,
   };
 }
 
 /**
- * Determine content type based on note properties
+ * Determine content type based on content and note properties
+ * Analyzes content to choose the most appropriate typography
  */
-export function determineContentType(isRootNote: boolean, hasChildren: boolean): ContentType {
-  if (isRootNote) {
-    return ContentType.Root;
-  } else if (hasChildren) {
-    return ContentType.Section;
+export function determineContentType(
+  content: string,
+  isRootNote: boolean = false, 
+  isStartOrEndSlide: boolean = false,
+  hasChildren: boolean = false,
+  level: number = 0
+): ContentType {
+  // Start/end slides or top-level roots are always titles
+  if (isStartOrEndSlide || (isRootNote && level === 0)) {
+    return ContentType.Title;
   }
-  return ContentType.Regular;
+  
+  // Section headers (parents with children)
+  if (hasChildren && level <= 3) {
+    return ContentType.Heading;
+  }
+  
+  // Check for code blocks
+  if (content.includes('```') || content.includes('    ') || content.includes('\t')) {
+    return ContentType.Code;
+  }
+  
+  // Check for quotes
+  if (content.includes('> ') || content.includes('"') && content.includes('"')) {
+    return ContentType.Quote;
+  }
+  
+  // Check for lists
+  if (content.includes('- ') || content.includes('* ') || 
+      content.includes('1. ') || /^\d+\.\s/.test(content)) {
+    return ContentType.List;
+  }
+  
+  // Headings (based on length and level)
+  if (content.length < 60 && level <= 2) {
+    return ContentType.Heading;
+  }
+  
+  // Subheadings
+  if (content.length < 100 && level <= 4) {
+    return ContentType.Subheading;
+  }
+  
+  // Default to body text
+  return ContentType.Body;
 }

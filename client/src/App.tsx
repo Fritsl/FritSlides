@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
-import PresentMode from "@/pages/present-mode-fixed";
+import PresentMode from "@/pages/present-mode-fixed-new";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { NoteEditingProvider } from "@/hooks/use-notes";
