@@ -135,9 +135,9 @@ export default function Header({
   // Calculate the max depth
   const maxDepth = calculateMaxDepth();
   
-  // Create an array of level buttons (0 to maxDepth, inclusive)
-  // The maxDepth is already the correct max value (as levels are zero-indexed)
-  const levelButtons = Array.from({ length: maxDepth + 1 }, (_, level) => {
+  // Create an array of level buttons (0 to maxDepth-1, inclusive)
+  // Simply display one less level button as requested
+  const levelButtons = Array.from({ length: Math.max(0, maxDepth) }, (_, level) => {
     const colorPair = getLevelColor(level);
     const isActive = currentExpandLevel === level;
     

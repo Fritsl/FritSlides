@@ -63,12 +63,12 @@ export default function NoteTree({
     };
     
     // Start at root level (parentId = null) with depth 0
-    // This returns the actual max depth (since levels are 0-indexed)
+    // Calculate the max depth, but use one less for consistency
     const maxTreeDepth = calculateDepth(null, 0);
     setMaxDepth(maxTreeDepth);
     
-    // Notify parent component if callback provided
-    if (onMaxDepthChange) onMaxDepthChange(maxTreeDepth);
+    // Notify parent component if callback provided, passing one less level
+    if (onMaxDepthChange) onMaxDepthChange(Math.max(0, maxTreeDepth - 1));
   }, [notes, onMaxDepthChange]);
   
   // Handle expand level changes
