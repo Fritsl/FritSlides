@@ -139,9 +139,9 @@ export default function PresentModeFixed() {
         ? [...note.childNotes!].sort((a, b) => String(a.order).localeCompare(String(b.order)))
         : [];
       
-      // Process based on whether this is a root note and if it has children
+      // Process based on note level and whether it has children
       if (note.level === 0 && hasChildren) {
-        // Root note with children - generate overview slide ONLY (no regular slide)
+        // Root note with children - ONLY create an overview slide, not a regular slide
         const overviewSlide: PresentationNote = {
           ...note,
           id: -100 - result.length, // Use a unique negative ID
