@@ -57,8 +57,8 @@ export default function PresentModeFixed() {
   }, [projects, projectId]);
   
   // Process notes into presentation format
-  // For debugging - used to track where slides are created
-  const [debugMode, setDebugMode] = useState(true);
+  // Always show debug overlay
+  const debugMode = true; // Fixed to true
 
   const flattenedNotes = useMemo(() => {
     if (!notes || notes.length === 0) return [];
@@ -495,14 +495,7 @@ export default function PresentModeFixed() {
 
           {/* Minimal footer with navigation hints */}
           <div className="absolute bottom-0 left-0 right-0 text-center p-1 px-2 flex justify-between items-center bg-black/30 backdrop-blur-sm">
-            <div className="w-4 sm:w-8 flex items-center">
-              <button 
-                onClick={() => setDebugMode(prev => !prev)}
-                className="text-white/30 hover:text-white/70 text-[8px] sm:text-[10px] px-1"
-              >
-                D
-              </button>
-            </div>
+            <div className="w-4 sm:w-8"></div>
             <p className="text-white/40 text-[8px] sm:text-[10px] whitespace-nowrap overflow-hidden overflow-ellipsis">
               <span className="hidden sm:inline">{currentProject?.name} • </span>
               {currentSlideIndex + 1}/{flattenedNotes.length}
@@ -517,29 +510,29 @@ export default function PresentModeFixed() {
             />
           </div>
           
-          {/* Debug overlay */}
-          {debugMode && currentNote && (
-            <div className="absolute top-0 left-0 right-0 p-2 bg-black/80 text-white text-xs font-mono z-50 overflow-auto max-h-[50vh]">
-              <div className="flex flex-wrap gap-1">
-                <span className="bg-blue-900/50 px-1 rounded">Slide #{currentSlideIndex + 1}/{flattenedNotes.length}</span>
-                <span className="bg-green-900/50 px-1 rounded">ID: {currentNote.id}</span>
-                <span className="bg-purple-900/50 px-1 rounded">Level: {currentNote.level}</span>
-                <span className="bg-red-900/50 px-1 rounded">Children: {currentNote.childNotes?.length || 0}</span>
-                <span className="bg-yellow-900/50 px-1 rounded">Content: {currentNote.content.slice(0, 30)}{currentNote.content.length > 30 ? '...' : ''}</span>
+          {/* Debug overlay - Always visible with larger font */}
+          {currentNote && (
+            <div className="absolute top-0 left-0 right-0 p-3 bg-black/90 text-white text-base font-mono z-50 overflow-auto max-h-[50vh] shadow-lg border-b border-gray-700">
+              <div className="mb-3 text-lg font-bold text-center">DEBUG MODE</div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                <span className="bg-blue-800 px-2 py-1 rounded">Slide #{currentSlideIndex + 1}/{flattenedNotes.length}</span>
+                <span className="bg-green-800 px-2 py-1 rounded">ID: {currentNote.id}</span>
+                <span className="bg-purple-800 px-2 py-1 rounded">Level: {currentNote.level}</span>
+                <span className="bg-red-800 px-2 py-1 rounded">Children: {currentNote.childNotes?.length || 0}</span>
+                <span className="bg-yellow-800 px-2 py-1 rounded">Content: {currentNote.content.slice(0, 30)}{currentNote.content.length > 30 ? '...' : ''}</span>
                 {currentNote.debugInfo && (
-                  <span className="bg-gray-900/50 px-1 rounded">{currentNote.debugInfo}</span>
+                  <span className="bg-gray-800 px-2 py-1 rounded font-bold">{currentNote.debugInfo}</span>
                 )}
               </div>
-              <div className="mt-1 text-[8px]">
-                <div className="grid grid-cols-[auto_1fr] gap-x-2">
-                  <span className="font-bold">All Slides:</span>
-                  <span></span>
+              <div className="text-sm">
+                <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                  <span className="font-bold text-white col-span-2 mb-1 border-b border-gray-700">All Slides:</span>
                   {flattenedNotes.map((note, idx) => (
                     <React.Fragment key={idx}>
-                      <span className={`${idx === currentSlideIndex ? 'text-yellow-400' : 'text-gray-400'}`}>
+                      <span className={`${idx === currentSlideIndex ? 'text-yellow-400 font-bold' : 'text-gray-400'}`}>
                         {idx + 1}.
                       </span>
-                      <span className={`${idx === currentSlideIndex ? 'text-yellow-400' : 'text-gray-400'} truncate`}>
+                      <span className={`${idx === currentSlideIndex ? 'text-yellow-400 font-bold' : 'text-gray-400'} truncate`}>
                         {note.isStartSlide ? 'START' : note.isEndSlide ? 'END' : note.isOverviewSlide ? 'OVERVIEW' : ''} 
                         {note.content.slice(0, 20)}{note.content.length > 20 ? '...' : ''} 
                         {note.debugInfo ? `(${note.debugInfo})` : ''}
