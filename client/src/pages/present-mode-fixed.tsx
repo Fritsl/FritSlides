@@ -505,9 +505,20 @@ export default function PresentModeFixed() {
           </div>
 
           {/* Minimal footer with navigation hints */}
+          {/* Add super obvious debug banner above footer */}
+          <div className="absolute bottom-10 left-0 right-0 bg-black text-white p-4 text-center">
+            <h3 className="text-red-500 font-bold text-xl mb-2">DEBUG INFO</h3>
+            <p>Slide {currentSlideIndex + 1}/{flattenedNotes.length} | 
+               Type: {isOverviewSlide ? 'OVERVIEW' : isStartSlide ? 'START' : isEndSlide ? 'END' : 'REGULAR'} | 
+               ID: {currentNote?.id} | 
+               Level: {currentNote?.level} | 
+               Children: {(currentNote?.childNotes?.length || 0) > 0 ? 'YES' : 'NO'}</p>
+          </div>
+
           <div className="absolute bottom-0 left-0 right-0 text-center p-1 px-2 flex justify-between items-center bg-black/30 backdrop-blur-sm">
             <div className="w-4 sm:w-8"></div>
             <p className="text-white/40 text-[8px] sm:text-[10px] whitespace-nowrap overflow-hidden overflow-ellipsis">
+              <span className="text-red-500 font-bold">Sausage</span> •
               <span className="hidden sm:inline">{currentProject?.name} • </span>
               {currentSlideIndex + 1}/{flattenedNotes.length}
               <span className="hidden xs:inline"> • {isStartSlide ? 'Start' : isEndSlide ? 'End' : isOverviewSlide ? 'Overview' : ''}</span> • 
