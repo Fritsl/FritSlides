@@ -343,52 +343,12 @@ export default function PresentModeFixed() {
   };
   
   // Render the presentation
-  // Super simple debug object
-  const debugInfo = {
-    currentSlide: currentSlideIndex + 1,
-    totalSlides: flattenedNotes.length,
-    currentLevel: currentNote?.level,
-    hasChildren: currentNote?.childNotes && currentNote?.childNotes.length > 0,
-    isOverview: isOverviewSlide,
-    content: currentNote?.content?.slice(0, 30),
-    debugText: currentNote?.debugInfo
-  };
+  // Debug mode is always on
+  // All debug info is now displayed directly in the slide content
 
   return (
     <div className="fixed inset-0 w-screen h-screen flex flex-col bg-black overflow-hidden">
-      {/* SUPER SIMPLE DEBUG OVERLAY - ALWAYS VISIBLE */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 9999,
-        background: 'rgba(0,0,0,0.9)',
-        color: 'white',
-        padding: '10px',
-        fontFamily: 'monospace',
-        fontSize: '16px',
-        borderBottom: '2px solid red'
-      }}>
-        <h3 style={{textAlign: 'center', margin: '0 0 10px 0', color: 'yellow'}}>DEBUG INFO</h3>
-        <pre style={{margin: 0, whiteSpace: 'pre-wrap'}}>{JSON.stringify(debugInfo, null, 2)}</pre>
-        <div style={{margin: '10px 0', borderTop: '1px solid #555', paddingTop: '10px'}}>
-          <h4 style={{margin: '0 0 5px 0'}}>ALL SLIDES:</h4>
-          <div style={{maxHeight: '200px', overflowY: 'auto'}}>
-            {flattenedNotes.map((note, idx) => (
-              <div key={idx} style={{
-                color: idx === currentSlideIndex ? 'yellow' : '#888',
-                fontWeight: idx === currentSlideIndex ? 'bold' : 'normal',
-                marginBottom: '3px'
-              }}>
-                {idx+1}. {note.isStartSlide ? 'START' : note.isEndSlide ? 'END' : note.isOverviewSlide ? 'OVERVIEW' : ''} 
-                {note.content.slice(0, 20)}{note.content.length > 20 ? '...' : ''} 
-                ({note.debugInfo || 'no-debug'})
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Debug information is now shown directly inside slides */}
 
       {isLoading || !flattenedNotes.length ? (
         // Loading screen
@@ -421,120 +381,152 @@ export default function PresentModeFixed() {
             }}
             style={themeStyles}
           >
-            {/* Render appropriate slide based on type */}
-            {/* Only render content when we have a valid currentNote */}
+            {/* Modified slides with injected debug info */}
             {currentNote && (
-              <>
-                {isOverviewSlide ? (
-                  // Overview slide with chapter markers
-                  <OverviewSlide 
-                    parentNote={currentNote} 
-                    childNotes={currentNote.childNotes || []}
-                    theme={theme}
-                  />
-                ) : isStartSlide ? (
-                  // Start slide with project start slogan
-                  <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-10">
-                    <div className="w-full text-white text-center">
-                      <div className="content mb-6 sm:mb-10">
-                        {formatContent(currentNote.content)}
-                      </div>
-                      <div className="mt-8 sm:mt-16 opacity-70 text-sm">
-                        {currentProject?.name}
-                      </div>
+              <div className="flex flex-col h-full w-full">
+                {/* DEBUG INFO DIRECTLY IN CONTENT */}
+                <div className="bg-black text-white p-4 border-b-4 border-red-600 font-mono text-left">
+                  <h2 className="text-yellow-400 font-bold text-xl mb-2 text-center underline">DEBUG INFO</h2>
+                  <div className="mb-2">
+                    <div><span className="text-green-400 font-bold">Slide:</span> {currentSlideIndex + 1}/{flattenedNotes.length}</div>
+                    <div><span className="text-green-400 font-bold">ID:</span> {currentNote.id}</div>
+                    <div><span className="text-green-400 font-bold">Level:</span> {currentNote.level}</div>
+                    <div><span className="text-green-400 font-bold">Has Children:</span> {(currentNote.childNotes?.length || 0) > 0 ? 'YES' : 'NO'}</div>
+                    <div><span className="text-green-400 font-bold">Type:</span> {isOverviewSlide ? 'OVERVIEW' : isStartSlide ? 'START' : isEndSlide ? 'END' : 'REGULAR'}</div>
+                    <div><span className="text-green-400 font-bold">Debug Info:</span> {currentNote.debugInfo || 'none'}</div>
+                  </div>
+                  <div className="text-xs">
+                    <div className="text-yellow-400 font-bold mb-1">ALL SLIDES:</div>
+                    <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1">
+                      {flattenedNotes.slice(0, 20).map((note, idx) => (
+                        <React.Fragment key={idx}>
+                          <div className={idx === currentSlideIndex ? 'text-yellow-400 font-bold' : 'text-gray-400'}>
+                            {idx + 1}.
+                          </div>
+                          <div className={idx === currentSlideIndex ? 'text-yellow-400 font-bold' : 'text-gray-400'}>
+                            {note.isStartSlide ? 'START' : note.isEndSlide ? 'END' : note.isOverviewSlide ? 'OVERVIEW' : 'REGULAR'} - 
+                            {note.content.slice(0, 15)}{note.content.length > 15 ? '...' : ''} -
+                            (Lvl:{note.level}, HasChildren:{(note.childNotes?.length || 0) > 0 ? 'Y' : 'N'})
+                          </div>
+                        </React.Fragment>
+                      ))}
                     </div>
                   </div>
-                ) : isEndSlide ? (
-                  // End slide with project end slogan and author
-                  <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-10">
-                    <div className="w-full text-white text-center">
-                      <div className="content mb-6 sm:mb-10">
-                        {formatContent(currentNote.content)}
-                      </div>
-                      {currentNote.author && (
-                        <div className="mt-4 sm:mt-8 opacity-80 text-base sm:text-lg">
-                          {currentNote.author}
+                </div>
+                
+                {/* ACTUAL SLIDE CONTENT */}
+                <div className="flex-grow flex items-center justify-center">
+                  {isOverviewSlide ? (
+                    // Overview slide with chapter markers
+                    <OverviewSlide 
+                      parentNote={currentNote} 
+                      childNotes={currentNote.childNotes || []}
+                      theme={theme}
+                    />
+                  ) : isStartSlide ? (
+                    // Start slide with project start slogan
+                    <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-10">
+                      <div className="w-full text-white text-center">
+                        <div className="content mb-6 sm:mb-10">
+                          {formatContent(currentNote.content)}
                         </div>
-                      )}
-                      <div className="mt-8 sm:mt-16 opacity-70 text-sm">
-                        {currentProject?.name}
+                        <div className="mt-8 sm:mt-16 opacity-70 text-sm">
+                          {currentProject?.name}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  // Regular slide with content
-                  <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-10 py-6 sm:py-10 relative">
-                    {/* Discussion icon overlay */}
-                    {currentNote.isDiscussion && (
-                      <div className="absolute top-2 sm:top-4 right-2 sm:right-4 text-white opacity-80 transition-opacity animate-pulse">
-                        <Users className="h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" />
+                  ) : isEndSlide ? (
+                    // End slide with project end slogan and author
+                    <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-10">
+                      <div className="w-full text-white text-center">
+                        <div className="content mb-6 sm:mb-10">
+                          {formatContent(currentNote.content)}
+                        </div>
+                        {currentNote.author && (
+                          <div className="mt-4 sm:mt-8 opacity-80 text-base sm:text-lg">
+                            {currentNote.author}
+                          </div>
+                        )}
+                        <div className="mt-8 sm:mt-16 opacity-70 text-sm">
+                          {currentProject?.name}
+                        </div>
                       </div>
-                    )}
-                    <div className="w-full text-white">
-                      <div className="content mb-6 sm:mb-10">
-                        {formatContent(currentNote.content)}
-                      </div>
-                      
-                      {/* URL link if present - with typography styling */}
-                      {currentNote.url && (
-                        <div className="mt-4 sm:mt-8">
-                          <a
-                            href={currentNote.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              ...generateTypographyStyles(getTypographyStyles(
-                                ContentType.Regular,
-                                level + 1,
-                                (currentNote.linkText || currentNote.url).length
-                              )),
-                              color: 'rgba(255, 255, 255, 0.9)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
-                              paddingBottom: '0.5rem',
-                              width: 'fit-content'
-                            }}
-                            className="hover:text-white text-sm sm:text-base"
-                          >
-                            <span className="mr-2">🔗</span>
-                            {currentNote.linkText || currentNote.url}
-                          </a>
-                        </div>
-                      )}
-                      
-                      {/* YouTube embed if present */}
-                      {currentNote.youtubeLink && (
-                        <div className="mt-4 sm:mt-8 rounded overflow-hidden aspect-video bg-black/20 shadow-xl max-w-full">
-                          <iframe
-                            className="w-full h-full"
-                            src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
-                            title="YouTube video"
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          ></iframe>
-                        </div>
-                      )}
-                      
-                      {/* Images if present */}
-                      {currentNote.images && currentNote.images.length > 0 && (
-                        <div className="mt-4 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
-                          {currentNote.images.map((image: string, idx: number) => (
-                            <div key={idx} className="rounded overflow-hidden shadow-xl max-h-[70vh]">
-                              <img 
-                                src={image} 
-                                alt={`Note image ${idx + 1}`} 
-                                className="w-full h-full object-contain" 
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
-                  </div>
-                )}
-              </>
+                  ) : (
+                    // Regular slide with content
+                    <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center px-4 sm:px-6 md:px-10 py-6 sm:py-10 relative">
+                      {/* Discussion icon overlay */}
+                      {currentNote.isDiscussion && (
+                        <div className="absolute top-2 sm:top-4 right-2 sm:right-4 text-white opacity-80 transition-opacity animate-pulse">
+                          <Users className="h-8 w-8 sm:h-12 sm:w-12 md:h-16 md:w-16" />
+                        </div>
+                      )}
+                      <div className="w-full text-white">
+                        <div className="content mb-6 sm:mb-10">
+                          {formatContent(currentNote.content)}
+                        </div>
+                        
+                        {/* URL link if present - with typography styling */}
+                        {currentNote.url && (
+                          <div className="mt-4 sm:mt-8">
+                            <a
+                              href={currentNote.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                ...generateTypographyStyles(getTypographyStyles(
+                                  ContentType.Regular,
+                                  level + 1,
+                                  (currentNote.linkText || currentNote.url).length
+                                )),
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+                                paddingBottom: '0.5rem',
+                                width: 'fit-content'
+                              }}
+                              className="hover:text-white text-sm sm:text-base"
+                            >
+                              <span className="mr-2">🔗</span>
+                              {currentNote.linkText || currentNote.url}
+                            </a>
+                          </div>
+                        )}
+                        
+                        {/* YouTube embed if present */}
+                        {currentNote.youtubeLink && (
+                          <div className="mt-4 sm:mt-8 rounded overflow-hidden aspect-video bg-black/20 shadow-xl max-w-full">
+                            <iframe
+                              className="w-full h-full"
+                              src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
+                              title="YouTube video"
+                              frameBorder="0"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                            ></iframe>
+                          </div>
+                        )}
+                        
+                        {/* Images if present */}
+                        {currentNote.images && currentNote.images.length > 0 && (
+                          <div className="mt-4 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
+                            {currentNote.images.map((image: string, idx: number) => (
+                              <div key={idx} className="rounded overflow-hidden shadow-xl max-h-[70vh]">
+                                <img 
+                                  src={image} 
+                                  alt={`Note image ${idx + 1}`} 
+                                  className="w-full h-full object-contain" 
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
@@ -555,39 +547,7 @@ export default function PresentModeFixed() {
             />
           </div>
           
-          {/* Debug overlay - Always visible with larger font */}
-          {currentNote && (
-            <div className="absolute top-0 left-0 right-0 p-3 bg-black/90 text-white text-base font-mono z-50 overflow-auto max-h-[50vh] shadow-lg border-b border-gray-700">
-              <div className="mb-3 text-lg font-bold text-center">DEBUG MODE</div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <span className="bg-blue-800 px-2 py-1 rounded">Slide #{currentSlideIndex + 1}/{flattenedNotes.length}</span>
-                <span className="bg-green-800 px-2 py-1 rounded">ID: {currentNote.id}</span>
-                <span className="bg-purple-800 px-2 py-1 rounded">Level: {currentNote.level}</span>
-                <span className="bg-red-800 px-2 py-1 rounded">Children: {currentNote.childNotes?.length || 0}</span>
-                <span className="bg-yellow-800 px-2 py-1 rounded">Content: {currentNote.content.slice(0, 30)}{currentNote.content.length > 30 ? '...' : ''}</span>
-                {currentNote.debugInfo && (
-                  <span className="bg-gray-800 px-2 py-1 rounded font-bold">{currentNote.debugInfo}</span>
-                )}
-              </div>
-              <div className="text-sm">
-                <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                  <span className="font-bold text-white col-span-2 mb-1 border-b border-gray-700">All Slides:</span>
-                  {flattenedNotes.map((note, idx) => (
-                    <React.Fragment key={idx}>
-                      <span className={`${idx === currentSlideIndex ? 'text-yellow-400 font-bold' : 'text-gray-400'}`}>
-                        {idx + 1}.
-                      </span>
-                      <span className={`${idx === currentSlideIndex ? 'text-yellow-400 font-bold' : 'text-gray-400'} truncate`}>
-                        {note.isStartSlide ? 'START' : note.isEndSlide ? 'END' : note.isOverviewSlide ? 'OVERVIEW' : ''} 
-                        {note.content.slice(0, 20)}{note.content.length > 20 ? '...' : ''} 
-                        {note.debugInfo ? `(${note.debugInfo})` : ''}
-                      </span>
-                    </React.Fragment>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Debug overlay removed - we're now using the inline debug display instead */}
           
           {/* Time tracking dots */}
           {timeDotsVisible && (
