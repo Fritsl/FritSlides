@@ -246,7 +246,22 @@ export default function Header({
                   variant="ghost"
                   size="icon"
                   className="ml-1 h-8 w-8 text-white hover:bg-slate-800"
-                  onClick={() => setIsEditingProjectName(true)}
+                  onClick={() => {
+                    // Open project settings dialog instead of just editing name
+                    if (currentProject) {
+                      const form = new FormData();
+                      form.append('name', currentProject.name);
+                      form.append('startSlogan', currentProject.startSlogan || '');
+                      form.append('endSlogan', currentProject.endSlogan || '');
+                      form.append('author', currentProject.author || '');
+                      
+                      // Dispatch a custom event that can be caught by parent components
+                      const event = new CustomEvent('openProjectSettings', {
+                        detail: { projectId: currentProject.id }
+                      });
+                      window.dispatchEvent(event);
+                    }
+                  }}
                   title="Project Settings"
                 >
                   <Settings className="h-4 w-4" />

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useProjects } from "@/hooks/use-projects";
 import { useNotes, useNoteEditing } from "@/hooks/use-notes";
@@ -15,9 +15,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ImportDialog } from "@/components/ui/import-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Project } from "@shared/schema";
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required").max(50, "Project name is too long"),
+  startSlogan: z.string().nullable().optional(),
+  endSlogan: z.string().nullable().optional(),
+  author: z.string().nullable().optional(),
 });
 
 export default function HomePage() {
@@ -34,15 +38,70 @@ export default function HomePage() {
   const [expandLevel, setExpandLevel] = useState<number>(-1); // Default to -1 (no specific level expansion)
   const [maxNoteDepth, setMaxNoteDepth] = useState<number>(0);
   
+  // State for project settings dialog
+  const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
+  
   // Create a hidden anchor element for downloads
   const downloadLinkRef = useRef<HTMLAnchorElement | null>(null);
 
+  // Select the first project by default when projects load
+  useEffect(() => {
+    if (projects?.length && !selectedProjectId && !isLoadingProjects) {
+      setSelectedProjectId(projects[0].id);
+    }
+  }, [projects, selectedProjectId, isLoadingProjects]);
+  
+  // Get selected project
+  const selectedProject = projects?.find(p => p.id === selectedProjectId);
+
+  // Form for creating a new project
   const form = useForm<z.infer<typeof projectSchema>>({
     resolver: zodResolver(projectSchema),
     defaultValues: {
       name: "",
+      startSlogan: "",
+      endSlogan: "",
+      author: "",
     },
   });
+  
+  // Form for editing an existing project
+  const projectEditForm = useForm<z.infer<typeof projectSchema>>({
+    resolver: zodResolver(projectSchema),
+    defaultValues: {
+      name: selectedProject?.name || "",
+      startSlogan: selectedProject?.startSlogan || "",
+      endSlogan: selectedProject?.endSlogan || "",
+      author: selectedProject?.author || "",
+    },
+  });
+  
+  // Update edit form when selected project changes
+  useEffect(() => {
+    if (selectedProject) {
+      projectEditForm.reset({
+        name: selectedProject.name,
+        startSlogan: selectedProject.startSlogan || "",
+        endSlogan: selectedProject.endSlogan || "",
+        author: selectedProject.author || "",
+      });
+    }
+  }, [selectedProject, projectEditForm]);
+  
+  // Listen for the custom event from Header component
+  useEffect(() => {
+    const handleOpenProjectSettings = (event: any) => {
+      if (event.detail.projectId === selectedProjectId) {
+        setIsProjectSettingsOpen(true);
+      }
+    };
+    
+    window.addEventListener('openProjectSettings', handleOpenProjectSettings);
+    
+    return () => {
+      window.removeEventListener('openProjectSettings', handleOpenProjectSettings);
+    };
+  }, [selectedProjectId]);
 
   const onCreateProject = (values: z.infer<typeof projectSchema>) => {
     createProject.mutate(values, {
@@ -56,6 +115,26 @@ export default function HomePage() {
   
   const onUpdateProject = (id: number, name: string) => {
     updateProject.mutate({ id, name });
+  };
+  
+  const onUpdateProjectSettings = (values: z.infer<typeof projectSchema>) => {
+    if (!selectedProjectId) return;
+    
+    updateProject.mutate({
+      id: selectedProjectId,
+      name: values.name,
+      startSlogan: values.startSlogan,
+      endSlogan: values.endSlogan,
+      author: values.author
+    }, {
+      onSuccess: () => {
+        setIsProjectSettingsOpen(false);
+        toast({
+          title: "Project updated",
+          description: "Project settings have been updated successfully",
+        });
+      }
+    });
   };
   
   // Handle exporting notes
@@ -142,13 +221,6 @@ export default function HomePage() {
     // Navigate to the presentation mode route with the selected project ID
     setLocation(`/present/${selectedProjectId}`);
   };
-
-  // Select the first project by default when projects load
-  if (projects?.length && !selectedProjectId && !isLoadingProjects) {
-    setSelectedProjectId(projects[0].id);
-  }
-
-  const selectedProject = projects?.find(p => p.id === selectedProjectId);
 
   // Display loading state
   if (isLoadingProjects) {
@@ -259,6 +331,18 @@ export default function HomePage() {
         />
       )}
       
+      {/* Project Settings dialog */}
+      {selectedProject && (
+        <ProjectSettingsDialog
+          isOpen={isProjectSettingsOpen}
+          onOpenChange={setIsProjectSettingsOpen}
+          form={projectEditForm}
+          onSubmit={onUpdateProjectSettings}
+          isPending={updateProject.isPending}
+          project={selectedProject}
+        />
+      )}
+      
       {/* Hidden download anchor for exports */}
       <div style={{ display: 'none' }}>
         <a ref={downloadLinkRef} />
@@ -316,6 +400,121 @@ function NewProjectDialog({ isOpen, onOpenChange, form, onSubmit, isPending }: N
                   </>
                 ) : (
                   "Create Project"
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface ProjectSettingsDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  form: any;
+  onSubmit: (values: z.infer<typeof projectSchema>) => void;
+  isPending: boolean;
+  project: Project | null;
+}
+
+function ProjectSettingsDialog({ isOpen, onOpenChange, form, onSubmit, isPending, project }: ProjectSettingsDialogProps) {
+  useEffect(() => {
+    if (isOpen && project) {
+      // Reset form with current project values when dialog opens
+      form.reset({
+        name: project.name,
+        startSlogan: project.startSlogan || "",
+        endSlogan: project.endSlogan || "",
+        author: project.author || "",
+      });
+    }
+  }, [isOpen, project, form]);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Project Settings</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter project name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="startSlogan"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>START SLOGAN (First Presentation Slide)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter start slogan" {...field} value={field.value || ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="endSlogan"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>END SLOGAN (Last Presentation Slide)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter end slogan" {...field} value={field.value || ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="author"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>AUTHOR (Shown on End Slide)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter author name" {...field} value={field.value || ""} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <div className="flex justify-end space-x-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Settings"
                 )}
               </Button>
             </div>
