@@ -118,25 +118,38 @@ export function calculateLevel(parentId: number | null, notesMap: Map<number, an
 export function getTypographyStyles(contentType: ContentType, level: number, textLength: number = 0): any {
   // Base sizes for different content types (in rem)
   const baseSizes = {
-    [ContentType.Title]: 3.5,
-    [ContentType.Subtitle]: 2.5,
-    [ContentType.Heading]: 2.2,
-    [ContentType.Subheading]: 1.8,
-    [ContentType.Regular]: 1.5,
-    [ContentType.Quote]: 1.6,
-    [ContentType.List]: 1.4,
-    [ContentType.Code]: 1.2,
+    [ContentType.Title]: 4.5, // Increased from 3.5 to 4.5
+    [ContentType.Subtitle]: 3.2, // Increased from 2.5 to 3.2
+    [ContentType.Heading]: 2.8, // Increased from 2.2 to 2.8
+    [ContentType.Subheading]: 2.2, // Increased from 1.8 to 2.2
+    [ContentType.Regular]: 1.8, // Increased from 1.5 to 1.8
+    [ContentType.Quote]: 2.0, // Increased from 1.6 to 2.0
+    [ContentType.List]: 1.6, // Increased from 1.4 to 1.6
+    [ContentType.Code]: 1.4, // Increased from 1.2 to 1.4
   };
   
   // Scale down slightly based on hierarchical level
   const levelScaleFactor = Math.max(0.8, 1 - (level * 0.1));
   
-  // Scale down based on text length for better readability
-  const lengthScaleFactor = textLength > 100 
-    ? 0.8 
-    : textLength > 50 
-      ? 0.9 
-      : 1;
+  // Scale based on text length - boost very short content, scale down long content
+  let lengthScaleFactor = 1;
+  
+  if (textLength <= 5) {
+    // Very short content (like "JSON") gets a significant boost
+    lengthScaleFactor = 1.8;
+  } else if (textLength <= 10) {
+    // Short content gets a moderate boost
+    lengthScaleFactor = 1.5;
+  } else if (textLength <= 20) {
+    // Brief content gets a small boost
+    lengthScaleFactor = 1.2;
+  } else if (textLength > 100) {
+    // Long content gets scaled down
+    lengthScaleFactor = 0.8;
+  } else if (textLength > 50) {
+    // Moderate length content gets slightly scaled down
+    lengthScaleFactor = 0.9;
+  }
   
   const fontSize = baseSizes[contentType] * levelScaleFactor * lengthScaleFactor;
   

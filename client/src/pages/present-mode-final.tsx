@@ -33,6 +33,31 @@ interface TimeSegment {
   currentProgress: number; // Progress between 0-1 indicating position between time points
 }
 
+// Determine content type based on content features
+function determineContentType(content: string): ContentType {
+  if (!content) return ContentType.Regular;
+  
+  // Check for code blocks with triple backticks
+  if (content.includes("```")) return ContentType.Code;
+  
+  // Check for list items
+  if (content.match(/^(\s*[-*+]|\s*\d+\.)\s/m)) return ContentType.List;
+  
+  // Check for block quotes
+  if (content.match(/^>\s/m)) return ContentType.Quote;
+  
+  // Check for headings based on length and characteristics
+  if (content.length < 30) {
+    return content === content.toUpperCase() ? ContentType.Title : ContentType.Heading;
+  }
+  
+  // Check for subheadings
+  if (content.length < 60) return ContentType.Subheading;
+  
+  // Default to regular content
+  return ContentType.Regular;
+}
+
 export default function PresentModeFixed() {
   const [, setLocation] = useLocation();
   const { projectId: projectIdParam } = useParams<{ projectId: string }>();
@@ -397,7 +422,7 @@ export default function PresentModeFixed() {
                         <div 
                           className="mt-12 text-center opacity-70"
                           style={generateTypographyStyles(getTypographyStyles(
-                            ContentType.Body,
+                            ContentType.Regular,
                             0,
                             currentProject?.name?.length || 0
                           ))}
@@ -438,7 +463,7 @@ export default function PresentModeFixed() {
                         <div 
                           className="mt-12 text-center opacity-70"
                           style={generateTypographyStyles(getTypographyStyles(
-                            ContentType.Body,
+                            ContentType.Regular,
                             0,
                             currentProject?.name?.length || 0
                           ))}
@@ -468,28 +493,25 @@ export default function PresentModeFixed() {
                               style={{
                                 display: 'flex',
                                 flexDirection: 'column',
-                                alignItems: determineContentType(
-                                  currentNote.content,
-                                  false,
-                                  false,
-                                  false,
-                                  level
-                                ) === ContentType.List ? 'flex-start' : 'center',
+                                alignItems: determineContentType(currentNote.content) === ContentType.List 
+                                  ? 'flex-start' 
+                                  : 'center',
                               }}
                             >
                               <div
-                                style={generateTypographyStyles(getTypographyStyles(
-                                  determineContentType(
-                                    currentNote.content,
-                                    false, 
-                                    false,
-                                    false,
-                                    level
-                                  ),
-                                  level,
-                                  currentNote.content.length,
-                                  true // has media
-                                ))}
+                                style={{
+                                  ...generateTypographyStyles(getTypographyStyles(
+                                    determineContentType(currentNote.content),
+                                    level,
+                                    currentNote.content.length
+                                  )),
+                                  // Slightly reduce font size for slides with media to improve layout
+                                  fontSize: `calc(${generateTypographyStyles(getTypographyStyles(
+                                    determineContentType(currentNote.content),
+                                    level,
+                                    currentNote.content.length
+                                  )).fontSize} * 0.85)`
+                                }}
                               >
                                 {formatContent(currentNote.content)}
                               </div>
@@ -503,7 +525,7 @@ export default function PresentModeFixed() {
                                     rel="noopener noreferrer"
                                     style={{
                                       ...generateTypographyStyles(getTypographyStyles(
-                                        ContentType.Body,
+                                        ContentType.Regular,
                                         level,
                                         (currentNote.linkText || currentNote.url).length
                                       )),
@@ -564,13 +586,9 @@ export default function PresentModeFixed() {
                             style={{
                               display: 'flex',
                               flexDirection: 'column',
-                              alignItems: determineContentType(
-                                currentNote.content,
-                                false,
-                                false,
-                                false,
-                                level
-                              ) === ContentType.List ? 'flex-start' : 'center',
+                              alignItems: determineContentType(currentNote.content) === ContentType.List 
+                                ? 'flex-start' 
+                                : 'center',
                               justifyContent: 'center'
                             }}
                           >
@@ -579,23 +597,13 @@ export default function PresentModeFixed() {
                               className="text-content"
                               style={{
                                 ...generateTypographyStyles(getTypographyStyles(
-                                  determineContentType(
-                                    currentNote.content,
-                                    false, 
-                                    false,
-                                    false,
-                                    level
-                                  ),
+                                  determineContentType(currentNote.content),
                                   level,
                                   currentNote.content.length
                                 )),
-                                margin: determineContentType(
-                                  currentNote.content,
-                                  false,
-                                  false,
-                                  false,
-                                  level
-                                ) === ContentType.List ? '0 auto 0 15%' : '0 auto',
+                                margin: determineContentType(currentNote.content) === ContentType.List 
+                                  ? '0 auto 0 15%' 
+                                  : '0 auto',
                               }}
                             >
                               {formatContent(currentNote.content)}
@@ -610,7 +618,7 @@ export default function PresentModeFixed() {
                                   rel="noopener noreferrer"
                                   style={{
                                     ...generateTypographyStyles(getTypographyStyles(
-                                      ContentType.Body,
+                                      ContentType.Regular,
                                       level,
                                       (currentNote.linkText || currentNote.url).length
                                     )),
