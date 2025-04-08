@@ -30,7 +30,7 @@ interface TimeSegment {
   currentProgress: number; // Progress between 0-1 indicating position between time points
 }
 
-export default function PresentMode() {
+export default function PresentModeFixed() {
   const [, setLocation] = useLocation();
   const { projectId: projectIdParam } = useParams<{ projectId: string }>();
   const projectId = projectIdParam ? parseInt(projectIdParam, 10) : null;
@@ -321,6 +321,20 @@ export default function PresentMode() {
       .find(note => note.time && note.time.trim() !== '');
       
     return nextTimed;
+  };
+  
+  // Find out which root a note belongs to (for theming consistency)
+  const findRootIndex = (note: PresentationNote): number => {
+    if (note.rootIndex !== undefined) return note.rootIndex;
+    if (!note.parentId) return 0; // Default to 0 for notes without parents
+    
+    // Search through the notes to find the root node
+    const parentNote = flattenedNotes.find(n => n.id === note.parentId);
+    if (parentNote) {
+      return findRootIndex(parentNote);
+    }
+    
+    return 0; // Default if we can't determine the root
   };
   
   // Render the presentation
