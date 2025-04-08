@@ -27,7 +27,7 @@ export const PRESENTATION_THEMES: PresentationTheme[] = [
       accent: "#38BDF8"  // Sky Blue 400
     },
     patternType: 'dots',
-    patternDescription: "Scattered dots and circles in #38BDF8 at 10% opacity"
+    patternDescription: "Scattered dots and circles in #38BDF8 at 15% opacity"
   },
   
   // Sand (Orange)
@@ -40,7 +40,7 @@ export const PRESENTATION_THEMES: PresentationTheme[] = [
       accent: "#FB923C"  // Orange 400
     },
     patternType: 'paths',
-    patternDescription: "Interlocking paths in #FB923C at 10% opacity"
+    patternDescription: "Interlocking paths in #FB923C at 15% opacity"
   },
   
   // Pearl (Fuchsia)
@@ -53,7 +53,7 @@ export const PRESENTATION_THEMES: PresentationTheme[] = [
       accent: "#F0ABFC"  // Fuchsia 300
     },
     patternType: 'circles',
-    patternDescription: "Small circles in #F0ABFC at 10% opacity"
+    patternDescription: "Small circles in #F0ABFC at 15% opacity"
   },
   
   // Dark (Purple)
@@ -66,7 +66,7 @@ export const PRESENTATION_THEMES: PresentationTheme[] = [
       accent: "#A855F7"  // Purple 500
     },
     patternType: 'plus',
-    patternDescription: "Plus signs in #A855F7 at 10% opacity"
+    patternDescription: "Plus signs in #A855F7 at 15% opacity"
   },
   
   // Midnight (Cyan)
@@ -79,7 +79,7 @@ export const PRESENTATION_THEMES: PresentationTheme[] = [
       accent: "#22D3EE"  // Cyan 400
     },
     patternType: 'nodes',
-    patternDescription: "Circular nodes in #22D3EE at 10% opacity"
+    patternDescription: "Circular nodes in #22D3EE at 15% opacity"
   },
   
   // Obsidian (Teal)
@@ -92,14 +92,14 @@ export const PRESENTATION_THEMES: PresentationTheme[] = [
       accent: "#5EEAD4"  // Teal 300
     },
     patternType: 'dots',
-    patternDescription: "Scattered dots in #5EEAD4 at 10% opacity"
+    patternDescription: "Scattered dots in #5EEAD4 at 15% opacity"
   }
 ];
 
 // SVG patterns for each pattern type
 export const generatePatternSvg = (patternType: string, accentColor: string): string => {
-  // Set opacity for the patterns
-  const opacity = 0.1;
+  // Set opacity for the patterns - increased for better visibility
+  const opacity = 0.15;
   
   switch (patternType) {
     case 'dots':
@@ -135,9 +135,10 @@ export function getPresentationTheme(level: number, rootIndex: number): Presenta
 export function getThemeBackgroundStyle(theme: PresentationTheme) {
   const patternUrl = generatePatternSvg(theme.patternType, theme.colors.accent);
   
+  // Make the gradient more pronounced with base color in center fading to dark
   return {
-    background: `radial-gradient(circle, ${theme.colors.mid} 0%, ${theme.colors.dark} 100%)`,
-    backgroundImage: `url("${patternUrl}"), radial-gradient(circle, ${theme.colors.mid} 0%, ${theme.colors.dark} 100%)`,
+    background: `radial-gradient(circle at center, ${theme.colors.base} 0%, ${theme.colors.mid} 65%, ${theme.colors.dark} 100%)`,
+    backgroundImage: `url("${patternUrl}"), radial-gradient(circle at center, ${theme.colors.base} 0%, ${theme.colors.mid} 65%, ${theme.colors.dark} 100%)`,
     color: '#FFFFFF',
     textShadow: '-1.5px 1.5px 1.5px rgba(0, 0, 0, 0.4)'
   };
