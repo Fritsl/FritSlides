@@ -131,7 +131,7 @@ export default function PresentModeFixed() {
       const startSlide: PresentationNote = {
         id: -1, // Use negative ID to avoid conflicts
         projectId: projectId ?? 0,
-        content: `${project.name}`,
+        content: project.startSlogan || project.name.toUpperCase(), // Use startSlogan if available, otherwise use uppercase project name
         createdAt: new Date(),
         updatedAt: new Date(),
         order: "",
@@ -204,7 +204,7 @@ export default function PresentModeFixed() {
       const endSlide: PresentationNote = {
         id: -2, // Use negative ID to avoid conflicts
         projectId: projectId ?? 0,
-        content: `End of presentation`,
+        content: project.endSlogan || "End of presentation",
         createdAt: new Date(),
         updatedAt: new Date(),
         order: "",
