@@ -183,7 +183,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                     ></div>
                   </div>
                   
-                  <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-lg p-3 transition-all duration-300 group-hover:bg-white/15">
+                  <div className="flex-1 p-1 transition-all duration-300">
                     {/* Child note content */}
                     <p 
                       className="text-sm sm:text-base md:text-lg lg:text-xl font-medium"
@@ -234,7 +234,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
             
             {hasMoreChildren && (
               <div className="flex items-center justify-center mt-3">
-                <div className="flex items-center space-x-1 px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-sm">
+                <div className="flex items-center space-x-1">
                   <p className="text-xs sm:text-sm text-white/90 font-medium">
                     +{childNotes.length - limitedChildNotes.length} more slides
                   </p>
@@ -278,7 +278,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                 ></div>
               </div>
               
-              <div className="flex-1 bg-white/10 backdrop-blur-sm rounded-lg p-3 sm:p-4 transition-all duration-300 group-hover:bg-white/15">
+              <div className="flex-1 p-1 transition-all duration-300">
                 {/* Child note content */}
                 <p 
                   className="text-base sm:text-lg md:text-xl lg:text-2xl font-medium"
@@ -329,7 +329,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
         
         {hasMoreChildren && (
           <div className="flex items-center justify-center mt-4 mx-auto">
-            <div className="flex items-center space-x-2 px-5 py-2 rounded-full bg-white/20 backdrop-blur-sm">
+            <div className="flex items-center space-x-2">
               <p className="text-sm sm:text-base text-white/90 font-medium">
                 +{childNotes.length - limitedChildNotes.length} more slides
               </p>
