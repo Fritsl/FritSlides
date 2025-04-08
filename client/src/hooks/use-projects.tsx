@@ -77,13 +77,65 @@ export function useProjects() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      // No toast notification for successful deletion
-      // This avoids cluttering the UI, especially on small screens
+      toast({
+        title: "Project deleted",
+        description: "The project has been successfully deleted.",
+      });
       console.log("[PROJECT] Project deleted successfully");
     },
     onError: (error) => {
       toast({
         title: "Failed to delete project",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const duplicateProject = useMutation({
+    mutationFn: async ({ id, newName }: { id: number; newName: string }) => {
+      // First, get the project data to duplicate (including settings)
+      const projectRes = await apiRequest("GET", `/api/projects/${id}`);
+      const project = await projectRes.json();
+      
+      // Create a new project with the same settings
+      const newProjectRes = await apiRequest("POST", "/api/projects", { 
+        name: newName,
+        startSlogan: project.startSlogan,
+        endSlogan: project.endSlogan,
+        author: project.author
+      });
+      const newProject = await newProjectRes.json();
+      
+      // Get all notes from the original project
+      const notesRes = await apiRequest("GET", `/api/projects/${id}/notes`);
+      const notes = await notesRes.json();
+      
+      if (notes && notes.length > 0) {
+        // Export the notes (this will preserve the hierarchy)
+        const exportRes = await apiRequest("GET", `/api/projects/${id}/export`);
+        const exportData = await exportRes.json();
+        
+        // Import the notes into the new project
+        await apiRequest("POST", `/api/projects/${newProject.id}/import`, exportData);
+      }
+      
+      return newProject;
+    },
+    onSuccess: (newProject) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({
+        title: "Project duplicated",
+        description: "The project and all its notes have been duplicated.",
+      });
+      console.log("[PROJECT] Project duplicated successfully", newProject);
+      
+      // Return the new project ID so we can redirect to it
+      return newProject.id;
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to duplicate project",
         description: error.message,
         variant: "destructive",
       });
@@ -97,5 +149,6 @@ export function useProjects() {
     createProject,
     updateProject,
     deleteProject,
+    duplicateProject,
   };
 }

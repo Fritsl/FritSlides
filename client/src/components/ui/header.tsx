@@ -258,7 +258,7 @@ export default function Header({
                 
                 <DropdownMenuItem onClick={() => setIsProjectSelectorOpen(true)}>
                   <FileBox className="h-4 w-4 mr-2" />
-                  <span>Select Project</span>
+                  <span>Projects</span>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               
