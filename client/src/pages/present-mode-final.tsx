@@ -333,11 +333,11 @@ export default function PresentModeFixed() {
         case "ArrowLeft":
           goToPrevSlide();
           break;
-        case "ArrowDown":
+        case "ArrowUp":
           // Jump to next root note or special slide
           setCurrentSlideIndex(findRootNoteIndex('next'));
           break;
-        case "ArrowUp":
+        case "ArrowDown":
           // Jump to previous root note or special slide
           setCurrentSlideIndex(findRootNoteIndex('prev'));
           break;
