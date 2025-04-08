@@ -399,6 +399,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/projects/:projectId/import", isAuthenticated, async (req, res) => {
     try {
       const projectId = parseInt(req.params.projectId);
+      const statusUpdates: string[] = [];
+      
+      // Store status messages for response
+      const addStatus = (message: string) => {
+        console.log(message);
+        statusUpdates.push(message);
+        // In a real WebSocket implementation, we would emit events here
+        // For now, we'll include detailed status in the response
+      };
       
       // Check if project exists and belongs to the user
       const project = await storage.getProject(projectId);
@@ -425,36 +434,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalNotes = importData.notes.length;
       let processedNotes = 0;
       
+      addStatus(`Starting import of ${totalNotes} notes (${new Date().toLocaleTimeString()})`);
+      
+      // Get current timestamp for performance tracking
+      const startTime = Date.now();
+      
       // First pass: Create all notes without parent relationships
-      for (const note of importData.notes as ImportedNote[]) {
-        // Use helper function to convert imported note to insert format
-        const noteToInsert = convertImportedNoteToInsert(note, projectId);
-        // Create a new note without parent reference first
-        const newNote = await storage.createNote(noteToInsert);
+      // Process in batches for improved performance
+      const BATCH_SIZE = 10; // Process notes in batches of 10
+      for (let i = 0; i < importData.notes.length; i += BATCH_SIZE) {
+        const batch = importData.notes.slice(i, i + BATCH_SIZE);
+        const batchPromises = batch.map(async (note) => {
+          // Use helper function to convert imported note to insert format
+          const noteToInsert = convertImportedNoteToInsert(note, projectId);
+          
+          // Create a new note without parent reference
+          const newNote = await storage.createNote(noteToInsert);
+          
+          // Store the mapping from original id to new id
+          idMap.set(note.id, newNote.id);
+        });
         
-        // Store the mapping from original id to new id
-        idMap.set(note.id, newNote.id);
+        // Wait for all notes in this batch to be created
+        await Promise.all(batchPromises);
         
         // Update progress counter
-        processedNotes++;
+        processedNotes += batch.length;
         
-        // Every 5 notes or at specific thresholds (10%, 25%, 50%, 75%), log progress
-        if (processedNotes % 5 === 0 || 
-            processedNotes === Math.floor(totalNotes * 0.1) ||
-            processedNotes === Math.floor(totalNotes * 0.25) ||
-            processedNotes === Math.floor(totalNotes * 0.5) ||
-            processedNotes === Math.floor(totalNotes * 0.75)) {
-          console.log(`Import progress: ${processedNotes}/${totalNotes} notes processed (${Math.round(processedNotes/totalNotes*100)}%)`);
+        // Provide periodic status updates
+        if (i % 20 === 0 || processedNotes === totalNotes) {
+          const percent = Math.round((processedNotes / totalNotes) * 100);
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          addStatus(`Phase 1: Created ${processedNotes}/${totalNotes} notes (${percent}%, ${elapsed}s elapsed)`);
         }
       }
       
+      // Report completion of first phase
+      const phase1Time = ((Date.now() - startTime) / 1000).toFixed(1);
+      addStatus(`Note creation completed in ${phase1Time} seconds`);
+      
       // Second pass: Update parent relationships using batch processing for better performance
+      addStatus(`Phase 2: Starting parent relationship updates (${new Date().toLocaleTimeString()})`);
+      
+      const phase2Start = Date.now();
       const notesWithParents = importData.notes.filter(note => 
         typeof note.parentId === 'number' && 
         idMap.has(note.parentId as number)
       );
-      
-      console.log(`Starting parent relationship updates for ${notesWithParents.length} notes using batch processing`);
       
       // Build a batch update array for all parent relationships
       const parentUpdates: {id: number, parentId: number | null, order?: number | string}[] = [];
@@ -484,17 +510,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Process all parent updates in a single batch operation
-      console.log(`Processing ${parentUpdates.length} parent updates in batch mode`);
-      await storage.updateNoteParentsBatch(parentUpdates);
+      addStatus(`Processing ${parentUpdates.length} parent relationships in batch mode`);
       
-      console.log(`Completed all parent relationship updates`);
+      // Monitor batch progress through custom implementation
+      try {
+        // Track the progress of parent relationship updates
+        let parentsProcessed = 0;
+        const updateParentsWithProgress = async () => {
+          // Process in smaller batches of 25 for better progress tracking
+          const PARENT_BATCH_SIZE = 25;
+          
+          for (let i = 0; i < parentUpdates.length; i += PARENT_BATCH_SIZE) {
+            const batch = parentUpdates.slice(i, i + PARENT_BATCH_SIZE);
+            
+            // Process this small batch
+            await storage.updateNoteParentsBatch(batch);
+            
+            // Update progress
+            parentsProcessed += batch.length;
+            
+            // Status update for each batch
+            if (i % 50 === 0 || parentsProcessed >= parentUpdates.length) {
+              const percent = Math.round((parentsProcessed / parentUpdates.length) * 100);
+              const elapsed = ((Date.now() - phase2Start) / 1000).toFixed(1);
+              addStatus(`Phase 2: Processed ${parentsProcessed}/${parentUpdates.length} parent relationships (${percent}%, ${elapsed}s elapsed)`);
+            }
+          }
+        };
+        
+        await updateParentsWithProgress();
+      } catch (error) {
+        console.error("Error in batch parent updates:", error);
+        addStatus(`Error during parent relationship updates: ${error}`);
+      }
       
-      // Return success with count and total count for completion display
+      // Report completion of second phase
+      const phase2Time = ((Date.now() - phase2Start) / 1000).toFixed(1);
+      addStatus(`Parent relationship updates completed in ${phase2Time} seconds`);
+      
+      // Report total completion time
+      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      addStatus(`Import completed in ${totalTime} seconds total`);
+      
+      // Return success with count, total count, and detailed status for completion display
       return res.status(200).json({ 
         message: "Import successful", 
         count: importData.notes.length,
         processed: totalNotes,
-        total: totalNotes
+        total: totalNotes,
+        statusLog: statusUpdates, // Include detailed status log for display in UI
+        timeElapsed: totalTime
       });
     } catch (err) {
       console.error("Error importing notes:", err);

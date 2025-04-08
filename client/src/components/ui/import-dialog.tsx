@@ -33,12 +33,21 @@ export function ImportDialog({
   const [noteCount, setNoteCount] = useState<number | null>(null);
   const [progress, setProgress] = useState<number>(0);
   
+  const [statusLog, setStatusLog] = useState<string[]>([]);
+  const [currentStatus, setCurrentStatus] = useState<string>("");
+  const logContainerRef = useRef<HTMLDivElement>(null);
+  
   const importMutation = useMutation({
     mutationFn: async (data: any) => {
       // Reset progress and save the note count for tracking
       setProgress(0);
+      setStatusLog([]);
+      
       if (data.notes && Array.isArray(data.notes)) {
         setNoteCount(data.notes.length);
+        // Add first status message
+        setCurrentStatus(`Starting import of ${data.notes.length} notes...`);
+        setStatusLog(prev => [...prev, `Starting import of ${data.notes.length} notes...`]);
       }
       
       const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
@@ -51,20 +60,30 @@ export function ImportDialog({
       // Invalidate notes query to refresh notes list
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
       
+      // Extract and display the status log from the server
+      if (data.statusLog && Array.isArray(data.statusLog)) {
+        setStatusLog(data.statusLog);
+        // Set the last status message as current
+        if (data.statusLog.length > 0) {
+          setCurrentStatus(data.statusLog[data.statusLog.length - 1]);
+        }
+      }
+      
       // Display import success with count information
       toast({
         title: "Import successful",
-        description: `${data.count} notes have been imported`,
+        description: `${data.count} notes have been imported in ${data.timeElapsed || '?'} seconds`,
       });
       
-      // Reset state
+      // Don't automatically close dialog so user can see the import log
+      // Just reset the file selection
       setNoteCount(null);
-      onOpenChange(false);
     },
     onError: (error: Error) => {
-      // Reset count on error
+      // Reset status on error
       setNoteCount(null);
       setProgress(0);
+      setCurrentStatus("Import failed");
       
       toast({
         title: "Import failed",
@@ -117,6 +136,13 @@ export function ImportDialog({
       if (interval) clearInterval(interval);
     };
   }, [importMutation.isPending, importMutation.isSuccess, noteCount, toast]);
+  
+  // Auto-scroll the log container to the bottom whenever statusLog changes
+  useEffect(() => {
+    if (logContainerRef.current && statusLog.length > 0) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [statusLog]);
   
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
@@ -173,7 +199,7 @@ export function ImportDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <DialogTitle>Import Notes</DialogTitle>
           <DialogDescription>
@@ -252,21 +278,38 @@ export function ImportDialog({
                 value={progress} 
                 className={`h-2 ${progress === 100 ? "bg-green-100 dark:bg-green-900/20" : ""}`} 
               />
-              <div className="flex items-center justify-center mt-2">
-                {progress === 100 ? (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
-                    <span className="text-xs text-green-600 dark:text-green-400">All notes imported successfully</span>
-                  </>
-                ) : (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin text-primary" />
-                    <span className="text-xs text-muted-foreground">
-                  {noteCount && noteCount > 50 
-                    ? "Large import in progress - this may take a few minutes" 
-                    : "This may take a moment to complete"}
-                </span>
-                  </>
+              
+              {/* Import status and log section */}
+              <div className="mt-2">
+                <div className="flex items-center mb-1">
+                  {progress === 100 ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" />
+                      <span className="text-xs text-green-600 dark:text-green-400">All notes imported successfully</span>
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin text-primary" />
+                      <span className="text-xs text-muted-foreground">
+                        {currentStatus || "Processing..."}
+                      </span>
+                    </>
+                  )}
+                </div>
+                
+                {/* Status log display */}
+                {statusLog.length > 0 && (
+                  <div 
+                    ref={logContainerRef}
+                    className="mt-2 border rounded-md p-2 h-32 overflow-y-auto text-xs text-muted-foreground"
+                  >
+                    <div className="font-medium mb-1">Import Progress Log:</div>
+                    {statusLog.map((log, index) => (
+                      <div key={index} className="py-0.5 border-b border-dashed border-border/40 last:border-0">
+                        {log}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
