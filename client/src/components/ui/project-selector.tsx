@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, ChevronUp, Pencil, Trash } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Trash, Settings } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -95,6 +95,19 @@ export default function ProjectSelector({
 
   return (
     <>
+      {/* Settings button */}
+      {selectedProject && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 mr-1"
+          onClick={() => setIsEditDialogOpen(true)}
+          title="Project Settings"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
+      )}
+      
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="flex items-center">

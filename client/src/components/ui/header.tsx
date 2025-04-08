@@ -235,11 +235,22 @@ export default function Header({
                 </Button>
               </div>
             ) : (
-              <div 
-                className="cursor-pointer text-lg font-semibold text-white"
-                onClick={startEditing}
-              >
-                {currentProject.name}
+              <div className="flex items-center">
+                <div 
+                  className="cursor-pointer text-lg font-semibold text-white"
+                  onClick={startEditing}
+                >
+                  {currentProject.name}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-1 h-8 w-8 text-white hover:bg-slate-800"
+                  onClick={() => setIsEditingProjectName(true)}
+                  title="Project Settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
               </div>
             )
           ) : (
