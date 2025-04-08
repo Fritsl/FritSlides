@@ -1,0 +1,131 @@
+Font Implementation Details:
+
+    Base Font Configuration:
+
+Font Families:
+- Primary: 'IBM Plex Sans' with fallback to sans-serif
+  - Weights used: 300 (light), 400 (regular), 500 (medium), 600 (semibold), 700 (bold)
+  - Used for all body text, bullets, and non-headline content
+  
+- Display: 'Bebas Neue' with fallback to sans-serif
+  - Single weight (400)
+  - Used exclusively for start/end slides and major section headlines
+
+    Text Shadow Effect:
+
+All white text uses:
+- Offset: -1.5px horizontal, 1.5px vertical
+- Blur radius: 1.5px
+- Shadow color: rgba(0,0,0,0.4)
+
+    Detailed Size & Spacing Matrix:
+
+Start/End Slides:
+
+    Font: Bebas Neue
+    Size:
+        Mobile: text-5xl (3rem, 48px)
+        Tablet: text-7xl (4.5rem, 72px)
+        Desktop: text-9xl (8rem, 128px)
+    Letter spacing: tracking-tight (-0.025em)
+    Line height: Default (1)
+    Text transform: uppercase
+    Max width: max-w-5xl
+    Centered with mx-auto
+
+Root Level Bullets (Start slide):
+
+    Font: IBM Plex Sans
+    Size: text-xl -> text-2xl (1.25rem -> 1.5rem)
+    Line height: leading-relaxed (1.625)
+    Spacing: space-y-4 between items
+    Left padding: px-12
+    Number circles:
+        Size: w-8 h-8
+        Margin right: mr-4
+        Vertical alignment: mt-1 (mobile), mt-0 (desktop)
+
+Content Slides by Level:
+
+Level 1 (Root):
+
+    Long content (>50 chars):
+        Mobile: text-5xl (3rem)
+        Desktop: text-8xl (6rem)
+    Short content:
+        Mobile: text-6xl (3.75rem)
+        Desktop: text-9xl (8rem)
+    Font weight: font-bold
+    Letter spacing: tracking-tight (-0.025em)
+    Text align: text-center
+    Margin bottom: mb-6
+
+Level 2:
+
+    Long content:
+        Mobile: text-4xl (2.25rem)
+        Desktop: text-7xl (4.5rem)
+    Short content:
+        Mobile: text-5xl (3rem)
+        Desktop: text-8xl (6rem)
+    Font weight: font-semibold
+    Letter spacing: tracking-normal (0)
+    Text align: text-center
+
+Level 3:
+
+    Long content:
+        Mobile: text-3xl (1.875rem)
+        Desktop: text-6xl (3.75rem)
+    Short content:
+        Mobile: text-4xl (2.25rem)
+        Desktop: text-7xl (4.5rem)
+    Font weight: font-medium
+    Letter spacing: tracking-wide (0.025em)
+    Text align: text-left
+
+Level 4:
+
+    Consistent size:
+        Mobile: text-2xl (1.5rem)
+        Desktop: text-5xl (3rem)
+    Font weight: font-normal
+    Letter spacing: tracking-wide (0.025em)
+    Text align: text-left
+
+Deeper Levels:
+
+    Consistent size:
+        Mobile: text-xl (1.25rem)
+        Desktop: text-4xl (2.25rem)
+    Font weight: font-normal
+    Letter spacing: tracking-normal (0)
+    Text align: text-left
+
+Overview Slide Bullets:
+
+    Font: IBM Plex Sans
+    Size: text-2xl -> text-4xl
+    Space between items: space-y-6
+    Bullet points:
+        Size: w-3 h-3
+        Margin right: mr-6
+    Line height: Default
+    Text align: text-left
+
+Universal Text Properties:
+
+    Transitions:
+        duration-500 for all changes
+        transition-all for smooth animations
+    Word breaking: break-words
+    Hyphenation: hyphens-auto
+    Whitespace: whitespace-pre-line (preserves line breaks)
+    Max width on containers: max-w-[90vw] for overview slides
+
+Link Styling:
+
+    Underline offset: underline-offset-4
+    Decoration thickness: decoration-2
+    Hover: opacity-80
+    Transition: transition-opacity

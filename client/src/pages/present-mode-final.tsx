@@ -7,6 +7,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/comp
 import { Users } from "lucide-react";
 import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, PresentationTheme } from "@/lib/presentation-themes";
 import { formatContent, getYoutubeEmbedUrl, calculateLevel, ContentType, getTypographyStyles, generateTypographyStyles } from "@/components/slide-components";
+import { getAdvancedTypographyStyles, generateAdvancedStyles, SlideContentType } from "@/lib/advanced-typography";
 import { OverviewSlide } from "@/components/ui/overview-slide";
 import { FullscreenToggle } from "@/components/ui/fullscreen-toggle";
 import screenfull from "screenfull";
@@ -406,19 +407,15 @@ export default function PresentModeFixed() {
                     // Start slide with project start slogan
                     <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center">
                       <div className="w-full text-white">
-                        {/* Title using all capitals, centered, Roboto font */}
+                        {/* Title using advanced typography system */}
                         <div className="slide-content flex flex-col items-center justify-center">
                           <div 
                             className="text-center"
-                            style={{
-                              fontFamily: '"Roboto", sans-serif',
-                              fontSize: 'clamp(2.5rem, 8vw, 5rem)',
-                              fontWeight: 700,
-                              letterSpacing: '0.05em',
-                              textTransform: 'uppercase',
-                              lineHeight: 1.2,
-                              textShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                            }}
+                            style={generateAdvancedStyles(getAdvancedTypographyStyles(
+                              SlideContentType.StartEndSlide,
+                              0,
+                              currentNote.content.length
+                            ))}
                           >
                             {currentNote.content}
                           </div>
@@ -429,19 +426,15 @@ export default function PresentModeFixed() {
                     // End slide with project end slogan
                     <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center">
                       <div className="w-full text-white">
-                        {/* Title using all capitals, centered, Roboto font - matching Start Slide style */}
+                        {/* Title using advanced typography system - matching Start Slide style */}
                         <div className="slide-content flex flex-col items-center justify-center">
                           <div 
                             className="text-center"
-                            style={{
-                              fontFamily: '"Roboto", sans-serif',
-                              fontSize: 'clamp(2.5rem, 8vw, 5rem)',
-                              fontWeight: 700,
-                              letterSpacing: '0.05em',
-                              textTransform: 'uppercase',
-                              lineHeight: 1.2,
-                              textShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                            }}
+                            style={generateAdvancedStyles(getAdvancedTypographyStyles(
+                              SlideContentType.StartEndSlide,
+                              0,
+                              currentNote.content.length
+                            ))}
                           >
                             {currentNote.content}
                           </div>
@@ -451,11 +444,11 @@ export default function PresentModeFixed() {
                         {currentNote.author && (
                           <div 
                             className="mt-12 text-center opacity-80"
-                            style={{
-                              fontFamily: '"Roboto", sans-serif',
-                              fontSize: 'clamp(1rem, 3vw, 1.5rem)',
-                              fontWeight: 400
-                            }}
+                            style={generateAdvancedStyles(getAdvancedTypographyStyles(
+                              SlideContentType.Caption,
+                              0,
+                              currentNote.author.length
+                            ))}
                           >
                             {currentNote.author}
                           </div>
