@@ -72,7 +72,7 @@ export default function AuthPage() {
       <div className="flex items-center justify-center p-4 bg-white">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-2">
-            <CardTitle className="text-2xl font-bold text-primary">NoteDrop</CardTitle>
+            <CardTitle className="text-2xl font-bold text-primary">FritSlides</CardTitle>
             <CardDescription>
               Sign in to manage your notes or create a new account
             </CardDescription>
@@ -205,7 +205,7 @@ export default function AuthPage() {
         <div className="max-w-md space-y-6">
           <h1 className="text-4xl font-bold">Organize your thoughts hierarchically</h1>
           <p className="text-lg">
-            NoteDrop is a powerful note-taking system that lets you organize your notes in a tree structure, attach images, links, and more.
+            FritSlides is a powerful presentation and note-taking system that lets you organize your content hierarchically, attach images, links, and create beautiful presentations.
           </p>
           <div className="space-y-4">
             <div className="flex items-start">

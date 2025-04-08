@@ -160,7 +160,7 @@ export function ImportDialog({
         <DialogHeader>
           <DialogTitle>Import Notes</DialogTitle>
           <DialogDescription>
-            Import notes from a JSON file exported from NoteDrop.
+            Import notes from a JSON file exported from FritSlides.
           </DialogDescription>
         </DialogHeader>
         
@@ -207,7 +207,7 @@ export function ImportDialog({
                   Drop your file here or click to browse
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Supports JSON files exported from NoteDrop
+                  Supports JSON files exported from FritSlides
                 </p>
               </div>
             )}

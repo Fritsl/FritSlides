@@ -87,7 +87,7 @@ export default function Header({
     return (
       <header className="bg-background border-b border-neutral-subtle shadow-sm sticky top-0 z-50">
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-lg font-semibold text-primary">NoteDrop</h1>
+          <h1 className="text-lg font-semibold text-primary">FritSlides</h1>
           <div className="flex items-center">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
           </div>
@@ -183,7 +183,7 @@ export default function Header({
               </Button>
             </div>
           ) : (
-            <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">NoteDrop</h1>
+            <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">FritSlides</h1>
           )}
         </div>
         
