@@ -622,10 +622,10 @@ export default function NoteItem({
                 />
               </div>
               
-              {/* Time field - only show if YouTube is present */}
-              {formData.youtubeLink && (
-                <div className="flex items-center">
-                  <label className="font-medium text-white w-16 text-xs">Time</label>
+              {/* Time field - shown independently for presentation timing */}
+              <div className="flex items-center">
+                <label className="font-medium text-white w-16 text-xs">Time</label>
+                <div className="flex items-center space-x-2">
                   <Input
                     name="time"
                     type="text"
@@ -643,8 +643,11 @@ export default function NoteItem({
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                   />
+                  <div className="text-gray-400 text-[10px]">
+                    for presentation timing
+                  </div>
                 </div>
-              )}
+              </div>
               
               {/* Image field */}
               <div className="flex flex-col">
