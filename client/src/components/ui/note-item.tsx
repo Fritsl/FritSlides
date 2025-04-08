@@ -682,7 +682,10 @@ export default function NoteItem({
             {/* Normal mode content */}
             <div>
               <div className="flex items-start">
-                <div className="flex-1">
+                <div 
+                  className="flex-1 cursor-text"
+                  onDoubleClick={() => startEditing(note.id)}
+                >
                   <p className={`text-white ${
                     level === 0 ? 'text-xl font-bold' : 
                     level === 1 ? 'text-lg font-semibold' : 
