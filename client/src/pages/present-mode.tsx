@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useProjects } from "@/hooks/use-projects";
 import { useNotes } from "@/hooks/use-notes";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Edit, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Edit, X, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getPresentationTheme, getThemeBackgroundStyle, PresentationTheme } from "@/lib/presentation-themes";
 import { OverviewSlide } from "@/components/ui/overview-slide";
@@ -15,6 +15,12 @@ import {
   ContentType, 
   determineContentType 
 } from "@/lib/presentation-typography";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Extended note type with level, theme, and child information for presentation
 interface PresentationNote extends Note {
@@ -27,6 +33,28 @@ interface PresentationNote extends Note {
   isEndSlide?: boolean; // Flag for project end slide
   author?: string | null; // Author for end slides
 }
+
+// Interface for time tracking segment
+interface TimeSegment {
+  lastPassedSlideIndex: number; // Index of the slide with the last passed time marker
+  nextUpcomingSlideIndex: number | null; // Index of the slide with the next upcoming time marker
+  lastPassedTime: string; // The time marker of the last passed slide
+  nextUpcomingTime: string | null; // The time marker of the next upcoming slide
+  currentProgress: number; // Progress between 0-1 indicating position between time points
+}
+
+// Function to parse HH:MM format to minutes
+const parseTimeToMinutes = (timeStr: string): number => {
+  if (!timeStr) return 0;
+  
+  const parts = timeStr.split(':');
+  if (parts.length !== 2) return 0;
+  
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  
+  return hours * 60 + minutes;
+};
 
 export default function PresentMode() {
   const [location, setLocation] = useLocation();
@@ -41,6 +69,8 @@ export default function PresentMode() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [flattenedNotes, setFlattenedNotes] = useState<PresentationNote[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [timeSegment, setTimeSegment] = useState<TimeSegment | null>(null);
+  const [timeDotsVisible, setTimeDotsVisible] = useState(false);
   
   // Find the current project by ID
   useEffect(() => {
@@ -367,6 +397,141 @@ export default function PresentMode() {
   const isStartSlide = currentNote.isStartSlide === true;
   const isEndSlide = currentNote.isEndSlide === true;
   
+  // Find time markers in the presentation and calculate current position
+  useEffect(() => {
+    if (!flattenedNotes.length) return;
+    
+    // Find all slides with time markers
+    const timedSlides = flattenedNotes
+      .map((note, index) => ({note, index}))
+      .filter(({note}) => note.time && note.time.trim() !== '')
+      .sort((a, b) => {
+        const timeA = parseTimeToMinutes(a.note.time || '');
+        const timeB = parseTimeToMinutes(b.note.time || '');
+        return timeA - timeB;
+      });
+    
+    // If there are no timed slides, hide the timing indicators
+    if (timedSlides.length === 0) {
+      setTimeDotsVisible(false);
+      setTimeSegment(null);
+      return;
+    }
+    
+    // Get the current time
+    const now = new Date();
+    const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    // Find the last passed time marker and the next upcoming one
+    let lastPassedIndex = -1;
+    for (let i = 0; i < timedSlides.length; i++) {
+      const slideTime = parseTimeToMinutes(timedSlides[i].note.time || '');
+      if (slideTime <= currentTimeInMinutes) {
+        lastPassedIndex = i;
+      } else {
+        break;
+      }
+    }
+    
+    // If we haven't reached the first timed slide yet, use the first one as next
+    if (lastPassedIndex === -1) {
+      setTimeSegment({
+        lastPassedSlideIndex: currentSlideIndex,
+        nextUpcomingSlideIndex: timedSlides[0]?.index || null,
+        lastPassedTime: '',
+        nextUpcomingTime: timedSlides[0]?.note.time || null,
+        currentProgress: 0
+      });
+    } 
+    // If we've passed all timed slides, use the last one as reference
+    else if (lastPassedIndex === timedSlides.length - 1) {
+      setTimeSegment({
+        lastPassedSlideIndex: timedSlides[lastPassedIndex]?.index || 0,
+        nextUpcomingSlideIndex: null,
+        lastPassedTime: timedSlides[lastPassedIndex]?.note.time || '',
+        nextUpcomingTime: null,
+        currentProgress: 1
+      });
+    }
+    // Normal case: we're between two timed slides
+    else {
+      const lastPassed = timedSlides[lastPassedIndex];
+      const nextUpcoming = timedSlides[lastPassedIndex + 1];
+      
+      const lastPassedTime = parseTimeToMinutes(lastPassed.note.time || '');
+      const nextUpcomingTime = parseTimeToMinutes(nextUpcoming.note.time || '');
+      const totalTimeSpan = nextUpcomingTime - lastPassedTime;
+      const timeElapsed = currentTimeInMinutes - lastPassedTime;
+      
+      // Calculate progress between the two time points (0-1)
+      const progress = totalTimeSpan > 0 ? timeElapsed / totalTimeSpan : 0;
+      
+      setTimeSegment({
+        lastPassedSlideIndex: lastPassed.index,
+        nextUpcomingSlideIndex: nextUpcoming.index,
+        lastPassedTime: lastPassed.note.time || '',
+        nextUpcomingTime: nextUpcoming.note.time || null,
+        currentProgress: Math.max(0, Math.min(1, progress))
+      });
+    }
+    
+    // Show the timing indicators if we have time markers
+    setTimeDotsVisible(true);
+    
+    // Set up timer to update every minute
+    const timer = setInterval(() => {
+      // Just trigger a re-run of this effect
+      setTimeDotsVisible(currentValue => currentValue);
+    }, 60000); // Update every 1 minute
+    
+    return () => clearInterval(timer);
+  }, [flattenedNotes, currentSlideIndex]);
+  
+  // Calculate expected slide position based on time progress
+  const getExpectedSlidePosition = () => {
+    if (!timeSegment) return null;
+    
+    // If we only have a next upcoming slide (we're before all time markers)
+    if (timeSegment.lastPassedSlideIndex === currentSlideIndex && timeSegment.nextUpcomingSlideIndex !== null) {
+      return timeSegment.nextUpcomingSlideIndex;
+    }
+    
+    // If we only have a last passed slide (we're after all time markers)
+    if (timeSegment.nextUpcomingSlideIndex === null) {
+      return timeSegment.lastPassedSlideIndex;
+    }
+    
+    // Calculate expected position between the two time markers
+    const totalSlides = timeSegment.nextUpcomingSlideIndex - timeSegment.lastPassedSlideIndex;
+    const expectedOffset = Math.round(totalSlides * timeSegment.currentProgress);
+    const expectedPosition = timeSegment.lastPassedSlideIndex + expectedOffset;
+    
+    return expectedPosition;
+  };
+  
+  // Calculate slide difference between current and expected positions
+  const getSlideDifference = () => {
+    const expectedPosition = getExpectedSlidePosition();
+    if (expectedPosition === null) return 0;
+    
+    // Positive: ahead of schedule, Negative: behind schedule
+    const difference = currentSlideIndex - expectedPosition;
+    
+    // Cap at maximum of 25 slides in either direction
+    return Math.max(-25, Math.min(25, difference));
+  };
+  
+  // Find the next timed slide from current position
+  const getNextTimedSlide = () => {
+    if (!flattenedNotes.length) return null;
+    
+    const nextTimed = flattenedNotes
+      .slice(currentSlideIndex + 1)
+      .find(note => note.time && note.time.trim() !== '');
+      
+    return nextTimed;
+  };
+  
   return (
     <div className="min-h-screen flex flex-col bg-black">
       {/* Slide content - Full screen with no UI */}
@@ -519,6 +684,61 @@ export default function PresentMode() {
           </svg>
         </button>
       </div>
+      
+      {/* Time tracking dots */}
+      {timeDotsVisible && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div 
+                  className="relative h-8 flex items-center justify-center"
+                  style={{ 
+                    // Calculate width based on maximum potential offset
+                    width: '250px' // 25 slides * 5px + center area
+                  }}
+                >
+                  {/* Black dot (target position) */}
+                  <div 
+                    className="absolute w-3 h-3 rounded-full bg-black/50 transition-all duration-300"
+                    style={{
+                      transform: `translateX(${getSlideDifference() * -5}px)`,
+                      left: '50%'
+                    }}
+                  />
+                  
+                  {/* White dot (current position) */}
+                  <div 
+                    className="absolute w-3 h-3 rounded-full bg-white/50 transition-all duration-300"
+                    style={{
+                      left: '50%',
+                      transform: 'translateX(-50%)'
+                    }}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="bg-black/80 text-white text-xs">
+                <div className="text-center">
+                  <div>
+                    <span className="opacity-80">Now:</span> {currentNote.time ? `${currentNote.time}` : 'No time marker'} 
+                  </div>
+                  {getNextTimedSlide() && (
+                    <div>
+                      <span className="opacity-80">Next:</span> {getNextTimedSlide()?.content.slice(0, 20)}
+                      {getNextTimedSlide()?.content.length! > 20 ? '...' : ''} @ {getNextTimedSlide()?.time}
+                    </div>
+                  )}
+                  <div className="mt-1 text-xs opacity-70">
+                    {getSlideDifference() > 0 ? `${getSlideDifference()} slides ahead of schedule` :
+                     getSlideDifference() < 0 ? `${Math.abs(getSlideDifference())} slides behind schedule` :
+                     'On schedule'}
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
     </div>
   );
 }
