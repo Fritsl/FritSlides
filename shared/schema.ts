@@ -13,6 +13,9 @@ export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  startSlogan: text("startSlogan"),
+  endSlogan: text("endSlogan"),
+  author: text("author"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -40,12 +43,21 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export const insertProjectSchema = createInsertSchema(projects).pick({
   userId: true,
   name: true,
+  startSlogan: true,
+  endSlogan: true,
+  author: true,
 });
 
 export const insertNoteSchema = createInsertSchema(notes).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const updateProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  userId: true,
+  createdAt: true,
 });
 
 export const updateNoteSchema = createInsertSchema(notes).omit({
@@ -59,6 +71,7 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type UpdateProject = z.infer<typeof updateProjectSchema>;
 export type Project = typeof projects.$inferSelect;
 
 export type InsertNote = z.infer<typeof insertNoteSchema>;

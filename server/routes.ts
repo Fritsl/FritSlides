@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import multer from "multer";
-import { insertProjectSchema, insertNoteSchema, updateNoteSchema } from "@shared/schema";
+import { insertProjectSchema, updateProjectSchema, insertNoteSchema, updateNoteSchema } from "@shared/schema";
 import fs from "fs";
 import path from "path";
 import { randomBytes } from "crypto";
@@ -95,7 +95,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to update this project" });
       }
       
-      const updatedProject = await storage.updateProject(projectId, req.body.name);
+      const result = updateProjectSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid project data", errors: result.error.format() });
+      }
+      
+      const updatedProject = await storage.updateProject(projectId, result.data);
       res.json(updatedProject);
     } catch (err) {
       res.status(500).json({ message: "Failed to update project" });

@@ -25,6 +25,9 @@ interface ProjectSelectorProps {
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required").max(50, "Project name is too long"),
+  startSlogan: z.string().nullable().optional(),
+  endSlogan: z.string().nullable().optional(),
+  author: z.string().nullable().optional(),
 });
 
 export default function ProjectSelector({
@@ -41,13 +44,21 @@ export default function ProjectSelector({
     resolver: zodResolver(projectSchema),
     defaultValues: {
       name: selectedProject?.name || "",
+      startSlogan: selectedProject?.startSlogan || null,
+      endSlogan: selectedProject?.endSlogan || null,
+      author: selectedProject?.author || null,
     },
   });
 
   // Update form when selected project changes
   useEffect(() => {
     if (selectedProject) {
-      form.reset({ name: selectedProject.name });
+      form.reset({ 
+        name: selectedProject.name,
+        startSlogan: selectedProject.startSlogan,
+        endSlogan: selectedProject.endSlogan,
+        author: selectedProject.author
+      });
     }
   }, [selectedProject, form]);
 
@@ -56,6 +67,9 @@ export default function ProjectSelector({
       updateProject.mutate({
         id: selectedProject.id,
         name: values.name,
+        startSlogan: values.startSlogan,
+        endSlogan: values.endSlogan,
+        author: values.author
       }, {
         onSuccess: () => setIsEditDialogOpen(false),
       });
@@ -114,7 +128,12 @@ export default function ProjectSelector({
                   className="h-5 w-5"
                   onClick={(e) => {
                     e.stopPropagation();
-                    form.setValue("name", project.name);
+                    form.reset({
+                      name: project.name,
+                      startSlogan: project.startSlogan,
+                      endSlogan: project.endSlogan,
+                      author: project.author
+                    });
                     onSelectProject(project.id);
                     setIsEditDialogOpen(true);
                   }}
@@ -155,6 +174,45 @@ export default function ProjectSelector({
                     <FormLabel>Project Name</FormLabel>
                     <FormControl>
                       <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="startSlogan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Slogan</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="endSlogan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Slogan</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="author"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Author</FormLabel>
+                    <FormControl>
+                      <Input {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

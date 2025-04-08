@@ -35,8 +35,25 @@ export function useProjects() {
   });
 
   const updateProject = useMutation({
-    mutationFn: async ({ id, name }: { id: number; name: string }) => {
-      const res = await apiRequest("PUT", `/api/projects/${id}`, { name });
+    mutationFn: async ({ 
+      id, 
+      name, 
+      startSlogan, 
+      endSlogan, 
+      author 
+    }: { 
+      id: number; 
+      name: string; 
+      startSlogan?: string | null;
+      endSlogan?: string | null;
+      author?: string | null;
+    }) => {
+      const res = await apiRequest("PUT", `/api/projects/${id}`, { 
+        name, 
+        startSlogan, 
+        endSlogan, 
+        author 
+      });
       return res.json();
     },
     onSuccess: () => {

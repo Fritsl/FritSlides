@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, projects, type Project, type InsertProject, notes, type Note, type InsertNote, type UpdateNote } from "@shared/schema";
+import { users, type User, type InsertUser, projects, type Project, type InsertProject, type UpdateProject, notes, type Note, type InsertNote, type UpdateNote } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import connectPg from "connect-pg-simple";
@@ -25,7 +25,7 @@ export interface IStorage {
   getProjects(userId: number): Promise<Project[]>;
   getProject(id: number): Promise<Project | undefined>;
   createProject(project: InsertProject): Promise<Project>;
-  updateProject(id: number, name: string): Promise<Project | undefined>;
+  updateProject(id: number, data: UpdateProject): Promise<Project | undefined>;
   deleteProject(id: number): Promise<boolean>;
   
   // Note operations
@@ -83,10 +83,10 @@ export class DatabaseStorage implements IStorage {
     return project;
   }
 
-  async updateProject(id: number, name: string): Promise<Project | undefined> {
+  async updateProject(id: number, data: UpdateProject): Promise<Project | undefined> {
     const [updatedProject] = await db
       .update(projects)
-      .set({ name })
+      .set(data)
       .where(eq(projects.id, id))
       .returning();
     return updatedProject;
@@ -393,11 +393,11 @@ export class MemStorage implements IStorage {
     return project;
   }
 
-  async updateProject(id: number, name: string): Promise<Project | undefined> {
+  async updateProject(id: number, data: UpdateProject): Promise<Project | undefined> {
     const project = this.projects.get(id);
     if (!project) return undefined;
     
-    const updatedProject = { ...project, name };
+    const updatedProject = { ...project, ...data };
     this.projects.set(id, updatedProject);
     return updatedProject;
   }

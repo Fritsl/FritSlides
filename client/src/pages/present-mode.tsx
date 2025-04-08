@@ -22,6 +22,10 @@ interface PresentationNote extends Note {
   rootIndex?: number; // Index of the root note this belongs to - for theming
   childNotes?: PresentationNote[]; // Direct child notes for overview slides
   hasChildren?: boolean; // Flag to indicate this note has children
+  isOverviewSlide?: boolean; // Flag for chapter overview slides
+  isStartSlide?: boolean; // Flag for project start slide
+  isEndSlide?: boolean; // Flag for project end slide
+  author?: string | null; // Author for end slides
 }
 
 export default function PresentMode() {
@@ -48,7 +52,7 @@ export default function PresentMode() {
   
   // Convert hierarchical notes to a flattened array for presentation
   useEffect(() => {
-    if (!notes) return;
+    if (!notes || !currentProject) return;
     
     // Find all root notes (parent is null)
     const rootNotes = [...notes]
@@ -102,6 +106,30 @@ export default function PresentMode() {
     
     // Process each root note with its own index
     let flattened: PresentationNote[] = [];
+    
+    // Add start slide if we have a start slogan
+    if (currentProject.startSlogan) {
+      const startSlide: PresentationNote = {
+        id: -1, // Unique negative ID for the start slide
+        projectId: currentProject.id,
+        content: currentProject.startSlogan,
+        order: "-999",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        parentId: null,
+        level: 0,
+        rootIndex: 0,
+        time: null,
+        url: null,
+        linkText: null,
+        youtubeLink: null,
+        images: null,
+        isStartSlide: true,
+      };
+      flattened.push(startSlide);
+    }
+    
+    // Add regular notes
     rootNotes.forEach((rootNote, index) => {
       // Add the root note and its children with its index
       const rootAndChildren = flattenNotes(notes, null, 0, index);
@@ -117,11 +145,34 @@ export default function PresentMode() {
       flattened = [...flattened, ...thisRootAndChildren];
     });
     
+    // Add end slide if we have an end slogan
+    if (currentProject.endSlogan) {
+      const endSlide: PresentationNote = {
+        id: -2, // Unique negative ID for the end slide
+        projectId: currentProject.id,
+        content: currentProject.endSlogan,
+        order: "999",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        parentId: null,
+        level: 0,
+        rootIndex: Math.max(rootNotes.length - 1, 0), // Use last used index or 0
+        time: null,
+        url: null,
+        linkText: null,
+        youtubeLink: null,
+        images: null,
+        isEndSlide: true,
+        author: currentProject.author,
+      };
+      flattened.push(endSlide);
+    }
+    
     setFlattenedNotes(flattened);
     
     // Reset current slide to beginning when notes change
     setCurrentSlideIndex(0);
-  }, [notes]);
+  }, [notes, currentProject]);
   
   // Navigation handlers
   const goToNextSlide = () => {
@@ -313,6 +364,8 @@ export default function PresentMode() {
 
   // Check if this is an overview slide (a note with children)
   const isOverviewSlide = currentNote.hasChildren && currentNote.childNotes && currentNote.childNotes.length > 0;
+  const isStartSlide = currentNote.isStartSlide === true;
+  const isEndSlide = currentNote.isEndSlide === true;
   
   return (
     <div className="min-h-screen flex flex-col bg-black">
@@ -336,7 +389,7 @@ export default function PresentMode() {
         }}
         style={themeStyles}
       >
-        {/* Render appropriate slide based on if it's an overview slide or regular slide */}
+        {/* Render appropriate slide based on type */}
         {isOverviewSlide ? (
           // Overview slide with chapter markers
           <OverviewSlide 
@@ -344,6 +397,35 @@ export default function PresentMode() {
             childNotes={currentNote.childNotes!}
             theme={theme}
           />
+        ) : isStartSlide ? (
+          // Start slide with project start slogan
+          <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
+            <div className="w-full text-white text-center">
+              <div className="content mb-10">
+                {formatContent(currentNote.content)}
+              </div>
+              <div className="mt-16 opacity-70 text-sm">
+                {currentProject?.name}
+              </div>
+            </div>
+          </div>
+        ) : isEndSlide ? (
+          // End slide with project end slogan and author
+          <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
+            <div className="w-full text-white text-center">
+              <div className="content mb-10">
+                {formatContent(currentNote.content)}
+              </div>
+              {currentNote.author && (
+                <div className="mt-8 opacity-80 text-lg">
+                  {currentNote.author}
+                </div>
+              )}
+              <div className="mt-16 opacity-70 text-sm">
+                {currentProject?.name}
+              </div>
+            </div>
+          </div>
         ) : (
           // Regular slide with content
           <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
@@ -418,7 +500,7 @@ export default function PresentMode() {
         <div className="w-8"></div>
         <p className="text-white/30 text-[10px]">
           {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • 
-          {isOverviewSlide ? 'Chapter overview' : ''} • 
+          {isStartSlide ? 'Start' : isEndSlide ? 'End' : isOverviewSlide ? 'Chapter overview' : ''} • 
           Click or → to advance • ← back • ESC to exit
         </p>
         <button 
