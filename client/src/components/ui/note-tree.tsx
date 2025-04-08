@@ -63,6 +63,7 @@ export default function NoteTree({
     };
     
     // Start at root level (parentId = null) with depth 0
+    // This returns the actual max depth (since levels are 0-indexed)
     const maxTreeDepth = calculateDepth(null, 0);
     setMaxDepth(maxTreeDepth);
     
