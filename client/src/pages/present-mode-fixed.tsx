@@ -8,6 +8,7 @@ import { Users } from "lucide-react";
 import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, PresentationTheme } from "@/lib/presentation-themes";
 import { formatContent, ContentType, getYoutubeEmbedUrl, calculateLevel, getTypographyStyles, generateTypographyStyles } from "@/components/slide-components";
 import { OverviewSlide } from "@/components/ui/overview-slide";
+import { FullscreenToggle } from "@/components/ui/fullscreen-toggle";
 
 // Define the PresentationNote interface extending the Note interface
 interface PresentationNote extends Note {
@@ -501,21 +502,11 @@ export default function PresentModeFixed() {
               <span className="hidden sm:inline">Click or → to advance • ← back • ESC to exit</span>
               <span className="inline sm:hidden">Tap to advance</span>
             </p>
-            <button 
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent triggering next slide
-                requestFullscreen();
-              }}
-              className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white/70 opacity-70 hover:opacity-100 transition-opacity"
-              title="Enter fullscreen (F)"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <polyline points="9 21 3 21 3 15"></polyline>
-                <line x1="21" y1="3" x2="14" y2="10"></line>
-                <line x1="3" y1="21" x2="10" y2="14"></line>
-              </svg>
-            </button>
+            <FullscreenToggle 
+              buttonClassName="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100"
+              iconClassName="w-4 h-4"
+              showTooltip={false}
+            />
           </div>
           
           {/* Time tracking dots */}

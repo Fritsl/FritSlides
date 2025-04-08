@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { FileUpload } from "./file-upload";
 import { ConfirmationDialog } from "./confirmation-dialog";
 import { MoveNoteDialog } from "./move-note-dialog";
+import { FullscreenToggle } from "./fullscreen-toggle";
 import { useNotes, useNoteEditing } from "@/hooks/use-notes";
 import { getLevelColor } from "@/lib/colors";
 import {
@@ -476,7 +477,13 @@ export default function NoteItem({
               Edit Note
             </h2>
             
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 items-center">
+              <FullscreenToggle 
+                className="mr-1"
+                buttonClassName="h-8 bg-slate-800 hover:bg-slate-700 text-slate-300"
+                iconClassName="h-4 w-4"
+                showTooltip={false}
+              />
               <Button
                 size="sm"
                 variant="outline"
