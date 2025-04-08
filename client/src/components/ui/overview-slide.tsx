@@ -76,27 +76,25 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
     return `https://www.youtube.com/embed/${videoId}?autoplay=0${startTime}`;
   };
   
-  // Format the parent note content as title using typography system
+  // Format the parent note content as title using responsive classes instead of typography system
   const formatTitle = () => {
     // Split by newlines and use first line as title
     const lines = parentNote.content.split('\\n');
     const titleText = lines[0];
     
-    // Determine the content type (should be Section for overview slides)
-    const contentType = ContentType.Section;
-    
-    // Get font settings based on the level and content length
-    const typography = getTypographyStyles(
-      contentType, 
-      0, // Level is usually 0 for section headers
-      titleText.length
-    );
-    
-    // Generate CSS styles
-    const styles = generateTypographyStyles(typography);
-    
+    // Use responsive classes instead of dynamic typography
     return (
-      <h1 style={styles} className="mb-10 drop-shadow-md text-center">
+      <h1 
+        className="text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-4 sm:mb-6 drop-shadow-md font-semibold"
+        style={{
+          fontFamily: '"Roboto", sans-serif',
+          lineHeight: 1.2,
+          letterSpacing: '0.02em',
+          overflowWrap: 'break-word',
+          hyphens: 'auto',
+          maxWidth: '100%'
+        }}
+      >
         {titleText}
       </h1>
     );
@@ -118,17 +116,17 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
     );
   }
   
-  // Two-column layout for slides with media
+  // Responsive layout for slides with media - stacked on mobile, side-by-side on larger screens
   if (mediaLayout !== 'none') {
     const mediaColumnClass = 
       mediaLayout === 'portrait' || mediaLayout === 'shorts' 
-        ? 'w-[350px]' 
-        : 'w-1/2';
+        ? 'w-full sm:w-[280px] md:w-[350px]' 
+        : 'w-full sm:w-1/2';
     
     return (
-      <div className="flex flex-row h-full w-full">
-        {/* Media column */}
-        <div className={`${mediaColumnClass} p-6 flex items-center justify-center`}>
+      <div className="flex flex-col sm:flex-row h-full w-full overflow-hidden">
+        {/* Media column - full width on mobile, sized appropriately on larger screens */}
+        <div className={`${mediaColumnClass} p-3 sm:p-6 flex items-center justify-center ${mediaLayout === 'portrait' || mediaLayout === 'shorts' ? 'max-h-[30vh] sm:max-h-none' : ''}`}>
           {mediaLayout === 'video' || mediaLayout === 'shorts' ? (
             <div className="w-full h-auto aspect-video rounded-lg overflow-hidden shadow-xl">
               <iframe
@@ -141,46 +139,52 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
               />
             </div>
           ) : parentNote.images && parentNote.images.length > 0 ? (
-            <div className="rounded-lg overflow-hidden shadow-xl">
+            <div className="rounded-lg overflow-hidden shadow-xl max-h-[20vh] sm:max-h-none">
               <img 
                 src={parentNote.images[0]} 
                 alt="Slide image"
-                className="w-full h-auto object-contain" 
+                className="w-full h-full object-contain" 
               />
             </div>
           ) : null}
         </div>
         
         {/* Content column */}
-        <div className={`flex-1 p-6 flex flex-col`}>
-          {formatTitle()}
+        <div className="flex-1 p-3 sm:p-6 flex flex-col overflow-hidden">
+          <div className="text-center sm:text-left">
+            {formatTitle()}
+          </div>
           
-          <div className="flex flex-col space-y-6">
+          <div className="flex flex-col space-y-2 sm:space-y-4 overflow-y-auto">
             {limitedChildNotes.map((note, index) => (
               <div key={note.id} className="flex items-start">
                 <div 
-                  className="w-3 h-3 rounded-full mt-2 mr-4 flex-shrink-0" 
+                  className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-1.5 sm:mt-2 mr-2 sm:mr-4 flex-shrink-0" 
                   style={{ backgroundColor: accentColor }}
                 />
                 <div className="flex-1">
-                  {/* Use typography system for child item content */}
-                  <p style={generateTypographyStyles(getTypographyStyles(
-                    ContentType.Regular,
-                    1, // Level 1 for child items in overview
-                    note.content.split('\\n')[0].length
-                  ))}>
+                  {/* Use typography system with smaller text on mobile */}
+                  <p 
+                    className="text-sm sm:text-base md:text-lg lg:text-xl"
+                    style={{
+                      fontFamily: '"Roboto", sans-serif',
+                      fontWeight: 400,
+                      lineHeight: 1.4,
+                      letterSpacing: '0.01em',
+                    }}
+                  >
                     {note.content.split('\\n')[0]}
                   </p>
                   <div className="flex mt-1 space-x-2">
                     {note.url && (
                       <div className="text-white/70">
-                        <Link size={16} />
+                        <Link size={12} className="w-3 h-3 sm:w-4 sm:h-4" />
                       </div>
                     )}
                     {(note.content.toLowerCase().includes('discuss') || 
                       note.content.toLowerCase().includes('discussion')) && (
                       <div className="text-white/70">
-                        <MessageCircle size={16} />
+                        <MessageCircle size={12} className="w-3 h-3 sm:w-4 sm:h-4" />
                       </div>
                     )}
                   </div>
@@ -191,9 +195,9 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
             {hasMoreChildren && (
               <div className="flex items-center mt-2">
                 <div 
-                  className="w-3 h-3 opacity-0 mr-4 flex-shrink-0" 
+                  className="w-2 h-2 sm:w-3 sm:h-3 opacity-0 mr-2 sm:mr-4 flex-shrink-0" 
                 />
-                <p className="text-2xl text-white/70">...</p>
+                <p className="text-xl sm:text-2xl text-white/70">...</p>
               </div>
             )}
           </div>
@@ -202,37 +206,43 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
     );
   }
   
-  // Single column layout for slides without media
+  // Single column layout for slides without media - fully responsive
   return (
-    <div className="flex flex-col h-full w-full max-w-4xl mx-auto p-6">
-      {formatTitle()}
+    <div className="flex flex-col h-full w-full max-w-4xl mx-auto p-3 sm:p-6 overflow-hidden">
+      <div className="text-center mb-3 sm:mb-6">
+        {formatTitle()}
+      </div>
       
-      <div className="flex flex-col space-y-6 mt-8">
+      <div className="flex flex-col space-y-2 sm:space-y-4 overflow-y-auto">
         {limitedChildNotes.map((note, index) => (
           <div key={note.id} className="flex items-start">
             <div 
-              className="w-3 h-3 rounded-full mt-2 mr-4 flex-shrink-0" 
+              className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-1.5 sm:mt-2 mr-2 sm:mr-4 flex-shrink-0" 
               style={{ backgroundColor: accentColor }}
             />
             <div className="flex-1">
-              {/* Use typography system for child item content in single column layout */}
-              <p style={generateTypographyStyles(getTypographyStyles(
-                ContentType.Regular,
-                1, // Level 1 for child items in overview
-                note.content.split('\\n')[0].length
-              ))}>
+              {/* Use responsive sizing with direct CSS rather than dynamic typography */}
+              <p 
+                className="text-sm sm:text-base md:text-lg lg:text-xl"
+                style={{
+                  fontFamily: '"Roboto", sans-serif',
+                  fontWeight: 400,
+                  lineHeight: 1.4,
+                  letterSpacing: '0.01em',
+                }}
+              >
                 {note.content.split('\\n')[0]}
               </p>
               <div className="flex mt-1 space-x-2">
                 {note.url && (
                   <div className="text-white/70">
-                    <Link size={16} />
+                    <Link size={12} className="w-3 h-3 sm:w-4 sm:h-4" />
                   </div>
                 )}
                 {(note.content.toLowerCase().includes('discuss') || 
                   note.content.toLowerCase().includes('discussion')) && (
                   <div className="text-white/70">
-                    <MessageCircle size={16} />
+                    <MessageCircle size={12} className="w-3 h-3 sm:w-4 sm:h-4" />
                   </div>
                 )}
               </div>
@@ -243,9 +253,9 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
         {hasMoreChildren && (
           <div className="flex items-center mt-2">
             <div 
-              className="w-3 h-3 opacity-0 mr-4 flex-shrink-0" 
+              className="w-2 h-2 sm:w-3 sm:h-3 opacity-0 mr-2 sm:mr-4 flex-shrink-0" 
             />
-            <p className="text-2xl text-white/70">...</p>
+            <p className="text-xl sm:text-2xl text-white/70">...</p>
           </div>
         )}
       </div>
