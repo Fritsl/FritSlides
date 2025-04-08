@@ -22,7 +22,6 @@ export function formatContent(content: string): React.ReactNode {
   marked.setOptions({
     gfm: true,
     breaks: true,
-    headerIds: false,
   });
   
   // Apply custom styles using CSS to avoid TypeScript issues with the Marked renderer
