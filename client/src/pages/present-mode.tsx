@@ -401,7 +401,16 @@ export default function PresentMode() {
   
   // Find time markers in the presentation and calculate current position
   useEffect(() => {
-    if (!flattenedNotes.length) return;
+    // Always initialize with timer cleanup function
+    const timer = setInterval(() => {
+      // Just trigger a re-run of this effect every minute
+      setTimeDotsVisible(currentValue => currentValue);
+    }, 60000); // Update every 1 minute
+    
+    if (!flattenedNotes.length) {
+      // Even if we return early, we still need to set up the timer and clean it
+      return () => clearInterval(timer);
+    }
     
     // Find all slides with time markers
     const timedSlides = flattenedNotes
@@ -417,7 +426,7 @@ export default function PresentMode() {
     if (timedSlides.length === 0) {
       setTimeDotsVisible(false);
       setTimeSegment(null);
-      return;
+      return () => clearInterval(timer);
     }
     
     // Get the current time
@@ -479,12 +488,6 @@ export default function PresentMode() {
     
     // Show the timing indicators if we have time markers
     setTimeDotsVisible(true);
-    
-    // Set up timer to update every minute
-    const timer = setInterval(() => {
-      // Just trigger a re-run of this effect
-      setTimeDotsVisible(currentValue => currentValue);
-    }, 60000); // Update every 1 minute
     
     return () => clearInterval(timer);
   }, [flattenedNotes, currentSlideIndex]);
