@@ -197,8 +197,8 @@ export default function Header({
         )}
         
         <div className="flex items-center">
-          {/* Present mode button */}
-          {currentProject && onPresentMode && (
+          {/* Present mode button - only show when project has notes */}
+          {currentProject && onPresentMode && notes && notes.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -326,23 +326,25 @@ export default function Header({
               
               <DropdownMenuSeparator />
               
-              {/* Presentation mode */}
-              <DropdownMenuItem 
-                onClick={() => {
-                  if (currentProject && onPresentMode) {
-                    onPresentMode();
-                  } else if (!currentProject) {
-                    toast({
-                      title: "Select a project first",
-                      description: "You need to select a project before entering presentation mode",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-              >
-                <Presentation className="h-4 w-4 mr-2" />
-                <span>Presentation Mode</span>
-              </DropdownMenuItem>
+              {/* Presentation mode - only shown when project has notes */}
+              {notes && notes.length > 0 && (
+                <DropdownMenuItem 
+                  onClick={() => {
+                    if (currentProject && onPresentMode) {
+                      onPresentMode();
+                    } else if (!currentProject) {
+                      toast({
+                        title: "Select a project first",
+                        description: "You need to select a project before entering presentation mode",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <Presentation className="h-4 w-4 mr-2" />
+                  <span>Presentation Mode</span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
