@@ -127,34 +127,42 @@ export default function PresentModeFixed() {
     // This is used for consistent theming of related slides
     let rootIndex = 0;
     
-    // Process each root note and its children
-    rootNotes.forEach(rootNote => {
-      // Add the root note to the result
-      const rootNoteWithIndex = { ...rootNote, rootIndex };
-      result.push(rootNoteWithIndex);
+    // Helper function to recursively add all levels of notes
+    const addNoteAndChildren = (note: PresentationNote, currentRootIndex: number) => {
+      // Add the note itself with the root index
+      const noteWithIndex = { ...note, rootIndex: currentRootIndex };
+      result.push(noteWithIndex);
       
-      // If this root note has children, and enough of them, create an overview slide
-      if (rootNote.childNotes && rootNote.childNotes.length > 0) {
-        // Create an overview slide for root notes with children
-        const overviewSlide: PresentationNote = {
-          ...rootNote,
-          id: -100 - result.length, // Use a unique negative ID
-          isOverviewSlide: true,
-          childNotes: rootNote.childNotes,
-          rootIndex
-        };
+      // Recursively add all children if any
+      if (note.childNotes && note.childNotes.length > 0) {
+        // Sort children by order
+        const sortedChildren = [...note.childNotes].sort((a, b) => 
+          String(a.order).localeCompare(String(b.order))
+        );
         
-        // Insert the overview slide after the root note
-        result.splice(result.length, 0, overviewSlide);
+        // For root notes, add an overview slide showing all direct children
+        if (note.level === 0) {
+          const overviewSlide: PresentationNote = {
+            ...note,
+            id: -100 - result.length, // Use a unique negative ID
+            isOverviewSlide: true,
+            childNotes: sortedChildren,
+            rootIndex: currentRootIndex
+          };
+          result.push(overviewSlide);
+        }
         
-        // Add all children with proper rootIndex
-        rootNote.childNotes.forEach(childNote => {
-          result.push({ ...childNote, rootIndex });
+        // Add each child recursively
+        sortedChildren.forEach(childNote => {
+          addNoteAndChildren(childNote, currentRootIndex);
         });
       }
-      
-      // Increment rootIndex for the next root note
-      rootIndex++;
+    };
+    
+    // Process each root note and all its descendants
+    rootNotes.forEach(rootNote => {
+      addNoteAndChildren(rootNote, rootIndex);
+      rootIndex++; // Increment for the next root branch
     });
     
     // Add an end slide for the project
