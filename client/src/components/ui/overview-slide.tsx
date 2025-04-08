@@ -85,7 +85,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
     // Use responsive classes instead of dynamic typography
     return (
       <h1 
-        className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-4 sm:mb-6 drop-shadow-md font-bold"
+        className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-4 sm:mb-6 font-bold text-white"
         style={{
           fontFamily: '"Roboto", sans-serif',
           lineHeight: 1.2,
@@ -93,11 +93,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
           overflowWrap: 'break-word',
           hyphens: 'auto',
           maxWidth: '100%',
-          background: `linear-gradient(to right, rgba(255,255,255,1), rgba(255,255,255,0.8))`,
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          color: 'transparent',
-          textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+          textShadow: '0 1px 2px rgba(0,0,0,0.2)'
         }}
       >
         {titleText}
