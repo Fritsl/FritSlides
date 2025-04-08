@@ -9,6 +9,7 @@ import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, Presentatio
 import { formatContent, ContentType, getYoutubeEmbedUrl, calculateLevel, getTypographyStyles, generateTypographyStyles } from "@/components/slide-components";
 import { OverviewSlide } from "@/components/ui/overview-slide";
 import { FullscreenToggle } from "@/components/ui/fullscreen-toggle";
+import screenfull from "screenfull";
 
 // Define the PresentationNote interface extending the Note interface
 interface PresentationNote extends Note {

@@ -1,86 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import screenfull from 'screenfull';
 
-// Global state to track CSS fullscreen mode
+// Global state to track fullscreen mode across components
 const globalState = {
   isFullscreenMode: false,
   listeners: new Set<(isFullscreen: boolean) => void>()
 };
 
-// Function to notify all listeners of state change
+// Function to notify all listeners of fullscreen state change
 function notifyFullscreenChange(isFullscreen: boolean) {
   globalState.isFullscreenMode = isFullscreen;
   globalState.listeners.forEach(listener => listener(isFullscreen));
-}
-
-// Apply CSS fullscreen to the app container
-function applyCSSFullscreen(isFullscreen: boolean) {
-  const appElement = document.querySelector('#root') || document.body;
-  
-  if (isFullscreen) {
-    // Save current scroll position
-    const scrollY = window.scrollY;
-    
-    // Apply fullscreen styles
-    document.body.style.overflow = 'hidden';
-    appElement.classList.add('css-fullscreen-mode');
-    
-    // Create and append the fullscreen overlay if it doesn't exist
-    let overlay = document.getElementById('css-fullscreen-overlay');
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = 'css-fullscreen-overlay';
-      overlay.style.position = 'fixed';
-      overlay.style.top = '0';
-      overlay.style.left = '0';
-      overlay.style.width = '100vw';
-      overlay.style.height = '100vh';
-      overlay.style.backgroundColor = '#000';
-      overlay.style.zIndex = '9998';
-      overlay.style.display = 'flex';
-      overlay.style.alignItems = 'center';
-      overlay.style.justifyContent = 'center';
-      document.body.appendChild(overlay);
-
-      // Move the app element into the overlay as a direct child
-      const appClone = appElement.cloneNode(true) as HTMLElement;
-      appClone.id = 'css-fullscreen-content';
-      appClone.style.width = '100%';
-      appClone.style.height = '100%';
-      appClone.style.overflow = 'auto';
-      appClone.style.position = 'relative';
-      appClone.style.zIndex = '9999';
-      
-      // Hide the original
-      if (appElement instanceof HTMLElement) {
-        appElement.style.visibility = 'hidden';
-      }
-      
-      // Add the clone to the overlay
-      overlay.appendChild(appClone);
-      
-      // Restore scroll position
-      setTimeout(() => {
-        window.scrollTo(0, scrollY);
-      }, 0);
-    }
-  } else {
-    // Remove fullscreen styles
-    document.body.style.overflow = '';
-    appElement.classList.remove('css-fullscreen-mode');
-    
-    // Remove the overlay
-    const overlay = document.getElementById('css-fullscreen-overlay');
-    if (overlay) {
-      document.body.removeChild(overlay);
-    }
-    
-    // Make the original visible again
-    if (appElement instanceof HTMLElement) {
-      appElement.style.visibility = 'visible';
-    }
-  }
 }
 
 interface FullscreenToggleProps {
@@ -98,8 +30,21 @@ export function FullscreenToggle({
 }: FullscreenToggleProps) {
   const [isFullscreen, setIsFullscreen] = useState(globalState.isFullscreenMode);
 
-  // Register this component as a listener for fullscreen state changes
+  // Initialize fullscreen state and set up change listener
   useEffect(() => {
+    // Check initial state
+    const updateFullscreenState = () => {
+      const fullscreenActive = screenfull.isEnabled && screenfull.isFullscreen;
+      setIsFullscreen(fullscreenActive);
+      notifyFullscreenChange(fullscreenActive);
+    };
+
+    // Register for screenfull change events
+    if (screenfull.isEnabled) {
+      screenfull.on('change', updateFullscreenState);
+    }
+
+    // Register this component as a listener for our global state
     const listener = (isFullscreenMode: boolean) => {
       setIsFullscreen(isFullscreenMode);
     };
@@ -107,6 +52,9 @@ export function FullscreenToggle({
     globalState.listeners.add(listener);
     
     return () => {
+      if (screenfull.isEnabled) {
+        screenfull.off('change', updateFullscreenState);
+      }
       globalState.listeners.delete(listener);
     };
   }, []);
@@ -114,9 +62,16 @@ export function FullscreenToggle({
   // Keyboard shortcut for toggling fullscreen
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Only process if not in a form field
+      const activeElement = document.activeElement;
+      const isFormField = activeElement instanceof HTMLInputElement || 
+                          activeElement instanceof HTMLTextAreaElement ||
+                          activeElement instanceof HTMLSelectElement;
+      
+      if (isFormField) return;
+      
       if (e.key === 'f' || e.key === 'F') {
-        toggleFullscreen();
-      } else if (e.key === 'Escape' && isFullscreen) {
+        e.preventDefault();
         toggleFullscreen();
       }
     };
@@ -130,12 +85,73 @@ export function FullscreenToggle({
 
   const toggleFullscreen = () => {
     try {
-      // Toggle the fullscreen mode using our CSS approach
-      const newState = !isFullscreen;
-      applyCSSFullscreen(newState);
-      notifyFullscreenChange(newState);
+      if (screenfull.isEnabled) {
+        if (!screenfull.isFullscreen) {
+          // Enter fullscreen
+          screenfull.request().then(() => {
+            notifyFullscreenChange(true);
+          }).catch(err => {
+            console.error('Fullscreen request was rejected:', err);
+            
+            // Fall back to CSS mode if browser fullscreen fails
+            fallbackToCSS(true);
+          });
+        } else {
+          // Exit fullscreen
+          screenfull.exit().then(() => {
+            notifyFullscreenChange(false);
+          }).catch(err => {
+            console.error('Error exiting fullscreen:', err);
+            
+            // Fall back to CSS mode if browser fullscreen fails
+            fallbackToCSS(false);
+          });
+        }
+      } else {
+        // Screenfull is not enabled, use CSS fallback
+        fallbackToCSS(!isFullscreen);
+      }
     } catch (err) {
-      console.error('Error toggling CSS fullscreen:', err);
+      console.error('Error toggling fullscreen:', err);
+      // Fall back to CSS mode if there's an error
+      fallbackToCSS(!isFullscreen);
+    }
+  };
+  
+  // CSS-based fullscreen as a fallback
+  const fallbackToCSS = (enterFullscreen: boolean) => {
+    const appElement = document.querySelector('#root') || document.body;
+    
+    if (enterFullscreen) {
+      // Apply fullscreen styles
+      document.body.style.overflow = 'hidden';
+      if (appElement instanceof HTMLElement) {
+        appElement.style.position = 'fixed';
+        appElement.style.top = '0';
+        appElement.style.left = '0';
+        appElement.style.width = '100vw';
+        appElement.style.height = '100vh';
+        appElement.style.zIndex = '9999';
+        appElement.style.background = '#000';
+      }
+      
+      // Update state
+      notifyFullscreenChange(true);
+    } else {
+      // Remove fullscreen styles
+      document.body.style.overflow = '';
+      if (appElement instanceof HTMLElement) {
+        appElement.style.position = '';
+        appElement.style.top = '';
+        appElement.style.left = '';
+        appElement.style.width = '';
+        appElement.style.height = '';
+        appElement.style.zIndex = '';
+        appElement.style.background = '';
+      }
+      
+      // Update state
+      notifyFullscreenChange(false);
     }
   };
 
