@@ -343,8 +343,53 @@ export default function PresentModeFixed() {
   };
   
   // Render the presentation
+  // Super simple debug object
+  const debugInfo = {
+    currentSlide: currentSlideIndex + 1,
+    totalSlides: flattenedNotes.length,
+    currentLevel: currentNote?.level,
+    hasChildren: currentNote?.childNotes && currentNote?.childNotes.length > 0,
+    isOverview: isOverviewSlide,
+    content: currentNote?.content?.slice(0, 30),
+    debugText: currentNote?.debugInfo
+  };
+
   return (
     <div className="fixed inset-0 w-screen h-screen flex flex-col bg-black overflow-hidden">
+      {/* SUPER SIMPLE DEBUG OVERLAY - ALWAYS VISIBLE */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 9999,
+        background: 'rgba(0,0,0,0.9)',
+        color: 'white',
+        padding: '10px',
+        fontFamily: 'monospace',
+        fontSize: '16px',
+        borderBottom: '2px solid red'
+      }}>
+        <h3 style={{textAlign: 'center', margin: '0 0 10px 0', color: 'yellow'}}>DEBUG INFO</h3>
+        <pre style={{margin: 0, whiteSpace: 'pre-wrap'}}>{JSON.stringify(debugInfo, null, 2)}</pre>
+        <div style={{margin: '10px 0', borderTop: '1px solid #555', paddingTop: '10px'}}>
+          <h4 style={{margin: '0 0 5px 0'}}>ALL SLIDES:</h4>
+          <div style={{maxHeight: '200px', overflowY: 'auto'}}>
+            {flattenedNotes.map((note, idx) => (
+              <div key={idx} style={{
+                color: idx === currentSlideIndex ? 'yellow' : '#888',
+                fontWeight: idx === currentSlideIndex ? 'bold' : 'normal',
+                marginBottom: '3px'
+              }}>
+                {idx+1}. {note.isStartSlide ? 'START' : note.isEndSlide ? 'END' : note.isOverviewSlide ? 'OVERVIEW' : ''} 
+                {note.content.slice(0, 20)}{note.content.length > 20 ? '...' : ''} 
+                ({note.debugInfo || 'no-debug'})
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {isLoading || !flattenedNotes.length ? (
         // Loading screen
         <div className="flex-1 flex flex-col items-center justify-center">
