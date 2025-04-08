@@ -395,18 +395,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create a Map to store import status information
+  const importStatusMap = new Map<string, {
+    projectId: number,
+    userId: number,
+    startTime: number,
+    statusLog: string[],
+    progress: number,
+    completed: boolean,
+    totalNotes: number,
+    processedNotes: number
+  }>();
+  
+  // Endpoint to get real-time import status
+  app.get("/api/projects/:projectId/import-status", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      const importId = req.query.id as string;
+      
+      if (!importId) {
+        return res.status(400).json({ message: "Import ID is required" });
+      }
+      
+      // Check if status exists for this import
+      const importStatus = importStatusMap.get(importId);
+      if (!importStatus) {
+        return res.status(404).json({ message: "Import status not found" });
+      }
+      
+      // Check if user has permission
+      if (importStatus.userId !== req.user!.id || importStatus.projectId !== projectId) {
+        return res.status(403).json({ message: "Not authorized to view this import status" });
+      }
+      
+      // Calculate overall import progress
+      let progress = 0;
+      if (importStatus.totalNotes > 0) {
+        // Up to 60% for note creation, 30% for parent relationships, 10% for completion
+        const baseProgress = Math.min(60, Math.round((importStatus.processedNotes / importStatus.totalNotes) * 60));
+        progress = importStatus.completed ? 100 : baseProgress;
+      }
+      
+      // Return current status
+      return res.status(200).json({
+        importId,
+        status: importStatus.statusLog.length > 0 ? 
+          importStatus.statusLog[importStatus.statusLog.length - 1] : 
+          "Import in progress",
+        statusLog: importStatus.statusLog,
+        progress,
+        completed: importStatus.completed,
+        elapsedTime: ((Date.now() - importStatus.startTime) / 1000).toFixed(1),
+        totalNotes: importStatus.totalNotes,
+        processedNotes: importStatus.processedNotes
+      });
+    } catch (error) {
+      console.error("Error retrieving import status:", error);
+      return res.status(500).json({ message: "Failed to retrieve import status" });
+    }
+  });
+  
   // Import notes into a project
   app.post("/api/projects/:projectId/import", isAuthenticated, async (req, res) => {
     try {
       const projectId = parseInt(req.params.projectId);
+      
+      // Generate a unique import ID
+      const importId = `import-${projectId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const importStartTime = Date.now();
       const statusUpdates: string[] = [];
       
-      // Store status messages for response
+      // Initialize status tracking
+      importStatusMap.set(importId, {
+        projectId,
+        userId: req.user!.id,
+        startTime: importStartTime,
+        statusLog: [],
+        progress: 0,
+        completed: false,
+        totalNotes: 0,
+        processedNotes: 0
+      });
+      
+      // Store status messages for response and status updates
       const addStatus = (message: string) => {
         console.log(message);
         statusUpdates.push(message);
-        // In a real WebSocket implementation, we would emit events here
-        // For now, we'll include detailed status in the response
+        
+        // Also update the import status map
+        const status = importStatusMap.get(importId);
+        if (status) {
+          status.statusLog.push(message);
+          importStatusMap.set(importId, status);
+        }
       };
       
       // Check if project exists and belongs to the user
@@ -434,10 +515,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalNotes = importData.notes.length;
       let processedNotes = 0;
       
+      // Update the import status with total notes count
+      const currentStatus = importStatusMap.get(importId);
+      if (currentStatus) {
+        currentStatus.totalNotes = totalNotes;
+        importStatusMap.set(importId, currentStatus);
+      }
+      
       addStatus(`Starting import of ${totalNotes} notes (${new Date().toLocaleTimeString()})`);
       
       // Get current timestamp for performance tracking
-      const startTime = Date.now();
+      const processingStartTime = Date.now();
       
       // First pass: Create all notes without parent relationships
       // Process in batches for improved performance
@@ -464,13 +552,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Provide periodic status updates
         if (i % 20 === 0 || processedNotes === totalNotes) {
           const percent = Math.round((processedNotes / totalNotes) * 100);
-          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          const elapsed = ((Date.now() - processingStartTime) / 1000).toFixed(1);
           addStatus(`Phase 1: Created ${processedNotes}/${totalNotes} notes (${percent}%, ${elapsed}s elapsed)`);
+          
+          // Update the import status with processed notes count
+          const currentStatus = importStatusMap.get(importId);
+          if (currentStatus) {
+            currentStatus.processedNotes = processedNotes;
+            importStatusMap.set(importId, currentStatus);
+          }
         }
       }
       
       // Report completion of first phase
-      const phase1Time = ((Date.now() - startTime) / 1000).toFixed(1);
+      const phase1Time = ((Date.now() - processingStartTime) / 1000).toFixed(1);
       addStatus(`Note creation completed in ${phase1Time} seconds`);
       
       // Second pass: Update parent relationships using batch processing for better performance
@@ -579,12 +674,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       addStatus(`Parent relationship updates completed in ${phase2Time} seconds`);
       
       // Report total completion time
-      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      const totalTime = ((Date.now() - processingStartTime) / 1000).toFixed(1);
       addStatus(`Import completed in ${totalTime} seconds total`);
+      
+      // Mark the import as completed in the status map
+      const status = importStatusMap.get(importId);
+      if (status) {
+        status.completed = true;
+        status.progress = 100;
+        status.totalNotes = totalNotes;
+        status.processedNotes = processedNotes;
+        importStatusMap.set(importId, status);
+        
+        // For large imports, keep the status in memory for a limited time (5 minutes)
+        setTimeout(() => {
+          importStatusMap.delete(importId);
+        }, 5 * 60 * 1000);
+      }
       
       // Return success with count, total count, and detailed status for completion display
       return res.status(200).json({ 
-        message: "Import successful", 
+        message: "Import successful",
+        importId, // Include the import ID for continuous status polling
         count: importData.notes.length,
         processed: totalNotes,
         total: totalNotes,

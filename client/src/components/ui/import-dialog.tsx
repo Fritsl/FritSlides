@@ -40,11 +40,42 @@ export function ImportDialog({
   // Create a ref to hold the status update interval
   const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
+  // State for import ID from server
+  const [importId, setImportId] = useState<string | null>(null);
+  
+  // Add a function to poll for import status
+  const pollImportStatus = async (importId: string) => {
+    try {
+      const res = await apiRequest("GET", `/api/projects/${projectId}/import-status?id=${importId}`);
+      const data = await res.json();
+      
+      // Update our UI with the detailed status from the server
+      if (data.status) {
+        setCurrentStatus(data.status);
+        if (data.statusLog && Array.isArray(data.statusLog)) {
+          setStatusLog(data.statusLog);
+        }
+        
+        // Update progress based on actual server progress
+        if (typeof data.progress === 'number') {
+          setProgress(data.progress);
+        }
+        
+        return data.completed;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error polling import status:", error);
+      return false;
+    }
+  };
+  
   const importMutation = useMutation({
     mutationFn: async (data: any) => {
       // Reset progress and save the note count for tracking
       setProgress(0);
       setStatusLog([]);
+      setImportId(null);
       
       // Clear any existing intervals
       if (statusIntervalRef.current) {
@@ -58,30 +89,62 @@ export function ImportDialog({
         setCurrentStatus(`Starting import of ${data.notes.length} notes...`);
         setStatusLog(prev => [...prev, `Starting import of ${data.notes.length} notes...`]);
         
-        // Add additional periodic status updates during the request
-        statusIntervalRef.current = setInterval(() => {
-          const timestamp = new Date().toLocaleTimeString();
-          const message = `Import in progress... (${timestamp})`;
-          setStatusLog(prev => [...prev, message]);
-          setCurrentStatus(message);
-        }, 3000); // Update every 3 seconds
-      }
-      
-      try {
-        const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
-        // Clear the interval when the request completes
-        if (statusIntervalRef.current) {
-          clearInterval(statusIntervalRef.current);
-          statusIntervalRef.current = null;
+        try {
+          // Start the import process
+          const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
+          const importData = await res.json();
+          
+          // Check if the server returned an import ID for status polling
+          if (importData.importId) {
+            setImportId(importData.importId);
+            
+            // Start polling for real-time status updates
+            statusIntervalRef.current = setInterval(async () => {
+              try {
+                // Poll the server for current status
+                const statusRes = await apiRequest(
+                  "GET", 
+                  `/api/projects/${projectId}/import-status?id=${importData.importId}`
+                );
+                const statusData = await statusRes.json();
+                
+                // Update our UI with the server's status information
+                if (statusData.statusLog && Array.isArray(statusData.statusLog)) {
+                  setStatusLog(statusData.statusLog);
+                }
+                
+                if (statusData.status) {
+                  setCurrentStatus(statusData.status);
+                }
+                
+                if (typeof statusData.progress === 'number') {
+                  setProgress(statusData.progress);
+                }
+                
+                // If import is completed, clear the polling interval
+                if (statusData.completed) {
+                  if (statusIntervalRef.current) {
+                    clearInterval(statusIntervalRef.current);
+                    statusIntervalRef.current = null;
+                  }
+                }
+              } catch (pollError) {
+                console.error("Error polling import status:", pollError);
+              }
+            }, 1000); // Poll every second
+          }
+          
+          return importData;
+        } catch (error) {
+          // Clear any intervals on error
+          if (statusIntervalRef.current) {
+            clearInterval(statusIntervalRef.current);
+            statusIntervalRef.current = null;
+          }
+          throw error;
         }
-        return await res.json();
-      } catch (error) {
-        // Also clear on error
-        if (statusIntervalRef.current) {
-          clearInterval(statusIntervalRef.current);
-          statusIntervalRef.current = null;
-        }
-        throw error;
+      } else {
+        throw new Error("Invalid import data format");
       }
     },
     onSuccess: (data) => {
@@ -124,48 +187,18 @@ export function ImportDialog({
     },
   });
   
-  // Set up an interval for simulated progress when importing
+  // Display notifications for large imports
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    
-    if (importMutation.isPending && noteCount) {
-      // Start at 5% to show immediate feedback
-      setProgress(5);
-      
-      // Simulate progress up to 60% for first pass (note creation)
-      // Then 60-90% for second pass (parent relationships)
-      // The remaining 10% will be set when the operation completes
-      interval = setInterval(() => {
-        setProgress(prev => {
-          // First phase (note creation) - faster progress
-          if (prev < 60) {
-            const increment = prev < 30 ? 5 : 3;
-            return Math.min(prev + increment, 60);
-          } 
-          // Second phase (slower for parent relationships)
-          else {
-            // Slower progress during parent relationship processing
-            return Math.min(prev + 0.5, 90);
-          }
-        });
-      }, 200);
-
-      // Add extra info for users about long imports
-      if (noteCount > 50) {
-        toast({
-          title: "Large Import Detected",
-          description: "This import may take a few minutes. The app will remain functional during import.",
-          duration: 6000,
-        });
-      }
+    if (importMutation.isPending && noteCount && noteCount > 50) {
+      toast({
+        title: "Large Import Detected",
+        description: "This import may take a few minutes. The app will remain functional during import.",
+        duration: 6000,
+      });
     } else if (!importMutation.isPending && !importMutation.isSuccess) {
       // Reset progress when not pending and not successful
       setProgress(0);
     }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
   }, [importMutation.isPending, importMutation.isSuccess, noteCount, toast]);
   
   // Auto-scroll the log container to the bottom whenever statusLog changes
