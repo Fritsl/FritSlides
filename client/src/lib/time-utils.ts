@@ -344,6 +344,88 @@ export function calculatePacingInfo(
   presentationOrder: number[],
   currentSlideIndex: number
 ): PacingInfo {
+  // Special case for the Start slide (index 0)
+  // Show the time indicator on the Start slide as if it was the first note with time
+  if (currentSlideIndex === 0 && presentationOrder.length > 1) {
+    // Look for the first note with time
+    let firstTimedNote: Note | null = null;
+    for (let i = 1; i < presentationOrder.length; i++) {
+      const noteId = presentationOrder[i];
+      const note = notes.find(n => n.id === noteId);
+      
+      if (note && note.time && note.time.trim() !== '') {
+        firstTimedNote = note;
+        break;
+      }
+    }
+    
+    // If we found a timed note, use its time for the Start slide
+    if (firstTimedNote) {
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, '0');
+      const mins = now.getMinutes().toString().padStart(2, '0');
+      const currentTimeString = `${hours}:${mins}`;
+      const currentTimeMinutes = timeToMinutes(currentTimeString);
+      const noteTimeMinutes = timeToMinutes(firstTimedNote.time || '');
+      
+      // Calculate offset based on real-time comparison
+      const isBehindSchedule = currentTimeMinutes > noteTimeMinutes;
+      
+      if (isBehindSchedule) {
+        // Calculate how far behind we are (in minutes)
+        const minutesBehind = currentTimeMinutes - noteTimeMinutes;
+        // Convert to slides (assume 5 minutes per slide)
+        const slidesBehind = minutesBehind / 5;
+        // Cap at 25 slides and amplify for visibility
+        const cappedSlidesBehind = Math.min(25, slidesBehind * 5);
+        
+        console.log('START SLIDE: Using time from first timed note:', {
+          currentTime: currentTimeString,
+          noteTime: firstTimedNote.time,
+          minutesBehind,
+          slidesBehind,
+          cappedSlidesBehind,
+          expectedTimePosition: 0.7
+        });
+        
+        // Return result showing we're behind schedule
+        return {
+          previousTimedNote: null,
+          nextTimedNote: firstTimedNote,
+          percentComplete: 0,
+          expectedSlideIndex: currentSlideIndex,
+          slideDifference: -cappedSlidesBehind, // Negative means behind
+          shouldShow: true,
+          expectedTimePosition: 0.7 // Right of center (behind schedule)
+        };
+      } else {
+        // We're ahead of schedule
+        const minutesAhead = noteTimeMinutes - currentTimeMinutes;
+        const slidesAhead = minutesAhead / 5;
+        const cappedSlidesAhead = Math.min(25, slidesAhead * 5);
+        
+        console.log('START SLIDE: Using time from first timed note (ahead):', {
+          currentTime: currentTimeString,
+          noteTime: firstTimedNote.time,
+          minutesAhead,
+          slidesAhead,
+          cappedSlidesAhead,
+          expectedTimePosition: 0.3
+        });
+        
+        // Return result showing we're ahead of schedule
+        return {
+          previousTimedNote: null,
+          nextTimedNote: firstTimedNote,
+          percentComplete: 0,
+          expectedSlideIndex: currentSlideIndex,
+          slideDifference: cappedSlidesAhead, // Positive means ahead
+          shouldShow: true,
+          expectedTimePosition: 0.3 // Left of center (ahead of schedule)
+        };
+      }
+    }
+  }
   // Initialize default result
   const defaultResult: PacingInfo = {
     previousTimedNote: null,
@@ -462,13 +544,19 @@ export function calculatePacingInfo(
   }
   
   // If we don't have either a current/previous timed slide OR a next timed slide, don't show indicators
-  if (!effectivePreviousNote && !nextTimedNote) {
-    return defaultResult;
-  }
-  
-  // Add another safety check just to be 100% sure we never have null references
+  // Also check for any null references to prevent crashes later
   if (!effectivePreviousNote || !nextTimedNote) {
-    console.warn('Safety check: effectivePreviousNote or nextTimedNote is null at time conversion');
+    // If current note has a time but there's no next timed note, we want to show the indicator
+    if (currentNote && currentNote.time && currentNote.time.trim() !== '' && !nextTimedNote) {
+      // This case is already handled earlier in the function
+      // But we should never get here - this is just a safety check
+      return {
+        ...defaultResult,
+        previousTimedNote: currentNote,
+        shouldShow: true
+      };
+    }
+    
     return {
       ...defaultResult,
       previousTimedNote: effectivePreviousNote || null,
