@@ -13,7 +13,7 @@ import {
   generateTypographyStyles, 
   ContentType, 
   determineContentType 
-} from '@/lib/presentation-typography';
+} from '@/lib/typography';
 
 interface OverviewSlideProps {
   parentNote: Note;

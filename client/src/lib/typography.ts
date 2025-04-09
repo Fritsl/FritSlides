@@ -80,31 +80,25 @@ export interface TypographyStyle {
  * Avoids CSS conflicts by not mixing shorthand and non-shorthand properties
  */
 export function getTypographyStyles(contentType: ContentType, level: number, textLength: number = 0): TypographyStyle {
-  // Use fixed, consistent sizes for all slide types regardless of content length
-  // This ensures visual consistency between slides with similar content
-  const baseSizes = {
-    [ContentType.Title]: 3.6, // Fixed size for titles
+  // CRITICAL FIX: Enforce 100% consistent font sizes across slides
+  // This is a deliberate decision to prioritize visual consistency between slides
+  // with the same hierarchical level, even if the content length varies
+  
+  // Fixed sizes for all content types regardless of content length
+  // These values will not be scaled by text length at all
+  const fixedSizes = {
+    [ContentType.Title]: 3.6, // Consistent size for all titles
     [ContentType.Subtitle]: 3.0,
     [ContentType.Heading]: 2.8,
     [ContentType.Subheading]: 2.4,
-    [ContentType.Regular]: 2.2, // More readable consistent size
+    [ContentType.Regular]: 2.2,
     [ContentType.Quote]: 2.2,
     [ContentType.List]: 2.2,
-    [ContentType.Code]: 1.8, // Slightly smaller for code readability
+    [ContentType.Code]: 1.8,
   };
   
-  // Only a very minimal adjustment based on level for hierarchy
-  // Use visual styling like borders, backgrounds instead of size variations
-  const levelScaleFactor = Math.max(0.95, 1 - (level * 0.02));
-  
-  // No more scaling based on text length - maintain consistent sizes
-  // Only exception is for extremely long paragraphs (300+ chars)
-  let lengthScaleFactor = 1;
-  if (textLength > 300 && contentType === ContentType.Regular) {
-    lengthScaleFactor = 0.9;
-  }
-  
-  const fontSize = baseSizes[contentType] * levelScaleFactor * lengthScaleFactor;
+  // Remove all level and length scaling - complete consistency
+  const fontSize = fixedSizes[contentType];
   
   // Base style for all types
   const baseStyle: TypographyStyle = {
@@ -205,10 +199,11 @@ export function getAdvancedTypographyStyles(
   switch(contentType) {
     case SlideContentType.StartEndSlide:
       // Special styling for start/end slides - fixed size
+      // Absolute fixed size for perfect consistency
       return {
         ...baseStyle,
         fontFamily: FONTS.display,
-        fontSize: '4.0rem', // Fixed size for all title slides
+        fontSize: '4.0rem', // IMPORTANT: Fixed exact size for all start/end slides
         fontWeight: WEIGHTS.bold,
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
