@@ -187,8 +187,8 @@ export function getTypographyStyles(contentType: ContentType, level: number, tex
   const result: TypographyStyle = { ...baseStyle };
   
   // Apply level-specific visual treatments
-  if (level > 1) {
-    if (level === 2) {
+  if (level >= 1) {
+    if (level === 1) {
       if (contentType.includes('heading')) {
         result.borderBottom = '2px solid rgba(255,255,255,0.3)';
         result.paddingBottom = '0.3rem';
