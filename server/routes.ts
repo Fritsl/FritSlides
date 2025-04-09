@@ -128,32 +128,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Simple approach: first create all notes, then update parent relationships
               const idMap = new Map(); // Maps original IDs to new IDs
               
-              // Create all notes first (without parent relationships)
-              for (const note of sourceNotes) {
-                const newNote = await storage.createNote({
-                  projectId: newProject.id,
-                  content: note.content,
-                  parentId: null, // We'll set this in the second pass
-                  url: note.url,
-                  linkText: note.linkText,
-                  youtubeLink: note.youtubeLink,
-                  time: note.time,
-                  isDiscussion: note.isDiscussion,
-                  images: note.images,
-                  order: note.order
-                });
-                
-                idMap.set(note.id, newNote.id);
+              // Sort notes by parentId (null first) to make sure we process root notes first
+              // This isn't strictly necessary but helps make the process more logical
+              const sortedNotes = [...sourceNotes].sort((a, b) => {
+                if (a.parentId === null) return -1;
+                if (b.parentId === null) return 1;
+                return 0;
+              });
+              
+              // Create all notes first (without correct parent relationships)
+              for (const note of sortedNotes) {
+                try {
+                  // We'll set proper parents in the second pass, 
+                  // but for now use a temporary parent to maintain basic structure
+                  const newNote = await storage.createNote({
+                    projectId: newProject.id,
+                    content: note.content,
+                    parentId: null, // We'll set this in the second pass
+                    url: note.url,
+                    linkText: note.linkText,
+                    youtubeLink: note.youtubeLink,
+                    time: note.time,
+                    isDiscussion: note.isDiscussion,
+                    images: note.images,
+                    order: note.order
+                  });
+                  
+                  // Remember the mapping from old ID to new ID
+                  console.log(`Created note ${newNote.id} corresponding to original ${note.id}`);
+                  idMap.set(note.id, newNote.id);
+                } catch (error) {
+                  console.error(`Error creating note (${note.id}):`, error);
+                }
               }
               
               // Now update the parent relationships
               for (const note of sourceNotes) {
-                if (note.parentId !== null) {
-                  const newNoteId = idMap.get(note.id);
-                  const newParentId = idMap.get(note.parentId);
-                  
-                  if (newNoteId && newParentId) {
-                    await storage.updateNoteParent(newNoteId, newParentId);
+                // Get the new ID for this note
+                const newNoteId = idMap.get(note.id);
+                
+                // Only proceed if we have created this note successfully
+                if (newNoteId) {
+                  // If original note had a parent, set the parent relationship
+                  if (note.parentId !== null) {
+                    const newParentId = idMap.get(note.parentId);
+                    
+                    if (newParentId) {
+                      console.log(`Setting parent for note ${newNoteId} to ${newParentId} (original: ${note.id} -> ${note.parentId})`);
+                      await storage.updateNoteParent(newNoteId, newParentId, note.order);
+                    }
+                  } else {
+                    // This is a root note (no parent), update it with its original order
+                    console.log(`Setting root note ${newNoteId} with order ${note.order} (original: ${note.id})`);
+                    await storage.updateNoteOrder(newNoteId, note.order);
                   }
                 }
               }
