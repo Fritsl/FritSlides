@@ -71,6 +71,7 @@ function determineContentType(content: string): ContentType {
 }
 
 export default function PresentMode() {
+  console.log("PRESENT MODE COMPONENT LOADED");
   const [, setLocation] = useLocation();
   const { projectId: projectIdParam } = useParams<{ projectId: string }>();
   const projectId = projectIdParam ? parseInt(projectIdParam, 10) : null;
@@ -753,18 +754,17 @@ export default function PresentMode() {
               <span className="inline sm:hidden">Tap to advance • ↑↓ jump sections</span>
             </p>
             <div className="flex items-center">
-              {/* Author button - only show for regular slides */}
-              {currentNote && currentNote.id > 0 && (
-                <button 
-                  className="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100 mr-2 text-[10px] cursor-pointer"
-                  onClick={() => {
-                    // Navigate to the current note in edit mode
-                    exitPresentation();
-                  }}
-                >
-                  {currentProject?.author || "AUTHOR"}
-                </button>
-              )}
+              {/* Author button - make it always visible */}
+              <button 
+                className="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100 mr-2 text-[10px] cursor-pointer"
+                onClick={() => {
+                  console.log("AUTHOR BUTTON CLICKED");
+                  // Navigate back to note editor
+                  exitPresentation();
+                }}
+              >
+                {currentProject?.author || "AUTHOR"}
+              </button>
               <FullscreenToggle 
                 buttonClassName="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100"
                 iconClassName="w-4 h-4"
