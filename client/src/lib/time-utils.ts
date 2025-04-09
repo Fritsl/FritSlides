@@ -467,6 +467,92 @@ export function calculatePacingInfo(
   const currentTimeString = `${hours}:${mins}`;
   const currentTimeMinutes = timeToMinutes(currentTimeString);
   
+  // Handle the edge case where we're on the last slide with a time marker
+  // If current time is before the note's time, we're ahead of schedule
+  if (!nextTimedNote && currentNote && currentNote.time) {
+    const noteTimeMinutes = timeToMinutes(currentNote.time);
+    const isAheadOfSchedule = currentTimeMinutes < noteTimeMinutes;
+    
+    console.log('Last slide edge case check:', {
+      currentTime: currentTimeString,
+      noteTime: currentNote.time,
+      isAheadOfSchedule,
+      currentTimeMinutes,
+      noteTimeMinutes,
+      minutesAhead: noteTimeMinutes - currentTimeMinutes
+    });
+    
+    if (isAheadOfSchedule) {
+      // Calculate how far ahead we are (in minutes)
+      const minutesAhead = noteTimeMinutes - currentTimeMinutes;
+      // Convert to slides (assume 5 minutes per slide)
+      const slidesAhead = minutesAhead / 5;
+      // Cap at 25 slides and amplify for visibility
+      const cappedSlidesAhead = Math.min(25, slidesAhead * 5);
+      
+      console.log('Using LAST SLIDE ahead of schedule special case:', {
+        minutesAhead,
+        slidesAhead,
+        cappedSlidesAhead,
+        expectedTimePosition: 0.3
+      });
+      
+      // Return fixed result for this special case
+      return {
+        previousTimedNote: null,
+        nextTimedNote: null,
+        percentComplete: 1, // We're at the end
+        expectedSlideIndex: currentSlideIndex,
+        slideDifference: cappedSlidesAhead, // Positive means ahead
+        shouldShow: true,
+        expectedTimePosition: 0.3 // Left of center (ahead of schedule)
+      };
+    }
+  }
+  
+  // Handle the edge case where we're on the first slide with a time marker
+  // If current time is after the note's time, we're behind schedule
+  if (!previousTimedNote && currentNote && currentNote.time) {
+    const noteTimeMinutes = timeToMinutes(currentNote.time);
+    const isBehindSchedule = currentTimeMinutes > noteTimeMinutes;
+    
+    console.log('First slide edge case check:', {
+      currentTime: currentTimeString,
+      noteTime: currentNote.time,
+      isBehindSchedule,
+      currentTimeMinutes,
+      noteTimeMinutes,
+      minutesBehind: currentTimeMinutes - noteTimeMinutes
+    });
+    
+    if (isBehindSchedule) {
+      // Calculate how far behind we are (in minutes)
+      const minutesBehind = currentTimeMinutes - noteTimeMinutes;
+      // Convert to slides (assume 5 minutes per slide)
+      const slidesBehind = minutesBehind / 5;
+      // Cap at 25 slides and amplify for visibility
+      const cappedSlidesBehind = Math.min(25, slidesBehind * 5);
+      
+      console.log('Using FIRST SLIDE behind schedule special case:', {
+        minutesBehind,
+        slidesBehind,
+        cappedSlidesBehind,
+        expectedTimePosition: 0.7
+      });
+      
+      // Return fixed result for this special case
+      return {
+        previousTimedNote: null,
+        nextTimedNote: null,
+        percentComplete: 0, // We're at the beginning
+        expectedSlideIndex: currentSlideIndex,
+        slideDifference: -cappedSlidesBehind, // Negative means behind
+        shouldShow: true,
+        expectedTimePosition: 0.7 // Right of center (behind schedule)
+      };
+    }
+  }
+  
   // 1. Time Segment Identification
   // We already have previousTimeMinutes and nextTimeMinutes
   // Start slide is the slide with the previous time marker
