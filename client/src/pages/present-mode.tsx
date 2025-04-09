@@ -948,12 +948,12 @@ export default function PresentMode() {
                       />
                       
                       {/* Gray dot (expected position based on time offset from center) */}
-                      {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && pacingInfo.shouldShow && (
+                      {pacingInfo.shouldShow && (
                         <div 
                           className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-all duration-300 z-10"
                           style={{
                             transform: `translateX(-50%)`,
-                            left: `calc(50% + ${(pacingInfo.expectedTimePosition - 0.5) * 250}px)`, // Using pixel offset: 5px per slide difference
+                            left: `calc(50% + ${(pacingInfo.expectedTimePosition - 0.5) * 1000}px)`, // Increase the pixel offset to make it more visible
                             backgroundColor: 'rgba(150, 150, 150, 0.7)',
                             boxShadow: '0 0 5px rgba(150,150,150,0.6)'
                           }}

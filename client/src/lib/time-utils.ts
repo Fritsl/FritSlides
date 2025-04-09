@@ -503,11 +503,30 @@ export function calculatePacingInfo(
       const maxSlideDifference = 25;
       const cappedSlideDifference = Math.max(-maxSlideDifference, Math.min(maxSlideDifference, slideDifference));
       
+      // Debug log to track the calculation
+      console.log('Slide difference calculation:', {
+        currentSlideIndex,
+        expectedSlidePosition,
+        slideDifference,
+        cappedSlideDifference,
+        amplifiedDifference: slideDifference * 20,
+        finalPosition: 0.5 - ((slideDifference * 20) / (maxSlideDifference * 2))
+      });
+      
+      // When ahead (positive difference), gray dot should move left (value < 0.5)
+      // When behind (negative difference), gray dot should move right (value > 0.5)
+      
+      // Exaggerate small differences to make the effect more visible
+      // Multiply the difference by 20 to amplify movement for small differences
+      const amplifiedDifference = cappedSlideDifference * 20;
+      
+      // Apply a stronger cap after amplification
+      const finalCappedDifference = Math.max(-maxSlideDifference, Math.min(maxSlideDifference, amplifiedDifference));
+      
       // Convert to 0-1 scale where 0.5 is center
-      // Note: we negate the difference because:
-      // - When ahead (positive difference), gray dot should move left (value < 0.5)
-      // - When behind (negative difference), gray dot should move right (value > 0.5)
-      expectedTimePosition = 0.5 - (cappedSlideDifference / (maxSlideDifference * 2));
+      // Divide by maxSlideDifference*2 to get a value between -0.5 and 0.5
+      // Then subtract from 0.5 to get the final position
+      expectedTimePosition = 0.5 - (finalCappedDifference / (maxSlideDifference * 2));
       
     } catch (err) {
       // If any calculation error occurs, use default position (centered)
@@ -517,13 +536,16 @@ export function calculatePacingInfo(
   }
   
   // Prepare the result
+  // Set shouldShow based on whether we have at least one time marker
+  const shouldShow = !!(previousTimeMinutes > 0 || currentNote?.time);
+  
   return {
     previousTimedNote: effectivePreviousNote,
     nextTimedNote: nextTimedNote,
     percentComplete,
     expectedSlideIndex,
     slideDifference: Math.min(Math.max(slideDifference, -25), 25), // Limit to ±25 slides
-    shouldShow: true,
+    shouldShow,
     expectedTimePosition
   };
 }
