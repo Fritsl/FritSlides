@@ -10,8 +10,8 @@ export function formatTimeString(time: string): string {
   const digitsOnly = time.replace(/[^\d]/g, '');
   
   if (digitsOnly.length <= 2) {
-    // Just minutes, format as MM
-    return digitsOnly.padStart(2, '0');
+    // Just minutes, format as 00:MM
+    return `00:${digitsOnly.padStart(2, '0')}`;
   } else if (digitsOnly.length <= 4) {
     // Format as HH:MM
     const minutes = digitsOnly.slice(-2).padStart(2, '0');
@@ -43,26 +43,19 @@ export function timeToMinutes(time: string): number {
 }
 
 /**
- * Convert minutes to HH:MM format with decimal precision
+ * Convert minutes to MM:SS format with seconds precision
+ * For per-slide time display
  */
 export function minutesToTime(minutes: number): string {
   // Extract whole minutes and decimal part
-  const wholeMinutes = Math.floor(minutes);
-  const decimalPart = minutes - wholeMinutes;
+  const totalSeconds = Math.round(minutes * 60);
   
-  // Convert decimal part to seconds
-  const seconds = Math.round(decimalPart * 60);
+  // Format as MM:SS
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
   
-  // Format as HH:MM
-  const hours = Math.floor(wholeMinutes / 60);
-  const mins = wholeMinutes % 60;
-  
-  // For display purposes, if we have seconds, show them as part of the minutes
-  if (seconds > 0) {
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}.${seconds.toString().padStart(2, '0')}`;
-  } else {
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-  }
+  // Return as MM:SS format
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 /**
@@ -258,13 +251,17 @@ export function calculateTimeInfo(
     ? `${minutes} min${minutes > 1 ? 's' : ''} ${seconds > 0 ? seconds + ' sec' : ''}` 
     : `${seconds} seconds`;
   
+  // Ensure both times are properly formatted with colons
+  const formattedStartTime = formatTimeString(currentNote.time || '');
+  const formattedEndTime = formatTimeString(nextTimedNote.time || '');
+  
   return {
     slideCount,
     totalMinutes,
     minutesPerSlide,
     formattedPerSlide,
     averageTimePerSlide,
-    startTime: currentNote.time || '',
-    endTime: nextTimedNote.time || ''
+    startTime: formattedStartTime,
+    endTime: formattedEndTime
   };
 }
