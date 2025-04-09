@@ -135,12 +135,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProject(id: number): Promise<boolean> {
-    // Delete associated notes first (cascade deletion in database)
-    await db.delete(notes).where(eq(notes.projectId, id));
-    
-    // Delete the project
-    const deleted = await db.delete(projects).where(eq(projects.id, id)).returning();
-    return deleted.length > 0;
+    try {
+      // First, clear any users' lastOpenedProjectId if it's set to this project
+      await db
+        .update(users)
+        .set({ lastOpenedProjectId: null })
+        .where(eq(users.lastOpenedProjectId, id));
+      
+      // Delete associated notes using a CTE to handle nested relationships properly
+      await db.execute(sql`
+        WITH RECURSIVE descendant_notes AS (
+          SELECT "id" FROM notes WHERE "projectId" = ${id}
+        )
+        DELETE FROM notes WHERE "projectId" = ${id}
+      `);
+      
+      // Delete the project
+      const deleted = await db.delete(projects).where(eq(projects.id, id)).returning();
+      return deleted.length > 0;
+    } catch (error) {
+      console.error(`Error deleting project (id=${id}):`, error);
+      throw error;
+    }
   }
 
   // Note operations

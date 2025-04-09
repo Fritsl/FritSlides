@@ -102,14 +102,37 @@ export function useProjects() {
         duplicateFromId: id 
       });
       
-      return await newProjectRes.json();
+      // First wait for the project creation to complete
+      const newProject = await newProjectRes.json();
+      
+      // Update last opened project to ensure we open the new project on success
+      await apiRequest("POST", "/api/user/lastProject", { projectId: newProject.id });
+      
+      // Give the server a moment to create some initial notes before redirecting
+      // This delay helps prevent showing an empty project initially
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      return newProject;
     },
     onSuccess: (newProject) => {
+      // Invalidate both the projects list and notes for the new project
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      
+      // Specifically invalidate the notes for the new project to ensure fresh data
+      queryClient.invalidateQueries({ 
+        queryKey: [`/api/projects/${newProject.id}/notes`]
+      });
+      
+      // Also invalidate the last opened project query to ensure proper navigation
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/user/lastProject"]
+      });
+      
       toast({
         title: "Project duplicated",
-        description: "The project and all its notes have been duplicated.",
+        description: "The project and all its notes have been duplicated. Notes will continue to be copied in the background.",
       });
+      
       console.log("[PROJECT] Project duplicated successfully", newProject);
       
       // Just return the ID, not the whole project object
