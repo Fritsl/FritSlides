@@ -34,7 +34,8 @@ const createOptimisticNote = (note: Partial<InsertNote>, projectId: number): Not
     linkText: typeof note.linkText === 'string' ? note.linkText : null,
     youtubeLink: typeof note.youtubeLink === 'string' ? note.youtubeLink : null,
     time: typeof note.time === 'string' ? note.time : null,
-    images: Array.isArray(note.images) ? note.images.filter(img => typeof img === 'string') as string[] : [],
+    isDiscussion: typeof note.isDiscussion === 'boolean' ? note.isDiscussion : null,
+    images: Array.isArray(note.images) ? note.images.filter(img => typeof img === 'string') as string[] : null,
     order: (typeof note.order === 'number' || typeof note.order === 'string') ? String(note.order) : "0",
     createdAt: now,
     updatedAt: now
@@ -52,7 +53,21 @@ const NoteEditingContext = createContext<EditingContext | null>(null);
 
 // Provider component for the editing state
 export function NoteEditingProvider({ children }: { children: React.ReactNode }) {
-  const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
+  // Check URL for noteId parameter when component mounts
+  const [editingNoteId, setEditingNoteId] = useState<number | null>(() => {
+    // Get noteId from URL if available
+    const params = new URLSearchParams(window.location.search);
+    const noteIdParam = params.get('noteId');
+    if (noteIdParam) {
+      try {
+        const noteId = parseInt(noteIdParam, 10);
+        return isNaN(noteId) ? null : noteId;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  });
   
   const context = {
     editingNoteId,

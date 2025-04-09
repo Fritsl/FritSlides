@@ -46,11 +46,33 @@ export default function HomePage() {
   // Create a hidden anchor element for downloads
   const downloadLinkRef = useRef<HTMLAnchorElement | null>(null);
 
-  // Load the last opened project or default to the first one
+  // Load project from URL parameters or use last opened project
   useEffect(() => {
     if (isLoadingProjects || isLoadingLastProject) return;
     
-    // Only select a project if none is currently selected
+    // Check if we have URL query parameters for project and note
+    const params = new URLSearchParams(window.location.search);
+    const projectIdParam = params.get('projectId');
+    const noteIdParam = params.get('noteId');
+    
+    if (projectIdParam && projects && projects.length > 0) {
+      // If there's a projectId in the URL, validate and use it
+      const projectId = parseInt(projectIdParam, 10);
+      const projectExists = projects.some(p => p.id === projectId);
+      
+      if (projectExists) {
+        setSelectedProjectId(projectId);
+        
+        // If there's also a noteId, we could use it to focus that note in the editor
+        // (This would need a separate implementation to focus the specific note)
+        
+        // Clear URL parameters to avoid reloading on refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+    }
+    
+    // If no project ID in URL, or it wasn't valid, use the last opened project
     if (!selectedProjectId && projects && projects.length > 0) {
       // Try to use the last opened project first
       if (lastOpenedProject && lastOpenedProject.lastOpenedProjectId) {

@@ -293,13 +293,14 @@ export default function PresentMode() {
   };
   
   const exitPresentation = () => {
-    // If we're on a valid slide that corresponds to a real note (not start/end slides)
+    // Since we don't have a specific "/projects/" route, go to the home page
+    // with an optional query parameter to identify the note for potential focus
     if (currentNote && currentNote.id > 0) {
-      // Navigate to the project editor view focused on the current note
-      setLocation(`/projects/${projectId}?noteId=${currentNote.id}`);
+      // Navigate to home page with the noteId as a query parameter
+      setLocation(`/?projectId=${projectId}&noteId=${currentNote.id}`);
     } else {
-      // If it's a special slide or we can't determine the note, fall back to project view
-      setLocation(`/projects/${projectId}`);
+      // If it's a special slide or we can't determine the note, just go to home
+      setLocation('/');
     }
   };
   
