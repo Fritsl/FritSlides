@@ -26,7 +26,8 @@ import {
   Download, 
   Upload,
   PlayCircle,
-  Presentation
+  Presentation,
+  Search
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
@@ -262,6 +263,30 @@ export default function Header({
                   <FileBox className="h-4 w-4 mr-2" />
                   <span>Projects</span>
                 </DropdownMenuItem>
+                
+                {/* Search notes option */}
+                {currentProject && notes.length > 0 && (
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      if (currentProject) {
+                        // Dispatch a custom event that can be caught by parent components
+                        const event = new CustomEvent('openSearchDialog', {
+                          detail: { projectId: currentProject.id }
+                        });
+                        window.dispatchEvent(event);
+                      } else {
+                        toast({
+                          title: "Select a project first",
+                          description: "You need to select a project before searching notes",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    <Search className="h-4 w-4 mr-2" />
+                    <span>Search Notes</span>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
               
               <DropdownMenuSeparator />

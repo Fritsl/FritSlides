@@ -15,6 +15,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ImportDialog } from "@/components/ui/import-dialog";
+import { SearchDialog } from "@/components/ui/search-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Project } from "@shared/schema";
 
@@ -42,6 +43,9 @@ export default function HomePage() {
   
   // State for project settings dialog
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
+  
+  // State for search dialog
+  const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   
   // Create a hidden anchor element for downloads
   const downloadLinkRef = useRef<HTMLAnchorElement | null>(null);
@@ -134,7 +138,7 @@ export default function HomePage() {
     }
   }, [selectedProject, projectEditForm]);
   
-  // Listen for the custom event from Header component
+  // Listen for the custom events from Header component
   useEffect(() => {
     const handleOpenProjectSettings = (event: any) => {
       if (event.detail.projectId === selectedProjectId) {
@@ -142,10 +146,18 @@ export default function HomePage() {
       }
     };
     
+    const handleOpenSearchDialog = (event: any) => {
+      if (event.detail.projectId === selectedProjectId) {
+        setIsSearchDialogOpen(true);
+      }
+    };
+    
     window.addEventListener('openProjectSettings', handleOpenProjectSettings);
+    window.addEventListener('openSearchDialog', handleOpenSearchDialog);
     
     return () => {
       window.removeEventListener('openProjectSettings', handleOpenProjectSettings);
+      window.removeEventListener('openSearchDialog', handleOpenSearchDialog);
     };
   }, [selectedProjectId]);
 
@@ -414,6 +426,32 @@ export default function HomePage() {
           onSubmit={onUpdateProjectSettings}
           isPending={updateProject.isPending}
           project={selectedProject}
+        />
+      )}
+      
+      {/* Search dialog */}
+      {selectedProjectId && notes && (
+        <SearchDialog 
+          isOpen={isSearchDialogOpen}
+          onOpenChange={setIsSearchDialogOpen}
+          notes={notes}
+          onSelectNote={(noteId) => {
+            // Find the note in the tree and expand its parent if needed
+            const note = notes.find(n => n.id === noteId);
+            if (note) {
+              // Temporarily expand to a higher level to ensure the note is visible
+              setExpandLevel(-1); // Expand all
+              
+              // Set URL to open the specific note for editing
+              setLocation(`/?noteId=${noteId}&projectId=${selectedProjectId}`);
+              
+              // Show confirmation toast
+              toast({
+                title: "Note found",
+                description: "Navigating to the selected note",
+              });
+            }
+          }}
         />
       )}
       
