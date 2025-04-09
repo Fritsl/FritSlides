@@ -183,24 +183,18 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
               const hasTimeMarker = note.time && note.time.trim().length > 0;
               
               return (
-                <div key={note.id} className="flex items-start group">
-                  {/* Fancy interactive marker */}
-                  <div className="relative">
+                <div key={note.id} className="flex items-start cursor-default">
+                  {/* Simple white bullet, properly aligned */}
+                  <div className="relative flex items-center">
                     <div 
-                      className="w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-2.5 mr-3 sm:mr-4 flex-shrink-0 transition-all duration-300 group-hover:scale-125" 
+                      className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-1.5 mr-4 sm:mr-6 flex-shrink-0" 
                       style={{ 
-                        backgroundColor: accentColor,
-                        boxShadow: "0 0 8px rgba(255, 255, 255, 0.4)"
+                        backgroundColor: "white"
                       }}
                     />
-                    {/* Animating pulse effect */}
-                    <div 
-                      className="absolute top-2.5 left-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
-                      style={{ backgroundColor: accentColor }}
-                    ></div>
                   </div>
                   
-                  <div className="flex-1 p-1 transition-all duration-300">
+                  <div className="flex-1 p-1">
                     {/* Child note content */}
                     <p 
                       style={{
@@ -271,24 +265,18 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
           const hasTimeMarker = note.time && note.time.trim().length > 0;
           
           return (
-            <div key={note.id} className="flex items-start group">
-              {/* Fancy interactive marker */}
-              <div className="relative">
+            <div key={note.id} className="flex items-start cursor-default">
+              {/* Simple white bullet point, properly aligned with text */}
+              <div className="relative flex items-center">
                 <div 
-                  className="w-3 h-3 sm:w-4 sm:h-4 rounded-full mt-2.5 mr-3 sm:mr-5 flex-shrink-0 transition-all duration-300 group-hover:scale-125" 
+                  className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-1.5 mr-4 sm:mr-6 flex-shrink-0" 
                   style={{ 
-                    backgroundColor: accentColor,
-                    boxShadow: "0 0 8px rgba(255, 255, 255, 0.4)"
+                    backgroundColor: "white",
                   }}
                 />
-                {/* Animating pulse effect */}
-                <div 
-                  className="absolute top-2.5 left-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
-                  style={{ backgroundColor: accentColor }}
-                ></div>
               </div>
               
-              <div className="flex-1 p-1 transition-all duration-300">
+              <div className="flex-1 p-1">
                 {/* Child note content */}
                 <p 
                   style={{
