@@ -94,48 +94,45 @@ export function useProjects() {
 
   const duplicateProject = useMutation({
     mutationFn: async ({ id, newName }: { id: number; newName: string }) => {
-      // Simplified approach - create a new project with the same settings,
-      // without pre-fetching all the projects and notes separately
+      console.log("[PROJECT] Starting project duplication of ID", id, "with name", newName);
+      
+      // Show a toast to indicate progress
+      toast({
+        title: "Duplicating project",
+        description: "Please wait while we duplicate the project and all its notes...",
+      });
+      
+      // Now we wait for the server to complete the duplication synchronously
       const newProjectRes = await apiRequest("POST", "/api/projects", { 
         name: newName,
-        // We'll copy these properties server-side
         duplicateFromId: id 
       });
       
-      // First wait for the project creation to complete
+      // This will only complete after the server has finished copying all notes
       const newProject = await newProjectRes.json();
+      console.log("[PROJECT] Server returned duplicated project:", newProject);
       
-      // Update last opened project to ensure we open the new project on success
+      // Update the last opened project to ensure we navigate to the new project
       await apiRequest("POST", "/api/user/lastProject", { projectId: newProject.id });
-      
-      // Give the server a moment to create some initial notes before redirecting
-      // This delay helps prevent showing an empty project initially
-      await new Promise(resolve => setTimeout(resolve, 300));
       
       return newProject;
     },
     onSuccess: (newProject) => {
-      // Invalidate both the projects list and notes for the new project
+      // Invalidate all related queries to ensure UI is updated
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${newProject.id}/notes`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/lastProject"] });
       
-      // Specifically invalidate the notes for the new project to ensure fresh data
-      queryClient.invalidateQueries({ 
-        queryKey: [`/api/projects/${newProject.id}/notes`]
-      });
-      
-      // Also invalidate the last opened project query to ensure proper navigation
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/user/lastProject"]
-      });
-      
+      // Show success toast
       toast({
-        title: "Project duplicated",
-        description: "The project and all its notes have been duplicated. Notes will continue to be copied in the background.",
+        title: "Project duplicated successfully",
+        description: `Created a new project "${newProject.name}" with ${newProject.notesCopied || 'all'} notes copied.`,
+        variant: "default",
       });
       
-      console.log("[PROJECT] Project duplicated successfully", newProject);
+      console.log("[PROJECT] Project duplication complete", newProject);
       
-      // Just return the ID, not the whole project object
+      // Return the ID for any further operations
       return newProject.id;
     },
     onError: (error) => {

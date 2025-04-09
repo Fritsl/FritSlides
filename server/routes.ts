@@ -148,99 +148,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update the last opened project to the new project
         await storage.updateLastOpenedProject(req.user!.id, newProject.id);
         
-        // Get all notes from the source project 
-        // But handle this as a background task to avoid blocking the response
-        setTimeout(async () => {
-          try {
-            // Get source notes
-            const sourceNotes = await storage.getNotes(sourceId);
-            if (sourceNotes && sourceNotes.length > 0) {
-              console.log(`Duplicating ${sourceNotes.length} notes from project ${sourceId} to ${newProject.id}`);
-              
-              // Maps original IDs to new IDs
-              const idMap = new Map<number, number>(); 
-              
-              // First, create a complete, structured representation of the notes
-              // This will allow us to handle parent-child relationships correctly
-              interface NoteWithChildren {
-                note: any;
-                children: NoteWithChildren[];
-              }
-              
-              // Build a map of notes by ID
-              const notesById = new Map();
-              sourceNotes.forEach(note => notesById.set(note.id, { note, children: [] }));
-              
-              // Build the tree structure
-              const rootNotes: NoteWithChildren[] = [];
-              sourceNotes.forEach(note => {
-                const noteWrapper = notesById.get(note.id);
-                if (note.parentId === null) {
-                  // Root note
-                  rootNotes.push(noteWrapper);
-                } else {
-                  // Child note
-                  const parent = notesById.get(note.parentId);
-                  if (parent) {
-                    parent.children.push(noteWrapper);
-                  } else {
-                    // Parent not found, treat as root
-                    rootNotes.push(noteWrapper);
-                  }
-                }
-              });
-              
-              console.log(`Built tree with ${rootNotes.length} root notes`);
-              
-              // Recursive function to duplicate a note and all its children
-              async function duplicateNoteTree(noteWrapper: NoteWithChildren, parentId: number | null): Promise<void> {
-                const { note, children } = noteWrapper;
-                
-                try {
-                  // Create the new note
-                  const newNote = await storage.createNote({
-                    projectId: newProject.id,
-                    content: note.content,
-                    parentId: parentId, // Set correct parent immediately
-                    url: note.url,
-                    linkText: note.linkText,
-                    youtubeLink: note.youtubeLink,
-                    time: note.time,
-                    isDiscussion: note.isDiscussion,
-                    images: note.images,
-                    order: note.order
-                  });
-                  
-                  // Store the mapping from old ID to new ID
-                  console.log(`Created note ${newNote.id} for original ${note.id} with parent ${parentId}`);
-                  idMap.set(note.id, newNote.id);
-                  
-                  // Recursively duplicate all children
-                  for (let i = 0; i < children.length; i++) {
-                    await duplicateNoteTree(children[i], newNote.id);
-                  }
-                } catch (error) {
-                  console.error(`Error duplicating note ${note.id}:`, error);
-                }
-              }
-              
-              // Start the duplication with root notes
-              for (let i = 0; i < rootNotes.length; i++) {
-                await duplicateNoteTree(rootNotes[i], null);
-              }
-              
-              // Normalize root note order
-              await storage.normalizeNoteOrders(null);
-              
-              console.log(`Duplication complete: ${sourceNotes.length} notes copied with correct hierarchy.`);
+        // Get all notes from the source project
+        // IMPORTANT CHANGE: Now we do the duplication synchronously before responding
+        try {
+          console.log(`PROJECT DUPLICATION: Starting synchronous duplication of project ${sourceId} to ${newProject.id}`);
+          
+          // Get source notes
+          const sourceNotes = await storage.getNotes(sourceId);
+          if (sourceNotes && sourceNotes.length > 0) {
+            console.log(`PROJECT DUPLICATION: Found ${sourceNotes.length} notes to duplicate from project ${sourceId} to ${newProject.id}`);
+            
+            // Maps original IDs to new IDs
+            const idMap = new Map<number, number>(); 
+            
+            // First, create a complete, structured representation of the notes
+            interface NoteWithChildren {
+              note: any;
+              children: NoteWithChildren[];
             }
-          } catch (error) {
-            console.error("Error during background note duplication:", error);
+            
+            // Build a map of notes by ID
+            const notesById = new Map();
+            sourceNotes.forEach(note => notesById.set(note.id, { note, children: [] }));
+            
+            // Build the tree structure
+            const rootNotes: NoteWithChildren[] = [];
+            sourceNotes.forEach(note => {
+              const noteWrapper = notesById.get(note.id);
+              if (note.parentId === null) {
+                // Root note
+                rootNotes.push(noteWrapper);
+                console.log(`PROJECT DUPLICATION: Adding root note ID ${note.id} to tree`);
+              } else {
+                // Child note
+                const parent = notesById.get(note.parentId);
+                if (parent) {
+                  parent.children.push(noteWrapper);
+                  console.log(`PROJECT DUPLICATION: Adding note ID ${note.id} as child of ${note.parentId}`);
+                } else {
+                  // Parent not found, treat as root
+                  rootNotes.push(noteWrapper);
+                  console.log(`PROJECT DUPLICATION: Note ID ${note.id} has parent ${note.parentId} but parent not found, treating as root`);
+                }
+              }
+            });
+            
+            console.log(`PROJECT DUPLICATION: Built tree with ${rootNotes.length} root notes`);
+            
+            // Recursive function to duplicate a note and all its children
+            async function duplicateNoteTree(noteWrapper: NoteWithChildren, parentId: number | null): Promise<void> {
+              const { note, children } = noteWrapper;
+              
+              try {
+                // Create the new note
+                const contentPreview = note.content.substring(0, 30) + (note.content.length > 30 ? "..." : "");
+                console.log(`PROJECT DUPLICATION: Creating note with content "${contentPreview}" and parent ${parentId}`);
+                
+                const newNote = await storage.createNote({
+                  projectId: newProject.id,
+                  content: note.content,
+                  parentId: parentId, // Set correct parent immediately
+                  url: note.url,
+                  linkText: note.linkText,
+                  youtubeLink: note.youtubeLink,
+                  time: note.time,
+                  isDiscussion: note.isDiscussion,
+                  images: note.images,
+                  order: note.order
+                });
+                
+                // Store the mapping from old ID to new ID
+                console.log(`PROJECT DUPLICATION: Created note ${newNote.id} for original ${note.id} with parent ${parentId}`);
+                idMap.set(note.id, newNote.id);
+                
+                // Recursively duplicate all children
+                console.log(`PROJECT DUPLICATION: Note ${note.id} has ${children.length} children to duplicate`);
+                for (let i = 0; i < children.length; i++) {
+                  await duplicateNoteTree(children[i], newNote.id);
+                }
+              } catch (error) {
+                console.error(`PROJECT DUPLICATION ERROR: Failed duplicating note ${note.id}:`, error);
+                throw error; // Propagate error to abort the duplication
+              }
+            }
+            
+            // Start the duplication with root notes
+            console.log(`PROJECT DUPLICATION: Starting duplication of ${rootNotes.length} root notes`);
+            for (let i = 0; i < rootNotes.length; i++) {
+              console.log(`PROJECT DUPLICATION: Duplicating root note ${i + 1} of ${rootNotes.length}`);
+              await duplicateNoteTree(rootNotes[i], null);
+            }
+            
+            // Normalize root note order
+            console.log(`PROJECT DUPLICATION: Normalizing note orders`);
+            await storage.normalizeNoteOrders(null);
+            
+            console.log(`PROJECT DUPLICATION: Complete! ${sourceNotes.length} notes copied with correct hierarchy.`);
+          } else {
+            console.log(`PROJECT DUPLICATION: No notes found in source project ${sourceId}`);
           }
-        }, 100); // Short delay to ensure response is sent first
-        
-        // Return the new project immediately - notes will be copied in the background
-        return res.status(201).json(newProject);
+          
+          // Successfully duplicated, return the new project
+          console.log(`PROJECT DUPLICATION: Returning new project with ID ${newProject.id}`);
+          return res.status(201).json({
+            ...newProject,
+            notesCopied: sourceNotes ? sourceNotes.length : 0
+          });
+          
+        } catch (error) {
+          console.error("PROJECT DUPLICATION CRITICAL ERROR:", error);
+          
+          // If we already created a project but failed to copy notes, delete the incomplete project
+          try {
+            console.log(`PROJECT DUPLICATION: Cleaning up incomplete project ${newProject.id} due to error`);
+            await storage.deleteProject(newProject.id);
+          } catch (cleanupError) {
+            console.error("PROJECT DUPLICATION: Error during cleanup:", cleanupError);
+          }
+          
+          return res.status(500).json({ 
+            message: "Failed to duplicate project notes",
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
       }
       
       // Normal project creation (not a duplication)
