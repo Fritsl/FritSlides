@@ -526,11 +526,11 @@ export function calculatePacingInfo(
       slideDiff = slidesAhead;
       
       // NEW: Calculate position based directly on minutes difference
-      // Max visual offset at 10 minutes ahead/behind
-      const MAX_MINUTES_OFFSET = 10;
+      // Max visual offset at 30 minutes ahead/behind
+      const MAX_MINUTES_OFFSET = 30;
       const offsetRatio = Math.min(1, minutesAhead / MAX_MINUTES_OFFSET);
       // Apply square root for better visual effect (more perceptible for small values)
-      const dampedOffset = Math.sqrt(offsetRatio) * 0.2; // Maximum 0.2 (20%) offset from center
+      const dampedOffset = Math.sqrt(offsetRatio) * 0.15; // Maximum 0.15 (15%) offset from center
       // Left of center (ahead of schedule)
       timeOffset = 0.5 - dampedOffset;
     } 
@@ -542,11 +542,11 @@ export function calculatePacingInfo(
       slideDiff = -slidesBehind;
       
       // NEW: Calculate position based directly on minutes difference
-      // Max visual offset at 10 minutes ahead/behind
-      const MAX_MINUTES_OFFSET = 10;
+      // Max visual offset at 30 minutes ahead/behind
+      const MAX_MINUTES_OFFSET = 30;
       const offsetRatio = Math.min(1, minutesBehind / MAX_MINUTES_OFFSET);
       // Apply square root for better visual effect (more perceptible for small values)
-      const dampedOffset = Math.sqrt(offsetRatio) * 0.2; // Maximum 0.2 (20%) offset from center
+      const dampedOffset = Math.sqrt(offsetRatio) * 0.15; // Maximum 0.15 (15%) offset from center
       // Right of center (behind schedule)
       timeOffset = 0.5 + dampedOffset;
     }
@@ -701,11 +701,11 @@ export function calculatePacingInfo(
       const cappedSlidesBehind = Math.min(25, slidesBehind * 5);
       
       // NEW: Calculate position based directly on minutes difference
-      // Maximum offset at 10 minutes behind
-      const MAX_MINUTES_OFFSET = 10;
+      // Maximum offset should be at 30 minutes behind (more gradual scale)
+      const MAX_MINUTES_OFFSET = 30;
       const offsetRatio = Math.min(1, minutesBehind / MAX_MINUTES_OFFSET);
-      // Apply square root for better visual effect
-      const dampedOffset = Math.sqrt(offsetRatio) * 0.2;
+      // Apply square root for better visual effect but with reduced amplitude
+      const dampedOffset = Math.sqrt(offsetRatio) * 0.15;
       // Right of center (behind schedule)
       const timePosition = 0.5 + dampedOffset;
       
@@ -786,13 +786,13 @@ export function calculatePacingInfo(
       const minutesDifference = currentTimeMinutes - expectedTimeAtCurrentSlide;
       
       // Define a maximum offset in minutes that will produce the maximum visual displacement
-      const MAX_MINUTES_OFFSET = 10; // 10 minutes off schedule = maximum visual displacement
+      const MAX_MINUTES_OFFSET = 30; // 30 minutes off schedule = maximum visual displacement
       
       // Calculate offset ratio (0-1 scale, capped at MAX_MINUTES_OFFSET)
       const offsetRatio = Math.min(1, Math.abs(minutesDifference) / MAX_MINUTES_OFFSET);
       
       // Apply square root for better visual effect (more perceptible for small values)
-      const dampedOffset = Math.sqrt(offsetRatio) * 0.2; // Maximum 0.2 (20%) offset from center
+      const dampedOffset = Math.sqrt(offsetRatio) * 0.15; // Maximum 0.15 (15%) offset from center
       
       // Set position: behind schedule (positive minutes difference) = move right, ahead = move left
       expectedTimePosition = minutesDifference > 0 
