@@ -803,7 +803,7 @@ export default function PresentMode() {
           <div className="absolute bottom-0 left-0 right-0 text-center p-1 px-2 flex justify-between items-center bg-black/30 backdrop-blur-sm">
             <div className="w-4 sm:w-8"></div>
             <p className="text-white/40 text-[8px] sm:text-[10px] whitespace-nowrap overflow-hidden overflow-ellipsis">
-              <span className="hidden sm:inline">{currentProject?.name} • </span>
+              <span className="hidden sm:inline">{currentProject?.startSlogan || currentProject?.name} • </span>
               {currentSlideIndex + 1}/{flattenedNotes.length}
               <span className="hidden xs:inline"> • {isStartSlide ? 'Start' : isEndSlide ? 'End' : isOverviewSlide ? 'Overview' : ''}</span> • 
               <span className="hidden sm:inline">Click or → to advance • ← back • ↑↓ jump between sections • ESC to exit</span>
