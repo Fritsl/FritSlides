@@ -145,15 +145,16 @@ export function getTypographyStyles(contentType: ContentType, level: number, tex
         result.fontStyle = 'italic';
       }
     } else if (level >= 4) {
-      // Keep the subtle background but enhance with font variations
+      // Keep the subtle background but enhance with font variations and more padding
       result.background = 'rgba(255,255,255,0.05)';
-      result.paddingTop = '0.4rem';
-      result.paddingRight = '0.8rem';
-      result.paddingBottom = '0.4rem';
-      result.paddingLeft = '0.8rem';
-      result.borderRadius = '4px';
+      result.paddingTop = '0.8rem';
+      result.paddingRight = '1.2rem';
+      result.paddingBottom = '0.8rem';
+      result.paddingLeft = '1.2rem';
+      result.borderRadius = '6px';
       result.boxShadow = '1px 1px 3px rgba(0,0,0,0.1)';
       result.letterSpacing = '-0.01em';
+      result.margin = '0.5rem 0';
       result.fontWeight = level % 2 === 0 ? WEIGHTS.medium : WEIGHTS.light;
     }
   }
@@ -161,11 +162,12 @@ export function getTypographyStyles(contentType: ContentType, level: number, tex
   // Content-type specific treatments - using font variations instead of borders
   if (contentType === ContentType.Code) {
     result.background = 'rgba(0,0,0,0.2)';
-    result.paddingTop = '0.8rem';
-    result.paddingRight = '0.8rem';
-    result.paddingBottom = '0.8rem';
-    result.paddingLeft = '0.8rem';
-    result.borderRadius = '4px';
+    result.paddingTop = '1.2rem';
+    result.paddingRight = '1.5rem';
+    result.paddingBottom = '1.2rem';
+    result.paddingLeft = '1.5rem';
+    result.borderRadius = '6px';
+    result.margin = '0.5rem 0';
     // Use box-shadow instead of borders
     result.boxShadow = '0 0 10px rgba(0,0,0,0.3)';
     // Use font variations for code
@@ -173,9 +175,13 @@ export function getTypographyStyles(contentType: ContentType, level: number, tex
     result.letterSpacing = '0.01em';
   } else if (contentType === ContentType.Quote) {
     // Use padding and font variations instead of left border
-    result.paddingLeft = '1.2rem';
+    result.paddingTop = '0.8rem';
+    result.paddingRight = '1.2rem';
+    result.paddingBottom = '0.8rem';
+    result.paddingLeft = '1.5rem';
+    result.margin = '0.8rem 0';
     result.background = 'rgba(255,255,255,0.02)';
-    result.borderRadius = '4px';
+    result.borderRadius = '6px';
     // Enhanced italic style with different font weight
     result.fontStyle = 'italic';
     result.fontWeight = WEIGHTS.light;
@@ -292,11 +298,12 @@ export function getAdvancedTypographyStyles(
         lineHeight: 1.4,
         letterSpacing: '0.02em', // Slightly increased letter spacing for code
         background: 'rgba(0,0,0,0.2)',
-        paddingTop: '0.8rem',
-        paddingRight: '0.8rem',
-        paddingBottom: '0.8rem',
-        paddingLeft: '0.8rem',
-        borderRadius: '4px',
+        paddingTop: '1.2rem',
+        paddingRight: '1.5rem',
+        paddingBottom: '1.2rem',
+        paddingLeft: '1.5rem',
+        margin: '0.8rem 0',
+        borderRadius: '6px',
         boxShadow: '0 0 8px rgba(0,0,0,0.3), inset 0 0 2px rgba(255,255,255,0.1)', // Enhanced shadow instead of border
       };
       
@@ -310,9 +317,13 @@ export function getAdvancedTypographyStyles(
         fontWeight: WEIGHTS.light, // Lighter weight for quotes
         letterSpacing: '0.02em',  // Slight letter spacing
         lineHeight: 1.7,          // Increased line height
-        paddingLeft: '1.2rem',
+        paddingTop: '0.8rem',
+        paddingRight: '1.2rem',
+        paddingBottom: '0.8rem',
+        paddingLeft: '1.5rem',
+        margin: '0.8rem 0',
         background: 'rgba(255,255,255,0.02)',
-        borderRadius: '4px',
+        borderRadius: '6px',
         textShadow: '0 1px 1px rgba(0,0,0,0.1)' // Subtle text shadow
       };
       
