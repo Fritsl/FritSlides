@@ -585,7 +585,7 @@ export default function PresentMode() {
                         // Slide with media - adapt layout based on content
                         <div className="w-full h-full flex flex-col md:flex-row md:justify-between items-center text-white">
                           {/* Content column - sized based on media presence */}
-                          <div className="w-full md:w-1/2 flex flex-col items-center justify-center md:pr-8 order-2 md:order-1">
+                          <div className="w-full md:w-2/5 flex flex-col items-center justify-center md:pr-8 order-2 md:order-1">
                             <div 
                               className="slide-content w-full"
                               style={{
@@ -642,10 +642,10 @@ export default function PresentMode() {
                           </div>
                           
                           {/* Media column */}
-                          <div className="w-full md:w-1/2 flex flex-col items-center justify-center md:pl-8 mb-6 md:mb-0 order-1 md:order-2">
+                          <div className="w-full md:w-3/5 flex flex-col items-center justify-center md:pl-8 mb-6 md:mb-0 order-1 md:order-2">
                             {/* YouTube embed if present */}
                             {currentNote.youtubeLink && (
-                              <div className="rounded-lg overflow-hidden aspect-video bg-black/20 shadow-xl w-full max-w-full">
+                              <div className="rounded-lg overflow-hidden aspect-video bg-black/20 shadow-2xl w-full max-w-full max-h-[75vh]">
                                 <iframe
                                   className="w-full h-full"
                                   src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
@@ -661,7 +661,7 @@ export default function PresentMode() {
                             {!currentNote.youtubeLink && currentNote.images && currentNote.images.length > 0 && (
                               <div className="w-full grid grid-cols-1 gap-4">
                                 {currentNote.images.slice(0, 2).map((image: string, idx: number) => (
-                                  <div key={idx} className={`rounded-lg overflow-hidden shadow-xl ${currentNote.images!.length === 1 ? 'aspect-[16/10] max-h-[60vh]' : 'aspect-[16/9] max-h-[30vh]'}`}>
+                                  <div key={idx} className={`rounded-lg overflow-hidden shadow-xl ${currentNote.images!.length === 1 ? 'aspect-[16/10] max-h-[75vh]' : 'aspect-[16/9] max-h-[40vh]'}`}>
                                     <img 
                                       src={image} 
                                       alt={`Slide image ${idx + 1}`} 

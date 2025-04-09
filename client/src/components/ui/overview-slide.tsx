@@ -141,13 +141,13 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
   if (mediaLayout !== 'none') {
     const mediaColumnClass = 
       mediaLayout === 'portrait' || mediaLayout === 'shorts' 
-        ? 'w-full sm:w-[320px] md:w-[380px]' 
-        : 'w-full sm:w-2/5';
+        ? 'w-full sm:w-[380px] md:w-[450px]' 
+        : 'w-full sm:w-1/2';
     
     return (
       <div className="flex flex-col sm:flex-row h-full w-full overflow-hidden">
         {/* Media column - full width on mobile, sized appropriately on larger screens */}
-        <div className={`${mediaColumnClass} p-3 sm:p-6 flex items-center justify-center ${mediaLayout === 'portrait' || mediaLayout === 'shorts' ? 'max-h-[35vh] sm:max-h-none' : ''}`}>
+        <div className={`${mediaColumnClass} p-3 sm:p-6 flex items-center justify-center ${mediaLayout === 'portrait' || mediaLayout === 'shorts' ? 'max-h-[45vh] sm:max-h-none' : ''}`}>
           {mediaLayout === 'video' || mediaLayout === 'shorts' ? (
             <div className="w-full h-auto aspect-video rounded-xl overflow-hidden shadow-2xl bg-black/30 border border-white/10">
               <iframe
@@ -160,7 +160,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
               />
             </div>
           ) : parentNote.images && parentNote.images.length > 0 ? (
-            <div className="rounded-xl overflow-hidden shadow-2xl max-h-[35vh] sm:max-h-none border border-white/20">
+            <div className="rounded-xl overflow-hidden shadow-2xl max-h-[50vh] sm:max-h-none border border-white/20">
               <img 
                 src={parentNote.images[0]} 
                 alt="Slide image"
