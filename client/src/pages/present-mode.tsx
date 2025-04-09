@@ -514,7 +514,7 @@ export default function PresentMode() {
                 {!isStartSlide && !isEndSlide && !isOverviewSlide && 
                   (currentSlideIndex > 0 || (currentNote.level && currentNote.level > 1)) && (
                   <div 
-                    className="absolute top-2 left-2 z-10 text-white/70 text-xs px-2 py-1 bg-black/20 backdrop-blur-sm rounded"
+                    className="absolute top-2 left-2 z-10 text-white/90 text-xs px-2 py-1 rounded"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {findAncestorPath(currentNote, notesMap)}
