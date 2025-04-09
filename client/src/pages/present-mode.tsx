@@ -293,8 +293,14 @@ export default function PresentMode() {
   };
   
   const exitPresentation = () => {
-    // Navigate back to home page, which shows all projects including the current one
-    setLocation('/');
+    // If we're on a valid slide that corresponds to a real note (not start/end slides)
+    if (currentNote && currentNote.id > 0) {
+      // Navigate to the project editor view focused on the current note
+      setLocation(`/projects/${projectId}?noteId=${currentNote.id}`);
+    } else {
+      // If it's a special slide or we can't determine the note, fall back to project view
+      setLocation(`/projects/${projectId}`);
+    }
   };
   
   // Function to find the index of the next/previous root note or start/end slide
