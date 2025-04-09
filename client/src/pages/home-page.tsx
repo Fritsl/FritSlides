@@ -47,6 +47,9 @@ export default function HomePage() {
   // State for search dialog
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   
+  // State to track if we're showing only notes with time markers
+  const [showOnlyTimedNotes, setShowOnlyTimedNotes] = useState(false);
+  
   // State to track which note should be focused in the tree
   const [focusedNoteId, setFocusedNoteId] = useState<number | null>(null);
   
@@ -403,6 +406,8 @@ export default function HomePage() {
         onExportNotes={handleExportNotes}
         onImportNotes={handleImportNotes}
         onPresentMode={enterPresentationMode}
+        onToggleTimedNotes={() => setShowOnlyTimedNotes(!showOnlyTimedNotes)}
+        showOnlyTimedNotes={showOnlyTimedNotes}
       />
       
       <div className="flex-1 flex overflow-hidden">
@@ -414,6 +419,7 @@ export default function HomePage() {
             expandLevel={expandLevel}
             onMaxDepthChange={setMaxNoteDepth}
             focusedNoteId={focusedNoteId}
+            showOnlyTimedNotes={showOnlyTimedNotes}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">

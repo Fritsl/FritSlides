@@ -27,7 +27,8 @@ import {
   Upload,
   PlayCircle,
   Presentation,
-  Search
+  Search,
+  Clock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
@@ -49,6 +50,8 @@ interface HeaderProps {
   onExportNotes?: () => void; // For exporting notes
   onImportNotes?: () => void; // For importing notes
   onPresentMode?: () => void; // For entering presentation mode
+  onToggleTimedNotes?: () => void; // For toggling timed notes filter
+  showOnlyTimedNotes?: boolean; // Current state of timed notes filter
 }
 
 export default function Header({ 
@@ -63,7 +66,9 @@ export default function Header({
   currentExpandLevel = -1,
   onExportNotes,
   onImportNotes,
-  onPresentMode
+  onPresentMode,
+  onToggleTimedNotes,
+  showOnlyTimedNotes = false
 }: HeaderProps) {
   const { logoutMutation } = useAuth();
   const { toast } = useToast();
@@ -353,24 +358,46 @@ export default function Header({
               
               <DropdownMenuSeparator />
               
-              {/* Presentation mode - only shown when project has notes */}
+              {/* View options - only shown when project has notes */}
               {notes && notes.length > 0 && (
-                <DropdownMenuItem 
-                  onClick={() => {
-                    if (currentProject && onPresentMode) {
-                      onPresentMode();
-                    } else if (!currentProject) {
-                      toast({
-                        title: "Select a project first",
-                        description: "You need to select a project before entering presentation mode",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                >
-                  <Presentation className="h-4 w-4 mr-2" />
-                  <span>Presentation Mode</span>
-                </DropdownMenuItem>
+                <>
+                  {/* Filter to show only timed notes */}
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      if (currentProject && onToggleTimedNotes) {
+                        onToggleTimedNotes();
+                      } else if (!currentProject) {
+                        toast({
+                          title: "Select a project first",
+                          description: "You need to select a project before filtering notes",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    <Clock className="h-4 w-4 mr-2" />
+                    <span>{showOnlyTimedNotes ? "Show All Notes" : "Show Only Timed Notes"}</span>
+                    {showOnlyTimedNotes && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  
+                  {/* Presentation mode */}
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      if (currentProject && onPresentMode) {
+                        onPresentMode();
+                      } else if (!currentProject) {
+                        toast({
+                          title: "Select a project first",
+                          description: "You need to select a project before entering presentation mode",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    <Presentation className="h-4 w-4 mr-2" />
+                    <span>Presentation Mode</span>
+                  </DropdownMenuItem>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>

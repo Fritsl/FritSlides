@@ -14,6 +14,7 @@ interface NoteTreeProps {
   expandLevel?: number; // Prop to control the expansion level
   onMaxDepthChange?: (maxDepth: number) => void; // Callback to notify the parent component of max depth
   focusedNoteId?: number | null; // New prop to explicitly focus on a specific note
+  showOnlyTimedNotes?: boolean; // New prop to filter notes with time markers
 }
 
 export default function NoteTree({ 
@@ -22,7 +23,8 @@ export default function NoteTree({
   isLoading, 
   expandLevel = -1, // Default to -1 which means no specific expansion level
   onMaxDepthChange,
-  focusedNoteId = null // New prop to focus on a specific note
+  focusedNoteId = null, // New prop to focus on a specific note
+  showOnlyTimedNotes = false // New prop to filter notes with time markers
 }: NoteTreeProps) {
   const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
   const [draggingNoteId, setDraggingNoteId] = useState<number | null>(null);
@@ -226,8 +228,13 @@ export default function NoteTree({
   const buildNoteTree = useCallback(() => {
     const noteMap = new Map<number | null, Note[]>();
     
+    // Create a filtered array based on the showOnlyTimedNotes flag
+    const filteredNotes = showOnlyTimedNotes 
+      ? notes.filter(note => note.time && note.time.trim().length > 0)
+      : notes;
+    
     // Group notes by parentId
-    notes.forEach(note => {
+    filteredNotes.forEach(note => {
       const parentId = note.parentId ?? null;
       if (!noteMap.has(parentId)) {
         noteMap.set(parentId, []);
@@ -241,7 +248,7 @@ export default function NoteTree({
     });
     
     return noteMap;
-  }, [notes]);
+  }, [notes, showOnlyTimedNotes]);
 
   // Get children for a note
   const getChildren = useCallback((noteId: number | null, noteMap: Map<number | null, Note[]>) => {
