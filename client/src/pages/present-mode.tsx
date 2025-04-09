@@ -103,15 +103,20 @@ export default function PresentMode() {
   // Store root notes for display on the start slide
   const [rootNotes, setRootNotes] = useState<PresentationNote[]>([]);
   
+  // Create a map of notes by their IDs for quick access - outside useMemo for breadcrumb navigation
+  const notesMap = useMemo(() => {
+    const map = new Map<number, PresentationNote>();
+    if (notes && notes.length > 0) {
+      notes.forEach(note => {
+        map.set(note.id, { ...note, childNotes: [] });
+      });
+    }
+    return map;
+  }, [notes]);
+  
   // Process notes into presentation format
   const flattenedNotes = useMemo(() => {
     if (!notes || notes.length === 0) return [];
-    
-    // Create a map of notes by their IDs for quick access
-    const notesMap = new Map<number, PresentationNote>();
-    notes.forEach(note => {
-      notesMap.set(note.id, { ...note, childNotes: [] });
-    });
     
     // First pass: calculate levels and identify parent-child relationships
     const rootNotesArray: PresentationNote[] = [];
@@ -248,7 +253,7 @@ export default function PresentMode() {
     }
     
     return result;
-  }, [notes, projectId, projects]);
+  }, [notes, projectId, projects, notesMap]);
   
   // Get the current note
   const currentNote = useMemo(() => {
@@ -408,6 +413,40 @@ export default function PresentMode() {
     return Math.min(Math.max(minutesDifference, -25), 25);
   };
   
+  // Function to find ancestor path for breadcrumb navigation
+  const findAncestorPath = (note: PresentationNote, notesMap: Map<number, PresentationNote>): React.ReactNode => {
+    const ancestors: PresentationNote[] = [];
+    let currentParentId = note.parentId;
+    
+    // Find all ancestors by traversing up the hierarchy
+    while (currentParentId !== null) {
+      const parent = notesMap.get(currentParentId);
+      if (parent) {
+        ancestors.unshift(parent); // Add at the beginning to maintain hierarchy order
+        currentParentId = parent.parentId;
+      } else {
+        break;
+      }
+    }
+    
+    // Only show the most relevant parts of the hierarchy (last 2-3 levels)
+    const relevantAncestors = ancestors.length > 2 ? ancestors.slice(-2) : ancestors;
+    
+    return (
+      <div className="flex items-center space-x-1">
+        {relevantAncestors.map((ancestor, index) => (
+          <React.Fragment key={ancestor.id}>
+            <span className="max-w-[120px] truncate">{ancestor.content.split('\n')[0]}</span>
+            {index < relevantAncestors.length - 1 && <span className="mx-1">›</span>}
+          </React.Fragment>
+        ))}
+        {ancestors.length > 2 && relevantAncestors.length < ancestors.length && (
+          <span className="mx-1">...</span>
+        )}
+      </div>
+    );
+  };
+  
   // Find the next slide with a time marker
   const getNextTimedSlide = () => {
     if (!flattenedNotes.length || currentSlideIndex >= flattenedNotes.length) {
@@ -471,6 +510,16 @@ export default function PresentMode() {
           >
             {currentNote && (
               <div className="flex flex-col h-full w-full">
+                {/* Breadcrumb Navigation - Show when level > 1 or not the first slide */}
+                {!isStartSlide && !isEndSlide && !isOverviewSlide && 
+                  (currentSlideIndex > 0 || (currentNote.level && currentNote.level > 1)) && (
+                  <div 
+                    className="absolute top-2 left-2 z-10 text-white/70 text-xs px-2 py-1 bg-black/20 backdrop-blur-sm rounded"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {findAncestorPath(currentNote, notesMap)}
+                  </div>
+                )}
                 <div className="flex-grow flex items-center justify-center">
                   {isOverviewSlide ? (
                     // Overview slide with chapter markers
