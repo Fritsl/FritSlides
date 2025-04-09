@@ -43,12 +43,26 @@ export function timeToMinutes(time: string): number {
 }
 
 /**
- * Convert minutes to HH:MM format
+ * Convert minutes to HH:MM format with decimal precision
  */
 export function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  // Extract whole minutes and decimal part
+  const wholeMinutes = Math.floor(minutes);
+  const decimalPart = minutes - wholeMinutes;
+  
+  // Convert decimal part to seconds
+  const seconds = Math.round(decimalPart * 60);
+  
+  // Format as HH:MM
+  const hours = Math.floor(wholeMinutes / 60);
+  const mins = wholeMinutes % 60;
+  
+  // For display purposes, if we have seconds, show them as part of the minutes
+  if (seconds > 0) {
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}.${seconds.toString().padStart(2, '0')}`;
+  } else {
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  }
 }
 
 /**
@@ -70,7 +84,50 @@ export interface TimeInfo {
 }
 
 /**
- * Find the next timed note in the hierarchy
+ * Create a flattened list of note IDs that represents the fully expanded hierarchy
+ * This is the order notes would appear in when all are expanded
+ */
+function createFlattenedNoteList(notes: Note[]): number[] {
+  const flattenedNotes: number[] = [];
+  
+  // Create a map of notes by their parent IDs
+  const notesByParent = new Map<number | null, Note[]>();
+  notes.forEach(note => {
+    const parentId = note.parentId;
+    if (!notesByParent.has(parentId)) {
+      notesByParent.set(parentId, []);
+    }
+    notesByParent.get(parentId)!.push(note);
+  });
+  
+  // Order notes within each parent by their order property
+  notesByParent.forEach(childNotes => {
+    childNotes.sort((a, b) => Number(a.order) - Number(b.order));
+  });
+  
+  // Function to flatten hierarchy in the correct viewing order
+  const flattenHierarchy = (parentId: number | null): void => {
+    const children = notesByParent.get(parentId) || [];
+    
+    for (const child of children) {
+      flattenedNotes.push(child.id);
+      // Recursively add all descendants immediately after their parent
+      flattenHierarchy(child.id);
+    }
+  };
+  
+  // Flatten the entire hierarchy starting from root
+  flattenHierarchy(null);
+  
+  return flattenedNotes;
+}
+
+/**
+ * Find the next timed note in the fully expanded hierarchy
+ * This considers all slides in a fully expanded view, including deep children.
+ * The "next" slide is defined as the next slide that would appear when navigating
+ * forwards in presentation mode, regardless of its position in the hierarchy.
+ * 
  * @param notes All notes
  * @param currentNoteId ID of the current note
  * @param noteOrder Ordering of notes (if any)
@@ -99,77 +156,31 @@ export function findNextTimedNote(
     return null;
   }
   
-  // Otherwise, we need to do a tree traversal
-  // Create a map of notes by their parent IDs
-  const notesByParent = new Map<number | null, Note[]>();
-  notes.forEach(note => {
-    const parentId = note.parentId;
-    if (!notesByParent.has(parentId)) {
-      notesByParent.set(parentId, []);
-    }
-    notesByParent.get(parentId)!.push(note);
-  });
+  // Get flat order of expanded notes
+  const flattenedNotes = createFlattenedNoteList(notes);
   
-  // Order notes within each parent by their order property
-  notesByParent.forEach(childNotes => {
-    childNotes.sort((a, b) => Number(a.order) - Number(b.order));
-  });
+  // Find the current note's position in the flattened list
+  const currentIndex = flattenedNotes.indexOf(currentNoteId);
+  if (currentIndex === -1 || currentIndex === flattenedNotes.length - 1) {
+    return null; // Not found or last note
+  }
   
-  // Function to find the next timed note in a depth-first traversal
-  const findNextTimed = (
-    noteId: number,
-    visitedIds = new Set<number>()
-  ): Note | null => {
-    visitedIds.add(noteId);
+  // Look for the next timed note after the current position
+  for (let i = currentIndex + 1; i < flattenedNotes.length; i++) {
+    const nextNoteId = flattenedNotes[i];
+    const nextNote = notes.find(note => note.id === nextNoteId);
     
-    // Get the parent of the current note
-    const note = notes.find(n => n.id === noteId);
-    if (!note) return null;
-    
-    const parentId = note.parentId;
-    const siblings = notesByParent.get(parentId) || [];
-    
-    // Find the current note's position among its siblings
-    const siblingIndex = siblings.findIndex(n => n.id === noteId);
-    
-    // Look at the next siblings first
-    for (let i = siblingIndex + 1; i < siblings.length; i++) {
-      const sibling = siblings[i];
-      
-      // Check if this sibling has a time marker
-      if (sibling.time && typeof sibling.time === 'string' && sibling.time.trim() !== '') {
-        return sibling;
-      }
-      
-      // Otherwise, check this sibling's children depth-first
-      const siblingChildren = notesByParent.get(sibling.id) || [];
-      for (const child of siblingChildren) {
-        if (visitedIds.has(child.id)) continue;
-        
-        // Depth-first: check this child and all its descendants
-        if (child.time && typeof child.time === 'string' && child.time.trim() !== '') {
-          return child;
-        }
-        
-        const foundInDescendants = findNextTimed(child.id, visitedIds);
-        if (foundInDescendants) return foundInDescendants;
-      }
+    if (nextNote && nextNote.time && typeof nextNote.time === 'string' && nextNote.time.trim() !== '') {
+      return nextNote;
     }
-    
-    // If no next timed note found among siblings, go up to the parent's next sibling
-    if (parentId !== null && !visitedIds.has(parentId)) {
-      return findNextTimed(parentId, visitedIds);
-    }
-    
-    return null;
-  };
+  }
   
-  // Start the search from the current note
-  return findNextTimed(currentNoteId);
+  return null; // No next timed note found
 }
 
 /**
  * Count notes between two timed notes (inclusive of start, exclusive of end)
+ * This counts all notes in the expanded hierarchy between the two points
  */
 export function countNotesBetween(
   notes: Note[],
@@ -186,61 +197,19 @@ export function countNotesBetween(
     return endIndex - startIndex;
   }
   
-  // Otherwise, we need to do a tree traversal to count nodes
-  // Build note tree structure
-  const notesByParent = new Map<number | null, Note[]>();
-  notes.forEach(note => {
-    const parentId = note.parentId;
-    if (!notesByParent.has(parentId)) {
-      notesByParent.set(parentId, []);
-    }
-    notesByParent.get(parentId)!.push(note);
-  });
+  // Get flat order of expanded notes
+  const flattenedNotes = createFlattenedNoteList(notes);
   
-  // Order notes within each parent
-  notesByParent.forEach(childNotes => {
-    childNotes.sort((a, b) => Number(a.order) - Number(b.order));
-  });
+  // Find both notes in the flattened list
+  const startIndex = flattenedNotes.indexOf(startNoteId);
+  const endIndex = flattenedNotes.indexOf(endNoteId);
   
-  let count = 0;
-  let foundStart = false;
-  let foundEnd = false;
+  if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
+    return 0; // Not found or invalid order
+  }
   
-  // Traverse the tree in depth-first order
-  const traverse = (noteId: number | null = null): boolean => {
-    const children = notesByParent.get(noteId) || [];
-    
-    for (const child of children) {
-      // Check if this is the starting note
-      if (child.id === startNoteId) {
-        foundStart = true;
-        count = 1; // Include the start note
-      }
-      
-      // Check if this is the ending note
-      else if (child.id === endNoteId) {
-        foundEnd = true;
-        return true; // Stop traversal
-      }
-      
-      // If we've found the start but not the end, increment count
-      else if (foundStart && !foundEnd) {
-        count++;
-      }
-      
-      // Traverse this child's descendants
-      if (traverse(child.id)) {
-        return true; // Stop if we found the end
-      }
-    }
-    
-    return false;
-  };
-  
-  // Start traversal from root
-  traverse(null);
-  
-  return count;
+  // The count is simply the difference between the indices (including start, excluding end)
+  return endIndex - startIndex;
 }
 
 /**
