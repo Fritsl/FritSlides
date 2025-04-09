@@ -655,27 +655,63 @@ export default function NoteItem({
                 />
               </div>
               
-              {/* Time field - shown independently for presentation timing */}
+              {/* Time field with simplified input for presentation timing */}
               <div className="flex items-center">
                 <label className="font-medium text-white w-16 text-xs">Time</label>
                 <div className="flex items-center space-x-2">
-                  <Input
-                    name="time"
-                    type="text"
-                    placeholder="HH:MM (e.g. 14:30)"
-                    value={formData.time}
-                    onChange={handleInputChange}
-                    className="w-24 select-text cursor-text text-xs h-8"
-                    style={{ 
-                      userSelect: 'text', 
-                      WebkitUserSelect: 'text',
-                      MozUserSelect: 'text',
-                      msUserSelect: 'text',
-                      pointerEvents: 'auto'
-                    }}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                  />
+                  <div className="flex items-center bg-slate-800 rounded-md w-24 overflow-hidden border border-slate-700">
+                    {/* Hours input */}
+                    <input
+                      type="number"
+                      min="0"
+                      max="23"
+                      placeholder="HH"
+                      value={formData.time ? formData.time.split(':')[0] || '' : ''}
+                      onChange={(e) => {
+                        const hours = e.target.value.padStart(2, '0');
+                        const minutes = formData.time && formData.time.includes(':') 
+                          ? formData.time.split(':')[1] 
+                          : '00';
+                        setFormData(prev => ({ ...prev, time: `${hours}:${minutes}` }));
+                      }}
+                      className="w-10 h-8 text-center bg-transparent text-white text-xs border-none focus:outline-none focus:ring-0"
+                      style={{ 
+                        userSelect: 'text', 
+                        WebkitUserSelect: 'text',
+                        MozUserSelect: 'text',
+                        msUserSelect: 'text',
+                        pointerEvents: 'auto'
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="text-white font-bold">:</span>
+                    {/* Minutes input */}
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      placeholder="MM"
+                      value={formData.time && formData.time.includes(':') ? formData.time.split(':')[1] || '' : ''}
+                      onChange={(e) => {
+                        const minutes = e.target.value.padStart(2, '0');
+                        const hours = formData.time && formData.time.includes(':') 
+                          ? formData.time.split(':')[0] 
+                          : '00';
+                        setFormData(prev => ({ ...prev, time: `${hours}:${minutes}` }));
+                      }}
+                      className="w-10 h-8 text-center bg-transparent text-white text-xs border-none focus:outline-none focus:ring-0"
+                      style={{ 
+                        userSelect: 'text', 
+                        WebkitUserSelect: 'text',
+                        MozUserSelect: 'text',
+                        msUserSelect: 'text',
+                        pointerEvents: 'auto'
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
                   <div className="text-gray-400 text-[10px]">
                     for presentation timing
                   </div>
