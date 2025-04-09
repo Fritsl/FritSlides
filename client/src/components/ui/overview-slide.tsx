@@ -7,14 +7,14 @@ import {
   isYoutubeShorts,
   PRESENTATION_THEMES
 } from '@/lib/presentation-themes';
-import { Link, MessageCircle, Clock, ArrowRight } from 'lucide-react';
+import { Link, MessageCircle, ArrowRight } from 'lucide-react';
 import { 
   getTypographyStyles, 
   generateTypographyStyles, 
   ContentType, 
   determineContentType 
 } from '@/lib/typography';
-import { TimeDisplay } from './time-display';
+// Time display is only used in notes view, not in slides view
 
 interface OverviewSlideProps {
   parentNote: Note;
@@ -229,14 +229,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                         </div>
                       )}
                       
-                      {hasTimeMarker && (
-                        <TimeDisplay 
-                          note={note} 
-                          notes={childNotes} 
-                          compact={true} 
-                          className="flex items-center text-white/80" 
-                        />
-                      )}
+                      {/* Time markers are not shown in slides view */}
                       
                       {note.youtubeLink && (
                         <div className="flex items-center text-white/80 ml-auto">
@@ -324,14 +317,7 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                     </div>
                   )}
                   
-                  {hasTimeMarker && (
-                    <TimeDisplay 
-                      note={note} 
-                      notes={childNotes} 
-                      compact={true} 
-                      className="flex items-center text-white/80" 
-                    />
-                  )}
+                  {/* Time markers are not shown in slides view */}
                   
                   {note.youtubeLink && (
                     <div className="flex items-center text-white/80 ml-auto">
