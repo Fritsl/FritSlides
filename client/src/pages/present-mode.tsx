@@ -945,12 +945,15 @@ export default function PresentMode() {
                       />
                       
                       {/* Black dot with transparency (expected position based on time offset from center) */}
-                      {pacingInfo.shouldShow && (
+                      {pacingInfo.shouldShow && 
+                       pacingInfo.expectedTimePosition !== undefined && 
+                       pacingInfo.expectedTimePosition !== null && 
+                       !isNaN(pacingInfo.expectedTimePosition) && (
                         <div 
                           className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300 z-10"
                           style={{
                             transform: `translateX(-50%)`,
-                            left: `calc(50% + ${(pacingInfo.expectedTimePosition - 0.5) * 500}px)`, // Reduced amplitude by half (500px instead of 1000px)
+                            left: `calc(50% + ${(pacingInfo.expectedTimePosition - 0.5) * 250}px)`, // Reduced amplitude by 75% (250px instead of 1000px)
                             backgroundColor: 'rgba(0, 0, 0, 0.5)',
                             boxShadow: '0 0 3px rgba(0, 0, 0, 0.4)'
                           }}

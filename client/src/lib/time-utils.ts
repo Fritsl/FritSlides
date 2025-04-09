@@ -54,17 +54,26 @@ export function formatTimeString(time: string): string {
  * Convert HH:MM time format to minutes
  */
 export function timeToMinutes(time: string): number {
-  if (!time || time.trim() === '') return 0;
+  if (!time || typeof time !== 'string' || time.trim() === '') return 0;
   
-  // If time doesn't have a colon, format it
-  if (!time.includes(':')) {
-    time = formatTimeString(time);
+  try {
+    // If time doesn't have a colon, format it
+    if (!time.includes(':')) {
+      time = formatTimeString(time);
+    }
+    
+    const parts = time.split(':').map(part => {
+      const parsedValue = parseInt(part.trim(), 10);
+      return isNaN(parsedValue) ? 0 : parsedValue; // Ensure we only use valid numbers
+    });
+    
+    if (parts.length === 1) return parts[0]; // Just minutes
+    if (parts.length === 2) return parts[0] * 60 + parts[1]; // Hours and minutes
+  } catch (err) {
+    console.warn('Error converting time to minutes:', time, err);
   }
   
-  const parts = time.split(':').map(part => parseInt(part.trim(), 10));
-  if (parts.length === 1) return parts[0]; // Just minutes
-  if (parts.length === 2) return parts[0] * 60 + parts[1]; // Hours and minutes
-  return 0; // Invalid format
+  return 0; // Invalid format or error occurred
 }
 
 /**
@@ -564,6 +573,21 @@ export function calculatePacingInfo(
   
   // Default position is middle (0.5)
   let expectedTimePosition = 0.5;
+  
+  // Additional safety checks to prevent any possible NaN or division by zero
+  // Also check for undefined values and negative durations
+  if (previousTimeMinutes === undefined || nextTimeMinutes === undefined || 
+      isNaN(previousTimeMinutes) || isNaN(nextTimeMinutes) ||
+      isNaN(timeSegmentDuration) || timeSegmentDuration <= 0 ||
+      isNaN(slidesBetweenTimedNotes) || slidesBetweenTimedNotes <= 0) {
+    // If any critical values are missing, invalid or zero, use default center position
+    return {
+      ...defaultResult,
+      shouldShow: true,  // Still show indicators but with default positioning
+      previousTimedNote: effectivePreviousNote,
+      nextTimedNote: nextTimedNote
+    };
+  }
   
   // Safety check - only calculate if we have valid time markers AND a valid segment
   if (previousTimeMinutes > 0 && nextTimeMinutes > 0 && timeSegmentDuration > 0 && slidesBetweenTimedNotes > 0) {
