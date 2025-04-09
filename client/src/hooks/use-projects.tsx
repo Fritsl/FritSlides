@@ -98,7 +98,7 @@ export function useProjects() {
       
       // Create a controller to handle timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+      const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minute timeout
       
       // Show initial progress toast
       const progressToast = toast({
@@ -126,6 +126,16 @@ export function useProjects() {
         setTimeout(() => {
           updateProgress("Still duplicating notes... Please be patient, this is a one-time operation.");
         }, 20000);
+        
+        // Update progress again after 60 seconds if it's a very large project
+        setTimeout(() => {
+          updateProgress("Large project detected! Duplication is still in progress. Please don't close this page.");
+        }, 60000);
+        
+        // Final progress update at 3 minutes
+        setTimeout(() => {
+          updateProgress("Still working... Extremely large projects may need up to 4 minutes to duplicate. Almost there!");
+        }, 180000);
         
         // Make the API request with timeout
         const newProjectRes = await apiRequest("POST", "/api/projects", { 
@@ -157,8 +167,8 @@ export function useProjects() {
         clearTimeout(timeoutId);
         
         if (error.name === 'AbortError') {
-          console.error("[PROJECT] Duplication timed out after 2 minutes");
-          throw new Error("Project duplication timed out. The server is taking too long to respond.");
+          console.error("[PROJECT] Duplication timed out after 4 minutes");
+          throw new Error("Project duplication timed out after 4 minutes. For very large projects, try duplicating a smaller project first or contact support.");
         }
         
         // Re-throw other errors

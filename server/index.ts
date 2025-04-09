@@ -60,11 +60,15 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
+  // Configure server with longer timeouts for large operations like project duplication
+  server.timeout = 300000; // 5-minute timeout (300,000 ms)
+  server.keepAliveTimeout = 305000; // Always slightly higher than timeout
+
   server.listen({
     port,
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`serving on port ${port} with timeout set to ${server.timeout}ms`);
   });
 })();
