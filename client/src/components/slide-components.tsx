@@ -56,8 +56,11 @@ export function formatContent(content: string): React.ReactNode {
       .markdown-content blockquote {
         text-align: center;
         font-style: italic;
-        padding: 0.5em 2em;
-        border-left: 4px solid rgba(255,255,255,0.2);
+        font-weight: 500;
+        letter-spacing: 0.03em;
+        padding: 0.8em 2em;
+        background: rgba(255,255,255,0.02);
+        border-radius: 4px;
         max-width: 40rem;
         margin: 1rem auto;
       }
@@ -186,28 +189,36 @@ export function getTypographyStyles(contentType: ContentType, level: number, tex
   // Create a result object starting with base styles
   const result: TypographyStyle = { ...baseStyle };
   
-  // Apply level-specific visual treatments
+  // Apply level-specific visual treatments using font variations instead of borders
   if (level >= 1) {
     if (level === 1) {
       if (contentType.includes('heading')) {
-        result.borderBottom = '2px solid rgba(255,255,255,0.3)';
-        result.paddingBottom = '0.3rem';
+        // Use bold instead of bottom border
+        result.fontWeight = 700;
+        result.letterSpacing = '0.05em';
       }
+    } else if (level === 2) {
+      // Use semi-bold for level 2
+      result.fontWeight = 600;
+      result.letterSpacing = '0.03em';
     } else if (level === 3) {
-      result.borderLeft = '3px solid rgba(255,255,255,0.4)';
-      result.paddingLeft = '0.8rem';
+      // Use medium-weight italic instead of left border
+      result.fontWeight = 500;
+      result.letterSpacing = '0.02em';
       
       if (contentType.includes('regular')) {
         result.fontStyle = 'italic';
       }
     } else if (level >= 4) {
+      // Use lighter weight with background instead of box
+      result.fontWeight = 400;
+      result.letterSpacing = '0.01em';
       result.background = 'rgba(255,255,255,0.05)';
       result.paddingTop = '0.4rem';
       result.paddingRight = '0.8rem';
       result.paddingBottom = '0.4rem';
       result.paddingLeft = '0.8rem';
       result.borderRadius = '4px';
-      result.boxShadow = '1px 1px 3px rgba(0,0,0,0.1)';
     }
   }
   
@@ -225,10 +236,16 @@ export function getTypographyStyles(contentType: ContentType, level: number, tex
     result.borderLeft = '1px solid rgba(255,255,255,0.1)';
     result.fontFamily = 'monospace';
   } else if (contentType === ContentType.Quote) {
-    result.borderLeft = '4px solid rgba(255,255,255,0.4)';
-    result.paddingLeft = '1rem';
+    // More elegant quote style with font variations instead of just left border
+    result.fontStyle = 'italic';
+    result.fontWeight = 500;
+    result.letterSpacing = '0.03em';
     result.background = 'rgba(255,255,255,0.02)';
-    result.borderRadius = '0 4px 4px 0';
+    result.borderRadius = '4px';
+    result.paddingTop = '0.5rem';
+    result.paddingRight = '1rem';
+    result.paddingBottom = '0.5rem';
+    result.paddingLeft = '1rem';
   } else if (contentType === ContentType.List) {
     if (level > 1) {
       result.paddingLeft = `${level * 0.4}rem`;

@@ -14,6 +14,7 @@ import { TimeDisplay } from "./time-display";
 import { formatTimeString } from "@/lib/time-utils";
 import { useNotes, useNoteEditing } from "@/hooks/use-notes";
 import { getLevelColor } from "@/lib/colors";
+import { useLocation } from "wouter";
 import {
   Link,
   Edit,
@@ -30,6 +31,7 @@ import {
   Loader2,
   MoveVertical,
   Users,
+  Presentation,
 } from "lucide-react";
 
 interface NoteItemProps {
@@ -66,6 +68,9 @@ export default function NoteItem({
   createNote,
   allNotes,
 }: NoteItemProps) {
+  // Use location hook for navigation
+  const [, setLocation] = useLocation();
+  
   // Use local state for tracking newly created status and dialogs
   const [isNewlyCreated, setIsNewlyCreated] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -801,6 +806,18 @@ export default function NoteItem({
                     title="Edit note"
                   >
                     <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="p-1 h-auto text-purple-200 hover:bg-purple-900/40 hover:text-purple-100"
+                    onClick={() => {
+                      // Navigate to presentation mode with this note as starting point
+                      setLocation(`/present/${projectId}?startNoteId=${note.id}`);
+                    }}
+                    title="Start slideshow from this note"
+                  >
+                    <Presentation className="h-4 w-4" />
                   </Button>
                   <Button
                     size="sm"
