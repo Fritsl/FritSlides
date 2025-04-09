@@ -937,29 +937,28 @@ export default function PresentMode() {
                         padding: '4px'
                       }}
                     >
-                      {/* Grey dot (expected position based on timing) - only show when we have complete timing */}
-                      {/* Gray dot (expected position based on time) - Only show when we have both markers */}
-                      {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && pacingInfo.shouldShow && (
-                        <div 
-                          className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-all duration-300"
-                          style={{
-                            transform: `translateX(-50%)`,
-                            left: `${pacingInfo.expectedTimePosition * 100}%`, // Position based on time
-                            backgroundColor: 'rgba(150, 150, 150, 0.7)',
-                            boxShadow: '0 0 4px rgba(150,150,150,0.5)'
-                          }}
-                        />
-                      )}
-                      
-                      {/* White dot (current position) - always centered */}
+                      {/* White dot (current position) - always centered, lower z-index and more transparent */}
                       <div 
-                        className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white/80 transition-all duration-300 z-10"
+                        className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white/60 transition-all duration-300 z-5"
                         style={{
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          boxShadow: '0 0 6px rgba(255,255,255,0.8)'
+                          boxShadow: '0 0 6px rgba(255,255,255,0.6)'
                         }}
                       />
+                      
+                      {/* Gray dot (expected position based on time) - higher z-index so it appears on top */}
+                      {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && pacingInfo.shouldShow && (
+                        <div 
+                          className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-all duration-300 z-10"
+                          style={{
+                            transform: `translateX(-50%)`,
+                            left: `${pacingInfo.expectedTimePosition * 100}%`, // Position based on time
+                            backgroundColor: 'rgba(150, 150, 150, 0.8)',
+                            boxShadow: '0 0 5px rgba(150,150,150,0.7)'
+                          }}
+                        />
+                      )}
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="bg-black/90 text-white text-[10px] sm:text-xs p-2 sm:p-3">
@@ -981,10 +980,9 @@ export default function PresentMode() {
                       
                       <div className="mt-1 text-[9px] sm:text-xs">
                         <span className="text-white/80">White dot:</span> Your current position<br/>
-                        <span className={pacingInfo.slideDifference > 0 ? "text-green-400" : 
-                                         pacingInfo.slideDifference < 0 ? "text-orange-400" : "text-blue-400"}>
-                          Colored dot:
-                        </span> Expected position based on time markers
+                        <span className="text-gray-400">
+                          Gray dot:
+                        </span> Expected position based on current time
                       </div>
                       
                       {/* Time allocation info */}
@@ -1048,7 +1046,7 @@ export default function PresentMode() {
                             {pacingInfo.previousTimedNote ? 
                               'Add time to upcoming slides to track pacing' : 
                               pacingInfo.nextTimedNote ?
-                              'Both white and colored dots will appear when you\'re between two timed slides' :
+                              'Both white and gray dots will appear when you\'re between two timed slides' :
                               'Add time markers to track presentation pacing'}
                           </div>
                           
