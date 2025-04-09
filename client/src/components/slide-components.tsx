@@ -115,51 +115,106 @@ export function calculateLevel(parentId: number | null, notesMap: Map<number, an
 }
 
 // Get typography styles based on content type and hierarchy level
+// Using consistent sizing with visual design elements to differentiate hierarchy
 export function getTypographyStyles(contentType: ContentType, level: number, textLength: number = 0): any {
-  // Base sizes for different content types (in rem)
+  // Only extremely long content needs adaptive sizing
+  const needsAdaptiveSize = textLength > 300;
+  
+  // Use consistent base sizes for most content types to make slides more uniform
   const baseSizes = {
-    [ContentType.Title]: 4.5, // Increased from 3.5 to 4.5
-    [ContentType.Subtitle]: 3.2, // Increased from 2.5 to 3.2
-    [ContentType.Heading]: 2.8, // Increased from 2.2 to 2.8
-    [ContentType.Subheading]: 2.2, // Increased from 1.8 to 2.2
-    [ContentType.Regular]: 1.8, // Increased from 1.5 to 1.8
-    [ContentType.Quote]: 2.0, // Increased from 1.6 to 2.0
-    [ContentType.List]: 1.6, // Increased from 1.4 to 1.6
-    [ContentType.Code]: 1.4, // Increased from 1.2 to 1.4
+    [ContentType.Title]: needsAdaptiveSize ? 3.8 : 4.2, // Slightly larger for titles
+    [ContentType.Subtitle]: 3.0,
+    [ContentType.Heading]: 2.8,
+    [ContentType.Subheading]: 2.4,
+    [ContentType.Regular]: 2.2, // More readable consistent size
+    [ContentType.Quote]: 2.2,
+    [ContentType.List]: 2.2,
+    [ContentType.Code]: 1.8, // Slightly smaller for code readability
   };
   
-  // Scale down slightly based on hierarchical level
-  const levelScaleFactor = Math.max(0.8, 1 - (level * 0.1));
+  // Only slight adjustment based on level to maintain consistent sizing
+  // Use visual styling for levels instead of size variations
+  const levelScaleFactor = Math.max(0.9, 1 - (level * 0.05));
   
-  // Scale based on text length - boost very short content, scale down long content
+  // Scale down very long content but keep most content consistent
   let lengthScaleFactor = 1;
-  
-  if (textLength <= 5) {
-    // Very short content (like "JSON") gets a significant boost
-    lengthScaleFactor = 1.8;
-  } else if (textLength <= 10) {
-    // Short content gets a moderate boost
-    lengthScaleFactor = 1.5;
-  } else if (textLength <= 20) {
-    // Brief content gets a small boost
-    lengthScaleFactor = 1.2;
-  } else if (textLength > 100) {
-    // Long content gets scaled down
-    lengthScaleFactor = 0.8;
-  } else if (textLength > 50) {
-    // Moderate length content gets slightly scaled down
+  if (textLength > 200) {
     lengthScaleFactor = 0.9;
+  } else if (textLength > 300) {
+    lengthScaleFactor = 0.85;
   }
   
   const fontSize = baseSizes[contentType] * levelScaleFactor * lengthScaleFactor;
   
-  // Return style object
-  return {
+  // Base style for all types
+  const baseStyle = {
     fontSize: `${fontSize}rem`,
     fontWeight: contentType.includes('title') || contentType.includes('heading') ? 'bold' : 'normal',
     fontStyle: contentType === ContentType.Quote ? 'italic' : 'normal',
     lineHeight: contentType === ContentType.Code ? 1.4 : 1.6,
     letterSpacing: contentType.includes('title') ? '0.04em' : 'normal',
+  };
+  
+  // Apply visual style treatments by level instead of size variations
+  // Additional styling will be added based on level and type
+  let additionalStyles = {};
+  
+  // Apply level-specific visual treatments
+  if (level > 1) {
+    // Apply different styles based on level depth
+    if (level === 2) {
+      additionalStyles = {
+        ...additionalStyles,
+        borderBottom: contentType.includes('heading') ? '2px solid rgba(255,255,255,0.3)' : 'none',
+        paddingBottom: '0.3rem',
+      };
+    } else if (level === 3) {
+      additionalStyles = {
+        ...additionalStyles,
+        borderLeft: '3px solid rgba(255,255,255,0.4)',
+        paddingLeft: '0.8rem',
+        fontStyle: contentType.includes('regular') ? 'italic' : baseStyle.fontStyle,
+      };
+    } else if (level >= 4) {
+      additionalStyles = {
+        ...additionalStyles,
+        background: 'rgba(255,255,255,0.05)',
+        padding: '0.4rem 0.8rem',
+        borderRadius: '4px',
+        boxShadow: '1px 1px 3px rgba(0,0,0,0.1)',
+      };
+    }
+  }
+  
+  // Content-type specific treatments
+  if (contentType === ContentType.Code) {
+    additionalStyles = {
+      ...additionalStyles,
+      background: 'rgba(0,0,0,0.2)',
+      padding: '0.8rem',
+      borderRadius: '4px',
+      border: '1px solid rgba(255,255,255,0.1)',
+      fontFamily: 'monospace',
+    };
+  } else if (contentType === ContentType.Quote) {
+    additionalStyles = {
+      ...additionalStyles,
+      borderLeft: '4px solid rgba(255,255,255,0.4)',
+      paddingLeft: '1rem',
+      background: 'rgba(255,255,255,0.02)',
+      borderRadius: '0 4px 4px 0',
+    };
+  } else if (contentType === ContentType.List) {
+    additionalStyles = {
+      ...additionalStyles,
+      paddingLeft: level > 1 ? `${level * 0.4}rem` : '0',
+    };
+  }
+  
+  // Return combined styles
+  return {
+    ...baseStyle,
+    ...additionalStyles
   };
 }
 
@@ -171,5 +226,16 @@ export function generateTypographyStyles(styles: any): React.CSSProperties {
     fontStyle: styles.fontStyle,
     lineHeight: styles.lineHeight,
     letterSpacing: styles.letterSpacing,
+    // Additional visual styling properties
+    borderBottom: styles.borderBottom,
+    paddingBottom: styles.paddingBottom,
+    borderLeft: styles.borderLeft,
+    paddingLeft: styles.paddingLeft,
+    background: styles.background,
+    padding: styles.padding,
+    borderRadius: styles.borderRadius,
+    boxShadow: styles.boxShadow,
+    border: styles.border,
+    fontFamily: styles.fontFamily,
   };
 }
