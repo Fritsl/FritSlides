@@ -812,7 +812,7 @@ export default function PresentMode() {
             <div className="flex items-center">
               {/* Author button - make it always visible */}
               <button 
-                className="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100 mr-2 text-[10px] cursor-pointer"
+                className="text-white/70 hover:text-white/30 opacity-100 hover:opacity-70 mr-2 text-[10px] cursor-pointer"
                 onClick={() => {
                   console.log("AUTHOR BUTTON CLICKED");
                   // Navigate back to note editor
