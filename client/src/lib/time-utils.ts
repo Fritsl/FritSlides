@@ -379,14 +379,46 @@ export function calculatePacingInfo(
     }
   }
   
-  // If we don't have both a previous and next timed note, we can't calculate pacing
-  if (!effectivePreviousNote || !nextTimedNote) {
+  // Show time indicators if:
+  // 1. The current slide has a time marker
+  // 2. OR there's a next slide with a time marker
+  
+  // If current note has a time marker, we can already show basic pacing
+  if (currentNote && currentNote.time && currentNote.time.trim() !== '') {
+    // We can show indicators, but without certain features that need both previous and next markers
+    if (!nextTimedNote) {
+      return {
+        previousTimedNote: currentNote,
+        nextTimedNote: null,
+        percentComplete: 0,
+        expectedSlideIndex: currentSlideIndex,
+        slideDifference: 0,
+        shouldShow: true // Show the indicator even without a next time marker
+      };
+    }
+  }
+  
+  // If there's a next note with time marker but no previous/current marker, show basic indicator
+  if (!effectivePreviousNote && nextTimedNote) {
+    return {
+      previousTimedNote: null,
+      nextTimedNote: nextTimedNote,
+      percentComplete: 0,
+      expectedSlideIndex: currentSlideIndex,
+      slideDifference: 0,
+      shouldShow: true // Show the indicator even without a previous time marker
+    };
+  }
+  
+  // If we don't have either a current/previous timed slide OR a next timed slide, don't show indicators
+  if (!effectivePreviousNote && !nextTimedNote) {
     return defaultResult;
   }
   
+  // At this point, we know both effectivePreviousNote and nextTimedNote are not null
   // Convert time strings to minutes
-  const previousTimeMinutes = timeToMinutes(effectivePreviousNote.time || '');
-  const nextTimeMinutes = timeToMinutes(nextTimedNote.time || '');
+  const previousTimeMinutes = timeToMinutes(effectivePreviousNote!.time || '');
+  const nextTimeMinutes = timeToMinutes(nextTimedNote!.time || '');
   
   // Handle time crossing midnight (e.g., prev=23:00, next=01:00)
   let timeSegmentDuration = nextTimeMinutes - previousTimeMinutes;
@@ -395,9 +427,9 @@ export function calculatePacingInfo(
   }
   
   // Find the previous note index in the presentation order
-  const previousNoteIndex = effectivePreviousNote.id === currentNoteId 
+  const previousNoteIndex = effectivePreviousNote!.id === currentNoteId 
     ? currentSlideIndex 
-    : presentationOrder.indexOf(effectivePreviousNote.id);
+    : presentationOrder.indexOf(effectivePreviousNote!.id);
     
   // Calculate the number of slides between previous and next timed notes
   const nextNoteIndex = presentationOrder.indexOf(nextTimedNoteId!);

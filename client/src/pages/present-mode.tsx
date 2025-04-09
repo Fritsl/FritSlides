@@ -98,7 +98,6 @@ export default function PresentMode() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [initializedFromStored, setInitializedFromStored] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [timeDotsVisible, setTimeDotsVisible] = useState(true);
   
   // Compute loading state
   const isLoading = projectsLoading || notesLoading;
@@ -399,10 +398,6 @@ export default function PresentMode() {
           break;
         case "Escape":
           exitPresentation();
-          break;
-        case "t":
-        case "T":
-          setTimeDotsVisible(prev => !prev);
           break;
         default:
           break;
@@ -926,7 +921,7 @@ export default function PresentMode() {
           </div>
           
           {/* Time tracking dots */}
-          {timeDotsVisible && pacingInfo.shouldShow && (
+          {pacingInfo.shouldShow && (
             <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10">
               <TooltipProvider>
                 <Tooltip>
@@ -940,7 +935,7 @@ export default function PresentMode() {
                         borderRadius: '12px'
                       }}
                     >
-                      {/* Progress line between time markers */}
+                      {/* Progress line between time markers - always show */}
                       <div 
                         className="absolute h-0.5 bg-gray-600/40"
                         style={{
@@ -950,25 +945,29 @@ export default function PresentMode() {
                         }}
                       />
                       
-                      {/* Progress indicator on timeline */}
-                      <div 
-                        className="absolute h-0.5 bg-blue-400/60"
-                        style={{
-                          width: `${pacingInfo.percentComplete * 80}%`,
-                          left: '10%',
-                          top: '50%',
-                          transition: 'width 0.5s ease-in-out'
-                        }}
-                      />
+                      {/* Progress indicator on timeline - only show when we have both markers */}
+                      {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && (
+                        <div 
+                          className="absolute h-0.5 bg-blue-400/60"
+                          style={{
+                            width: `${pacingInfo.percentComplete * 80}%`,
+                            left: '10%',
+                            top: '50%',
+                            transition: 'width 0.5s ease-in-out'
+                          }}
+                        />
+                      )}
                       
-                      {/* Grey dot (expected position based on timing) */}
-                      <div 
-                        className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gray-400/70 transition-all duration-300"
-                        style={{
-                          transform: `translateX(${pacingInfo.slideDifference * 4}px)`,
-                          left: '50%'
-                        }}
-                      />
+                      {/* Grey dot (expected position based on timing) - only show when we have complete timing */}
+                      {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && (
+                        <div 
+                          className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gray-400/70 transition-all duration-300"
+                          style={{
+                            transform: `translateX(${pacingInfo.slideDifference * 4}px)`,
+                            left: '50%'
+                          }}
+                        />
+                      )}
                       
                       {/* White dot (current position) - always centered */}
                       <div 
@@ -1017,27 +1016,46 @@ export default function PresentMode() {
                         </div>
                       )}
                       
-                      {/* Pacing information */}
-                      <div className="mt-1 pt-1 border-t border-gray-700">
-                        <div className="flex justify-between text-[9px] sm:text-xs">
-                          <span className={pacingInfo.slideDifference > 0 ? "text-green-400" : 
-                                          pacingInfo.slideDifference < 0 ? "text-orange-400" : "text-blue-400"}>
-                            {pacingInfo.slideDifference > 0 ? `${pacingInfo.slideDifference} slides ahead` :
-                             pacingInfo.slideDifference < 0 ? `${Math.abs(pacingInfo.slideDifference)} slides behind` :
-                             'On schedule'}
-                          </span>
-                          <span className="opacity-70">
-                            {Math.round(pacingInfo.percentComplete * 100)}% through segment
-                          </span>
+                      {/* Pacing information - only show if both timing markers are available */}
+                      {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote ? (
+                        <div className="mt-1 pt-1 border-t border-gray-700">
+                          <div className="flex justify-between text-[9px] sm:text-xs">
+                            <span className={pacingInfo.slideDifference > 0 ? "text-green-400" : 
+                                            pacingInfo.slideDifference < 0 ? "text-orange-400" : "text-blue-400"}>
+                              {pacingInfo.slideDifference > 0 ? `${pacingInfo.slideDifference} slides ahead` :
+                              pacingInfo.slideDifference < 0 ? `${Math.abs(pacingInfo.slideDifference)} slides behind` :
+                              'On schedule'}
+                            </span>
+                            <span className="opacity-70">
+                              {Math.round(pacingInfo.percentComplete * 100)}% through segment
+                            </span>
+                          </div>
+                          
+                          {/* Time markers */}
+                          <div className="flex justify-between mt-1 text-[8px] sm:text-[10px] opacity-60">
+                            <span>{pacingInfo.previousTimedNote?.time || '—'}</span>
+                            <span>{Math.floor(pacingInfo.percentComplete * 100)}%</span>
+                            <span>{pacingInfo.nextTimedNote?.time || '—'}</span>
+                          </div>
                         </div>
-                        
-                        {/* Time markers */}
-                        <div className="flex justify-between mt-1 text-[8px] sm:text-[10px] opacity-60">
-                          <span>{pacingInfo.previousTimedNote?.time || '—'}</span>
-                          <span>{Math.floor(pacingInfo.percentComplete * 100)}%</span>
-                          <span>{pacingInfo.nextTimedNote?.time || '—'}</span>
+                      ) : (
+                        <div className="mt-1 pt-1 border-t border-gray-700">
+                          <div className="text-[9px] sm:text-xs text-yellow-300">
+                            {pacingInfo.previousTimedNote ? 
+                              'Add time to an upcoming slide to track pacing' : 
+                              pacingInfo.nextTimedNote ?
+                              'Current slide has no time marker' :
+                              'Add time markers to track presentation pacing'}
+                          </div>
+                          
+                          {/* Simple time markers */}
+                          <div className="flex justify-between mt-1 text-[8px] sm:text-[10px] opacity-60">
+                            <span>{pacingInfo.previousTimedNote?.time || '—'}</span>
+                            <span>{currentNote?.time || 'No time set'}</span>
+                            <span>{pacingInfo.nextTimedNote?.time || '—'}</span>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </TooltipContent>
                 </Tooltip>
