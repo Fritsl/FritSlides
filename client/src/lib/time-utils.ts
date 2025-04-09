@@ -261,7 +261,7 @@ export function calculateTimeInfo(
   const seconds = Math.round((minutesPerSlide - minutes) * 60);
   const averageTimePerSlide = minutes > 0 
     ? `${minutes} min${minutes > 1 ? 's' : ''} ${seconds > 0 ? seconds + ' sec' : ''}` 
-    : `${seconds} seconds`;
+    : `${seconds} second${seconds !== 1 ? 's' : ''}`;
   
   // Ensure both times are properly formatted with colons
   const formattedStartTime = formatTimeString(currentNote.time || '');

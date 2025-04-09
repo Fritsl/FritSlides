@@ -40,12 +40,12 @@ export function TimeDisplay({ note, notes, className = '', compact = false }: Ti
             {compact ? (
               // Compact view (just time and slide count)
               <span className="text-yellow-200 text-xs flex items-center">
-                {timeInfo.startTime} · {timeInfo.slideCount} slides · ({timeInfo.formattedPerSlide}/slide)
+                {timeInfo.startTime} · {timeInfo.slideCount} {timeInfo.slideCount === 1 ? 'slide' : 'slides'} · ({timeInfo.formattedPerSlide}/slide)
               </span>
             ) : (
               // Full view
               <span className="text-yellow-200 text-xs flex items-center">
-                {timeInfo.slideCount} slides, {timeInfo.totalMinutes} min
+                {timeInfo.slideCount} {timeInfo.slideCount === 1 ? 'slide' : 'slides'}, {timeInfo.totalMinutes} min
                 <span className="mx-1">·</span>
                 <span className="whitespace-nowrap">({timeInfo.formattedPerSlide}/slide)</span>
               </span>
@@ -60,9 +60,9 @@ export function TimeDisplay({ note, notes, className = '', compact = false }: Ti
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
               <span className="text-slate-300">Slides:</span>
-              <span>{timeInfo.slideCount}</span>
+              <span>{timeInfo.slideCount} {timeInfo.slideCount === 1 ? 'slide' : 'slides'}</span>
               <span className="text-slate-300">Total time:</span>
-              <span>{timeInfo.totalMinutes} minutes</span>
+              <span>{timeInfo.totalMinutes} {timeInfo.totalMinutes === 1 ? 'minute' : 'minutes'}</span>
               <span className="text-slate-300">Per slide:</span>
               <span>{timeInfo.averageTimePerSlide}</span>
               <span className="text-slate-300">Time format:</span>
