@@ -11,16 +11,49 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  options?: {
+    signal?: AbortSignal;
+    timeout?: number;
+  }
 ): Promise<Response> {
-  const res = await fetch(url, {
+  // Create default fetch options
+  const fetchOptions: RequestInit = {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
-  });
-
-  await throwIfResNotOk(res);
-  return res;
+    signal: options?.signal,
+  };
+  
+  // Set a default timeout if none was provided
+  const timeoutDuration = options?.timeout || 90000; // 90 second default timeout
+  
+  try {
+    // Create a timeout promise that rejects after timeoutDuration
+    const timeoutPromise = new Promise<Response>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Request timeout: Operation took longer than ${timeoutDuration/1000} seconds`));
+      }, timeoutDuration);
+    });
+    
+    // Race between the fetch and the timeout
+    const res = await Promise.race([
+      fetch(url, fetchOptions),
+      timeoutPromise
+    ]);
+    
+    await throwIfResNotOk(res);
+    return res;
+  } catch (error: any) {
+    console.error(`API Request failed for ${method} ${url}:`, error);
+    
+    // Enhance error message for timeouts
+    if (error.name === 'AbortError') {
+      throw new Error(`Operation was aborted or timed out. Try again with a smaller project.`);
+    }
+    
+    throw error;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
