@@ -1,6 +1,18 @@
 import { Note } from "@shared/schema";
 
 /**
+ * Interface for tracking position between timed slides
+ */
+export interface PacingInfo {
+  previousTimedNote: Note | null;
+  nextTimedNote: Note | null;
+  percentComplete: number;  // 0-1 progress between time markers
+  expectedSlideIndex: number;  // Estimated slide we should be on
+  slideDifference: number;  // How many slides ahead/behind we are
+  shouldShow: boolean;  // Whether we have enough info to show the indicator
+}
+
+/**
  * Ensures time is in HH:MM format with colon
  * This function FORCES a colon into the time string regardless of input format
  */
@@ -275,5 +287,149 @@ export function calculateTimeInfo(
     averageTimePerSlide,
     startTime: formattedStartTime,
     endTime: formattedEndTime
+  };
+}
+
+/**
+ * Find the previous timed note in the fully expanded hierarchy
+ * 
+ * @param notes All notes
+ * @param noteOrder Ordering of notes in presentation
+ * @param currentSlideIndex The current slide index in the presentation
+ */
+export function findPreviousTimedNote(
+  notes: Note[],
+  noteOrder: number[],
+  currentSlideIndex: number
+): Note | null {
+  if (!noteOrder.length || currentSlideIndex <= 0 || currentSlideIndex >= noteOrder.length) {
+    return null;
+  }
+  
+  // Look backward from current index for a note with a time
+  for (let i = currentSlideIndex - 1; i >= 0; i--) {
+    const noteId = noteOrder[i];
+    const note = notes.find(n => n.id === noteId);
+    
+    if (note && note.time && typeof note.time === 'string' && note.time.trim() !== '') {
+      return note;
+    }
+  }
+  
+  return null; // No previous timed note found
+}
+
+/**
+ * Calculate the slide pacing information based on current time and position
+ * 
+ * @param notes All available notes
+ * @param presentationOrder Array of note IDs in presentation order
+ * @param currentSlideIndex Current slide index in presentation
+ * @returns Pacing information for rendering the indicator
+ */
+export function calculatePacingInfo(
+  notes: Note[],
+  presentationOrder: number[],
+  currentSlideIndex: number
+): PacingInfo {
+  // Initialize default result
+  const defaultResult: PacingInfo = {
+    previousTimedNote: null,
+    nextTimedNote: null,
+    percentComplete: 0,
+    expectedSlideIndex: currentSlideIndex,
+    slideDifference: 0,
+    shouldShow: false
+  };
+  
+  // Verify we have valid inputs
+  if (!notes?.length || !presentationOrder?.length || currentSlideIndex < 0 || 
+      currentSlideIndex >= presentationOrder.length) {
+    return defaultResult;
+  }
+  
+  // Current time in minutes since midnight
+  const now = new Date();
+  const currentTimeMinutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  
+  // Find the previous and next timed slides
+  const previousTimedNote = findPreviousTimedNote(notes, presentationOrder, currentSlideIndex);
+  const currentNoteId = presentationOrder[currentSlideIndex];
+  const currentNote = notes.find(n => n.id === currentNoteId);
+  
+  // If current note has a time, use it as previous
+  const effectivePreviousNote = 
+    (currentNote && currentNote.time && currentNote.time.trim() !== '') 
+      ? currentNote 
+      : previousTimedNote;
+
+  // Find next timed note
+  let nextTimedNoteId: number | null = null;
+  let nextTimedNote: Note | null = null;
+  
+  // Look forward in the presentation order to find a note with a time marker
+  for (let i = currentSlideIndex + 1; i < presentationOrder.length; i++) {
+    const noteId = presentationOrder[i];
+    const note = notes.find(n => n.id === noteId);
+    
+    if (note && note.time && note.time.trim() !== '') {
+      nextTimedNoteId = noteId;
+      nextTimedNote = note;
+      break;
+    }
+  }
+  
+  // If we don't have both a previous and next timed note, we can't calculate pacing
+  if (!effectivePreviousNote || !nextTimedNote) {
+    return defaultResult;
+  }
+  
+  // Convert time strings to minutes
+  const previousTimeMinutes = timeToMinutes(effectivePreviousNote.time || '');
+  const nextTimeMinutes = timeToMinutes(nextTimedNote.time || '');
+  
+  // Handle time crossing midnight (e.g., prev=23:00, next=01:00)
+  let timeSegmentDuration = nextTimeMinutes - previousTimeMinutes;
+  if (timeSegmentDuration < 0) {
+    timeSegmentDuration += 24 * 60; // Add a full day
+  }
+  
+  // Find the previous note index in the presentation order
+  const previousNoteIndex = effectivePreviousNote.id === currentNoteId 
+    ? currentSlideIndex 
+    : presentationOrder.indexOf(effectivePreviousNote.id);
+    
+  // Calculate the number of slides between previous and next timed notes
+  const nextNoteIndex = presentationOrder.indexOf(nextTimedNoteId!);
+  const slidesBetweenTimedNotes = nextNoteIndex - previousNoteIndex;
+  
+  if (slidesBetweenTimedNotes <= 0) {
+    return defaultResult; // Invalid slide sequence
+  }
+  
+  // Calculate how far we are between the time points (0-1)
+  let elapsedTime = currentTimeMinutes - previousTimeMinutes;
+  if (elapsedTime < 0) {
+    elapsedTime += 24 * 60; // Handle crossing midnight
+  }
+  
+  // Calculate percentage of time segment that has elapsed (0-1)
+  const percentComplete = Math.min(1, Math.max(0, elapsedTime / timeSegmentDuration));
+  
+  // Calculate which slide we should be on based on timing
+  const slideProgress = slidesBetweenTimedNotes * percentComplete;
+  const expectedSlideIndex = Math.round(previousNoteIndex + slideProgress);
+  
+  // How many slides ahead/behind we are
+  const slideDifference = currentSlideIndex - expectedSlideIndex;
+  
+  // Prepare the result
+  return {
+    previousTimedNote: effectivePreviousNote,
+    nextTimedNote: nextTimedNote,
+    percentComplete,
+    expectedSlideIndex,
+    slideDifference: Math.min(Math.max(slideDifference, -25), 25), // Limit to ±25 slides
+    shouldShow: true
   };
 }

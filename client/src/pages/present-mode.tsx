@@ -22,8 +22,10 @@ import {
 import { 
   findNextTimedNote, 
   calculateTimeInfo, 
+  calculatePacingInfo,
   timeToMinutes, 
-  minutesToTime 
+  minutesToTime,
+  PacingInfo
 } from "@/lib/time-utils";
 import { OverviewSlide } from "@/components/ui/overview-slide";
 import { FullscreenToggle } from "@/components/ui/fullscreen-toggle";
@@ -389,28 +391,47 @@ export default function PresentMode() {
     };
   }, [currentSlideIndex, flattenedNotes.length, projectId]);
   
-  // Time tracking calculations
-  const getSlideDifference = () => {
-    if (!currentNote || !currentNote.time || currentNote.time.trim() === '') {
-      return 0; // No time marker on current slide
-    }
+  // State to hold calculated pacing info
+  const [pacingInfo, setPacingInfo] = useState<PacingInfo>({
+    previousTimedNote: null,
+    nextTimedNote: null,
+    percentComplete: 0,
+    expectedSlideIndex: 0,
+    slideDifference: 0,
+    shouldShow: false
+  });
+  
+  // Update pacing info every second
+  useEffect(() => {
+    if (!flattenedNotes.length) return;
     
-    // Convert time string to minutes past midnight
-    const parseTimeToMinutes = (timeStr: string): number => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
+    // Create a flat list of note IDs for the pacing calculation
+    const noteIds = flattenedNotes.map(note => note.id);
+    
+    // Function to update pacing
+    const updatePacing = () => {
+      const info = calculatePacingInfo(
+        notes || [],
+        noteIds,
+        currentSlideIndex
+      );
+      setPacingInfo(info);
     };
     
-    const currentTime = new Date();
-    const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
-    const targetMinutes = parseTimeToMinutes(currentNote.time);
+    // Initial calculation
+    updatePacing();
     
-    // Calculate how many minutes ahead or behind we are
-    const minutesDifference = targetMinutes - currentMinutes;
+    // Set up interval to update every second
+    const intervalId = setInterval(updatePacing, 1000);
     
-    // Estimate how many slides this represents (assume 1 minute per slide)
-    // Limit the maximum difference to prevent extreme visual offsets
-    return Math.min(Math.max(minutesDifference, -25), 25);
+    // Clean up interval on unmount
+    return () => clearInterval(intervalId);
+  }, [notes, flattenedNotes, currentSlideIndex]);
+  
+  // Legacy time tracking function (keeping for compatibility)
+  const getSlideDifference = () => {
+    // Now we get the slide difference from the pacing info
+    return pacingInfo.slideDifference;
   };
   
   // Function to find ancestor path for breadcrumb navigation
@@ -830,7 +851,7 @@ export default function PresentMode() {
           </div>
           
           {/* Time tracking dots */}
-          {timeDotsVisible && (
+          {timeDotsVisible && pacingInfo.shouldShow && (
             <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10">
               <TooltipProvider>
                 <Tooltip>
@@ -839,24 +860,48 @@ export default function PresentMode() {
                       className="relative h-6 sm:h-8 flex items-center justify-center"
                       style={{ 
                         // Calculate width based on maximum potential offset
-                        width: '200px' // 25 slides * 4px + center area
+                        width: '200px', // 25 slides * 4px + center area
+                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        borderRadius: '12px'
                       }}
                     >
-                      {/* Black dot (target position) */}
+                      {/* Progress line between time markers */}
                       <div 
-                        className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-black/60 transition-all duration-300"
+                        className="absolute h-0.5 bg-gray-600/40"
                         style={{
-                          transform: `translateX(${getSlideDifference() * -4}px)`,
+                          width: '80%',
+                          left: '10%',
+                          top: '50%'
+                        }}
+                      />
+                      
+                      {/* Progress indicator on timeline */}
+                      <div 
+                        className="absolute h-0.5 bg-blue-400/60"
+                        style={{
+                          width: `${pacingInfo.percentComplete * 80}%`,
+                          left: '10%',
+                          top: '50%',
+                          transition: 'width 0.5s ease-in-out'
+                        }}
+                      />
+                      
+                      {/* Grey dot (expected position based on timing) */}
+                      <div 
+                        className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gray-400/70 transition-all duration-300"
+                        style={{
+                          transform: `translateX(${pacingInfo.slideDifference * 4}px)`,
                           left: '50%'
                         }}
                       />
                       
-                      {/* White dot (current position) */}
+                      {/* White dot (current position) - always centered */}
                       <div 
-                        className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white/60 transition-all duration-300"
+                        className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white/70 transition-all duration-300 z-10"
                         style={{
                           left: '50%',
-                          transform: 'translateX(-50%)'
+                          transform: 'translateX(-50%)',
+                          boxShadow: '0 0 4px rgba(255,255,255,0.6)'
                         }}
                       />
                     </div>
@@ -897,10 +942,26 @@ export default function PresentMode() {
                         </div>
                       )}
                       
-                      <div className="mt-1 text-[9px] sm:text-xs opacity-70">
-                        {getSlideDifference() > 0 ? `${getSlideDifference()} slides ahead of schedule` :
-                         getSlideDifference() < 0 ? `${Math.abs(getSlideDifference())} slides behind schedule` :
-                         'On schedule'}
+                      {/* Pacing information */}
+                      <div className="mt-1 pt-1 border-t border-gray-700">
+                        <div className="flex justify-between text-[9px] sm:text-xs">
+                          <span className={pacingInfo.slideDifference > 0 ? "text-green-400" : 
+                                          pacingInfo.slideDifference < 0 ? "text-orange-400" : "text-blue-400"}>
+                            {pacingInfo.slideDifference > 0 ? `${pacingInfo.slideDifference} slides ahead` :
+                             pacingInfo.slideDifference < 0 ? `${Math.abs(pacingInfo.slideDifference)} slides behind` :
+                             'On schedule'}
+                          </span>
+                          <span className="opacity-70">
+                            {Math.round(pacingInfo.percentComplete * 100)}% through segment
+                          </span>
+                        </div>
+                        
+                        {/* Time markers */}
+                        <div className="flex justify-between mt-1 text-[8px] sm:text-[10px] opacity-60">
+                          <span>{pacingInfo.previousTimedNote?.time || '—'}</span>
+                          <span>{Math.floor(pacingInfo.percentComplete * 100)}%</span>
+                          <span>{pacingInfo.nextTimedNote?.time || '—'}</span>
+                        </div>
                       </div>
                     </div>
                   </TooltipContent>
