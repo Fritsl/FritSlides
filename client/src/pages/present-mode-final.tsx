@@ -607,7 +607,10 @@ export default function PresentModeFixed() {
                                       color: 'rgba(255, 255, 255, 0.9)',
                                       display: 'flex',
                                       alignItems: 'center',
-                                      borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+                                      // Using text decoration instead of border to avoid conflicts
+                                      textDecoration: 'underline',
+                                      textDecorationColor: 'rgba(255, 255, 255, 0.3)',
+                                      textDecorationThickness: '1px',
                                       paddingBottom: '0.5rem',
                                       width: 'fit-content'
                                     }}
@@ -700,7 +703,10 @@ export default function PresentModeFixed() {
                                     color: 'rgba(255, 255, 255, 0.9)',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+                                    // Using text decoration instead of border to avoid conflicts
+                                    textDecoration: 'underline',
+                                    textDecorationColor: 'rgba(255, 255, 255, 0.3)',
+                                    textDecorationThickness: '1px',
                                     paddingBottom: '0.5rem',
                                   }}
                                   className="hover:text-white transition-colors"
