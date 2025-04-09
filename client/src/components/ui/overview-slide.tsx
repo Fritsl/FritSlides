@@ -178,23 +178,14 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
           </div>
           
           <div className="flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
+            <ul className="list-disc pl-5 sm:pl-6 space-y-3 sm:space-y-4">
             {limitedChildNotes.map((note, index) => {
               // Check if note has time marker
               const hasTimeMarker = note.time && note.time.trim().length > 0;
               
               return (
-                <div key={note.id} className="flex items-start cursor-default">
-                  {/* Simple white bullet, properly aligned */}
-                  <div className="relative flex">
-                    <div 
-                      className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-3 mr-4 sm:mr-6 flex-shrink-0" 
-                      style={{ 
-                        backgroundColor: "white"
-                      }}
-                    />
-                  </div>
-                  
-                  <div className="flex-1 p-1">
+                <li key={note.id} className="cursor-default">
+                  <div className="flex-1">
                     {/* Child note content */}
                     <p 
                       style={{
@@ -232,9 +223,10 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                       )}
                     </div>
                   </div>
-                </div>
+                </li>
               );
             })}
+            </ul>
             
             {hasMoreChildren && (
               <div className="flex items-center justify-center mt-3">
@@ -259,24 +251,15 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
         {formatTitle()}
       </div>
       
-      <div className="flex flex-col space-y-3 sm:space-y-5 overflow-y-auto max-w-3xl mx-auto">
+      <div className="flex flex-col overflow-y-auto max-w-3xl mx-auto">
+        <ul className="list-disc pl-6 sm:pl-8 space-y-4 sm:space-y-6">
         {limitedChildNotes.map((note, index) => {
           // Check if note has time marker
           const hasTimeMarker = note.time && note.time.trim().length > 0;
           
           return (
-            <div key={note.id} className="flex items-start cursor-default">
-              {/* Simple white bullet point, properly aligned with text */}
-              <div className="relative flex">
-                <div 
-                  className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-3 mr-4 sm:mr-6 flex-shrink-0" 
-                  style={{ 
-                    backgroundColor: "white",
-                  }}
-                />
-              </div>
-              
-              <div className="flex-1 p-1">
+            <li key={note.id} className="cursor-default pl-2">
+              <div className="flex-1">
                 {/* Child note content */}
                 <p 
                   style={{
@@ -314,9 +297,10 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                   )}
                 </div>
               </div>
-            </div>
+            </li>
           );
         })}
+        </ul>
         
         {hasMoreChildren && (
           <div className="flex items-center justify-center mt-4 mx-auto">
