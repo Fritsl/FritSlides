@@ -86,6 +86,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/projects", isAuthenticated, async (req, res) => {
     try {
+      // Check if we're duplicating from an existing project
+      if (req.body.duplicateFromId) {
+        const sourceId = parseInt(req.body.duplicateFromId);
+        if (isNaN(sourceId)) {
+          return res.status(400).json({ message: "Invalid source project ID" });
+        }
+        
+        // Get the source project data
+        const sourceProject = await storage.getProject(sourceId);
+        if (!sourceProject) {
+          return res.status(404).json({ message: "Source project not found" });
+        }
+        
+        // Verify user owns the source project
+        if (sourceProject.userId !== req.user!.id) {
+          return res.status(403).json({ message: "Not authorized to duplicate this project" });
+        }
+        
+        // Create new project with the same settings but new name
+        const newProject = await storage.createProject({
+          userId: req.user!.id,
+          name: req.body.name,
+          startSlogan: sourceProject.startSlogan,
+          endSlogan: sourceProject.endSlogan,
+          author: sourceProject.author
+        });
+        
+        // Update the last opened project to the new project
+        await storage.updateLastOpenedProject(req.user!.id, newProject.id);
+        
+        // Get all notes from the source project 
+        // But handle this as a background task to avoid blocking the response
+        setTimeout(async () => {
+          try {
+            // Get source notes
+            const sourceNotes = await storage.getNotes(sourceId);
+            if (sourceNotes && sourceNotes.length > 0) {
+              console.log(`Duplicating ${sourceNotes.length} notes from project ${sourceId} to ${newProject.id}`);
+              
+              // Simple approach: first create all notes, then update parent relationships
+              const idMap = new Map(); // Maps original IDs to new IDs
+              
+              // Create all notes first (without parent relationships)
+              for (const note of sourceNotes) {
+                const newNote = await storage.createNote({
+                  projectId: newProject.id,
+                  content: note.content,
+                  parentId: null, // We'll set this in the second pass
+                  url: note.url,
+                  linkText: note.linkText,
+                  youtubeLink: note.youtubeLink,
+                  time: note.time,
+                  isDiscussion: note.isDiscussion,
+                  images: note.images,
+                  order: note.order
+                });
+                
+                idMap.set(note.id, newNote.id);
+              }
+              
+              // Now update the parent relationships
+              for (const note of sourceNotes) {
+                if (note.parentId !== null) {
+                  const newNoteId = idMap.get(note.id);
+                  const newParentId = idMap.get(note.parentId);
+                  
+                  if (newNoteId && newParentId) {
+                    await storage.updateNoteParent(newNoteId, newParentId);
+                  }
+                }
+              }
+              
+              console.log(`Duplication complete: ${sourceNotes.length} notes copied.`);
+            }
+          } catch (error) {
+            console.error("Error during background note duplication:", error);
+          }
+        }, 100); // Short delay to ensure response is sent first
+        
+        // Return the new project immediately - notes will be copied in the background
+        return res.status(201).json(newProject);
+      }
+      
+      // Normal project creation (not a duplication)
       const result = insertProjectSchema.safeParse({
         ...req.body,
         userId: req.user!.id,
@@ -96,8 +180,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const project = await storage.createProject(result.data);
+      
+      // Update the last opened project
+      await storage.updateLastOpenedProject(req.user!.id, project.id);
+      
       res.status(201).json(project);
     } catch (err) {
+      console.error("Error creating project:", err);
       res.status(500).json({ message: "Failed to create project" });
     }
   });

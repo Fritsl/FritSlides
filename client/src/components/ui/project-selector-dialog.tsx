@@ -92,10 +92,13 @@ export function ProjectSelectorDialog({
       id: projectToDuplicate.id,
       newName: duplicateName.trim()
     }, {
-      onSuccess: (newProjectId) => {
+      onSuccess: (newProject) => {
         setIsDuplicateDialogOpen(false);
         setProjectToDuplicate(null);
-        setTimeout(() => onSelectProject(newProjectId), 500);
+        
+        // Make sure we're passing just the ID, not the whole project object
+        const projectId = typeof newProject === 'object' && newProject !== null ? newProject.id : newProject;
+        setTimeout(() => onSelectProject(projectId), 500);
         onOpenChange(false);
       }
     });

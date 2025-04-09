@@ -94,33 +94,15 @@ export function useProjects() {
 
   const duplicateProject = useMutation({
     mutationFn: async ({ id, newName }: { id: number; newName: string }) => {
-      // First, get the project data to duplicate (including settings)
-      const projectRes = await apiRequest("GET", `/api/projects/${id}`);
-      const project = await projectRes.json();
-      
-      // Create a new project with the same settings
+      // Simplified approach - create a new project with the same settings,
+      // without pre-fetching all the projects and notes separately
       const newProjectRes = await apiRequest("POST", "/api/projects", { 
         name: newName,
-        startSlogan: project.startSlogan,
-        endSlogan: project.endSlogan,
-        author: project.author
+        // We'll copy these properties server-side
+        duplicateFromId: id 
       });
-      const newProject = await newProjectRes.json();
       
-      // Get all notes from the original project
-      const notesRes = await apiRequest("GET", `/api/projects/${id}/notes`);
-      const notes = await notesRes.json();
-      
-      if (notes && notes.length > 0) {
-        // Export the notes (this will preserve the hierarchy)
-        const exportRes = await apiRequest("GET", `/api/projects/${id}/export`);
-        const exportData = await exportRes.json();
-        
-        // Import the notes into the new project
-        await apiRequest("POST", `/api/projects/${newProject.id}/import`, exportData);
-      }
-      
-      return newProject;
+      return await newProjectRes.json();
     },
     onSuccess: (newProject) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
@@ -130,7 +112,7 @@ export function useProjects() {
       });
       console.log("[PROJECT] Project duplicated successfully", newProject);
       
-      // Return the new project ID so we can redirect to it
+      // Just return the ID, not the whole project object
       return newProject.id;
     },
     onError: (error) => {
