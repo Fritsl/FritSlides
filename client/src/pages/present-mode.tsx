@@ -588,13 +588,8 @@ export default function PresentModeFixed() {
                                     determineContentType(currentNote.content),
                                     level,
                                     currentNote.content.length
-                                  )),
-                                  // Slightly reduce font size for slides with media to improve layout
-                                  fontSize: `calc(${generateTypographyStyles(getTypographyStyles(
-                                    determineContentType(currentNote.content),
-                                    level,
-                                    currentNote.content.length
-                                  )).fontSize} * 0.85)`
+                                  ))
+                                  // No longer scaling font size to ensure consistency between slides
                                 }}
                               >
                                 {formatContent(currentNote.content)}
