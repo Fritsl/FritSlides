@@ -194,11 +194,45 @@ export function useProjects() {
       return newProject.id;
     },
     onError: (error: any) => {
-      toast({
-        title: "Failed to duplicate project",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-      });
+      // Special handling for timeout errors
+      if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+        toast({
+          title: "Duplication may still be in progress",
+          description: "The server is taking longer than expected to respond. The duplication may still complete - check your projects list in a moment.",
+          variant: "default",
+        });
+        
+        // Check multiple times for completed projects in case of timeout
+        // First check after 5 seconds
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+          console.log("[PROJECT] Checking projects list after timeout (first check)");
+          
+          // Second check after 15 seconds 
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+            console.log("[PROJECT] Checking projects list after timeout (second check)");
+            
+            // Final check after 30 seconds
+            setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+              console.log("[PROJECT] Final check of projects list after timeout");
+              
+              toast({
+                title: "Project list refreshed",
+                description: "Check if your duplicated project appears in the list now.",
+              });
+            }, 15000);
+          }, 10000);
+        }, 5000);
+      } else {
+        // For all other errors
+        toast({
+          title: "Failed to duplicate project",
+          description: error.message || "An unexpected error occurred",
+          variant: "destructive",
+        });
+      }
     },
   });
 
