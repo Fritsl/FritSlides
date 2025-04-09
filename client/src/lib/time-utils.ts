@@ -460,29 +460,58 @@ export function calculatePacingInfo(
   const slideDifference = currentSlideIndex - expectedSlideIndex;
   
   // Calculate expected time position for visualization
-  // Get the current time from the system, or use a debug value
+  // Get the current time from the system
   const now = new Date();
   const hours = now.getHours().toString().padStart(2, '0');
   const mins = now.getMinutes().toString().padStart(2, '0');
   const currentTimeString = `${hours}:${mins}`;
   const currentTimeMinutes = timeToMinutes(currentTimeString);
   
-  // Calculate time progress (0-1) between previousTimeMinutes and nextTimeMinutes
-  let expectedTimePosition = 0.5; // Default to middle
+  // 1. Time Segment Identification
+  // We already have previousTimeMinutes and nextTimeMinutes
+  const startSlide = previousNoteIndex;
+  const endSlide = nextNoteIndex;
   
-  // Safety check - only calculate if we have valid time markers AND nextTimedNote exists
-  if (previousTimeMinutes > 0 && nextTimeMinutes > 0 && timeSegmentDuration > 0) {
+  // Default position is middle
+  let expectedTimePosition = 0.5;
+  
+  // Safety check - only calculate if we have valid time markers AND a valid segment
+  if (previousTimeMinutes > 0 && nextTimeMinutes > 0 && timeSegmentDuration > 0 && slidesBetweenTimedNotes > 0) {
     try {
-      // Calculate what percentage through the time segment we are
+      // 2. Progress Calculation - Calculate what percentage through the time segment we are
       let timeProgress = (currentTimeMinutes - previousTimeMinutes) / timeSegmentDuration;
       
-      // Handle overnight transitions
+      // Handle overnight transitions (e.g., if segment goes from 23:30 to 00:30)
       if (timeProgress < 0) {
         timeProgress += 1; // Add a full day cycle
       }
       
       // Clamp to 0-1 range
-      expectedTimePosition = Math.max(0, Math.min(1, timeProgress));
+      timeProgress = Math.max(0, Math.min(1, timeProgress));
+      
+      // 3. Expected Position - Calculate which slide we should be on based on time progress
+      const expectedSlideProgress = startSlide + (timeProgress * slidesBetweenTimedNotes);
+      
+      // Find the difference between where we should be (based on time) and where we are
+      const slideOffsetFromExpected = currentSlideIndex - Math.round(expectedSlideProgress);
+      
+      // 4. Offset Calculation - Convert slide difference to visual offset
+      // Each slide difference moves the dot by a set amount of pixels
+      // We represent this as a percentage of the full width (0-1 range)
+      // where 0.5 is center, 0 is far left, 1 is far right
+      
+      // We need to invert the value: if we're ahead (positive offset), 
+      // the gray dot moves left (value < 0.5)
+      // If we're behind (negative offset), the gray dot moves right (value > 0.5)
+      
+      // Calculate position: 0.5 is center, range is 0-1
+      // Cap the offset at +/- 25 slides
+      const maxSlideDifference = 25;
+      const normalizedOffset = Math.max(-maxSlideDifference, Math.min(maxSlideDifference, -slideOffsetFromExpected)) / maxSlideDifference;
+      
+      // Scale to 0-1 range with 0.5 as center
+      expectedTimePosition = 0.5 + (normalizedOffset * 0.5);
+      
     } catch (err) {
       // If any calculation error occurs, use default position
       console.error('Error calculating time position:', err);
