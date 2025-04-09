@@ -3,13 +3,13 @@
 // with visual hierarchy cues that maintain consistent base sizes
 
 // Import fonts
-import '@fontsource/raleway';
+import '@fontsource/mulish';
 import '@fontsource/roboto';
 
 // Font definitions
 export const FONTS = {
   display: '"Roboto", sans-serif',     // Display font for headlines and start/end slides
-  body: '"Raleway", sans-serif',       // Primary font for all other text
+  body: '"Mulish", sans-serif',        // Primary font for all other text
   monospace: 'monospace',              // Font for code blocks
 };
 

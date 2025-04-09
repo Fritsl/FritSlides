@@ -1,12 +1,13 @@
 // Advanced Typography System for Presentation Mode
 // Creates dynamic visual hierarchy with responsive sizing
 
-// Import Raleway font
-import '@fontsource/raleway';
+// Import Mulish font
+import '@fontsource/mulish';
+import '@fontsource/roboto';
 
 // Font family definitions
 export const FONTS = {
-  primary: "'Raleway', sans-serif",
+  primary: "'Mulish', sans-serif",
   display: "'Roboto', sans-serif",
   monospace: "monospace"
 };

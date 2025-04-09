@@ -6,7 +6,7 @@ import { Note, Project } from "@shared/schema";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Users } from "lucide-react";
 import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, PresentationTheme, START_END_THEME } from "@/lib/presentation-themes";
-import '@fontsource/raleway';
+import '@fontsource/mulish';
 import '@fontsource/roboto';
 import { 
   formatContent, 
