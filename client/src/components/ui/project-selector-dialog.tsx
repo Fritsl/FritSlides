@@ -88,18 +88,45 @@ export function ProjectSelectorDialog({
       return;
     }
     
+    // Close the duplicate dialog right away to avoid hanging UI
+    setIsDuplicateDialogOpen(false);
+    // Close the project selector dialog to prepare for duplication
+    onOpenChange(false);
+    
+    // Show loading toast to inform user this might take some time
+    toast({
+      title: "Duplicating project...",
+      description: "Please wait while notes are being copied with their hierarchy. This may take a moment.",
+      duration: 15000, // Longer duration since duplication can take time
+    });
+    
     duplicateProject.mutate({
       id: projectToDuplicate.id,
       newName: duplicateName.trim()
     }, {
       onSuccess: (newProject) => {
-        setIsDuplicateDialogOpen(false);
         setProjectToDuplicate(null);
+        
+        // Show success toast
+        toast({
+          title: "Project duplicated successfully",
+          description: "All notes have been copied with their correct hierarchy.",
+          variant: "default",
+        });
         
         // Make sure we're passing just the ID, not the whole project object
         const projectId = typeof newProject === 'object' && newProject !== null ? newProject.id : newProject;
-        setTimeout(() => onSelectProject(projectId), 500);
-        onOpenChange(false);
+        onSelectProject(projectId);
+      },
+      onError: (error) => {
+        // Re-open project selector on error
+        toast({
+          title: "Duplication failed",
+          description: error.message || "There was an error duplicating the project. Please try again.",
+          variant: "destructive",
+        });
+        
+        setTimeout(() => onOpenChange(true), 500);
       }
     });
   };
@@ -249,7 +276,10 @@ export function ProjectSelectorDialog({
           
           <div className="space-y-4">
             <p className="text-sm text-neutral-muted">
-              Enter a name for the duplicated project. All notes and settings will be copied.
+              Enter a name for the duplicated project. All notes and their hierarchy will be copied.
+              <br /><br />
+              <strong>Note:</strong> The duplication process may take a few moments depending on the number of notes. 
+              Please be patient while the system accurately maintains all parent-child relationships.
             </p>
             
             <Input
@@ -273,7 +303,12 @@ export function ProjectSelectorDialog({
                 onClick={handleDuplicateProject}
                 disabled={duplicateProject.isPending || !duplicateName.trim()}
               >
-                {duplicateProject.isPending ? "Duplicating..." : "Duplicate"}
+                {duplicateProject.isPending ? (
+                  <>
+                    <span className="mr-2">Duplicating...</span>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                  </>
+                ) : "Duplicate"}
               </Button>
             </div>
           </div>

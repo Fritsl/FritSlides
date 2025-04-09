@@ -110,31 +110,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Generate a unique name for the copy
-        let newName = req.body.name;
+        let newName = req.body.name || sourceProject.name;
+        console.log(`DUPLICATION NAMING: Starting with name "${newName}"`);
         
-        // Check if a project with this name already exists
+        // Strip any existing copy suffixes to get the base name
+        const baseName = newName.replace(/ \(Copy( \d+)?\)$/, '');
+        console.log(`DUPLICATION NAMING: Base name without copy suffix: "${baseName}"`);
+        
+        // Get all user projects to check for existing names
         const userProjects = await storage.getProjects(req.user!.id);
-        const existingNames = new Set(userProjects.map(p => p.name));
         
-        // If the name exists, add a number to it
-        if (existingNames.has(newName)) {
-          // Check for pattern "Name (Copy X)" or "Name (Copy)"
-          const baseName = newName.replace(/ \(Copy( \d+)?\)$/, '');
-          
+        // Find all projects that have this base name with copy suffix
+        const copyRegex = new RegExp(`^${escapeRegExp(baseName)} \\(Copy( (\\d+))?\\)$`);
+        const copies = userProjects.filter(p => copyRegex.test(p.name));
+        
+        console.log(`DUPLICATION NAMING: Found ${copies.length} existing copies of "${baseName}"`);
+        
+        if (copies.length > 0) {
           // Find the highest number used in existing copies
-          let highestCopyNum = 1;
+          let highestCopyNum = 0;
           
-          userProjects.forEach(project => {
-            const match = project.name.match(new RegExp(`^${escapeRegExp(baseName)} \\(Copy( (\\d+))?\\)$`));
+          copies.forEach(project => {
+            const match = project.name.match(copyRegex);
             if (match) {
               const num = match[2] ? parseInt(match[2]) : 1;
+              console.log(`DUPLICATION NAMING: Found copy with number ${num}`);
               highestCopyNum = Math.max(highestCopyNum, num);
             }
           });
           
+          console.log(`DUPLICATION NAMING: Highest existing copy number: ${highestCopyNum}`);
+          
           // Create new name with incremented number
-          newName = `${baseName} (Copy${highestCopyNum > 1 ? ' ' + (highestCopyNum + 1) : ''})`;
+          if (highestCopyNum == 0) {
+            newName = `${baseName} (Copy)`;
+          } else {
+            newName = `${baseName} (Copy ${highestCopyNum + 1})`;
+          }
+        } else {
+          // First copy
+          newName = `${baseName} (Copy)`;
         }
+        
+        console.log(`DUPLICATION NAMING: Final name for new project: "${newName}"`)
         
         // Create new project with the same settings but new name
         const newProject = await storage.createProject({
@@ -239,9 +257,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await duplicateNoteTree(rootNotes[i], null);
             }
             
-            // Normalize root note order
-            console.log(`PROJECT DUPLICATION: Normalizing note orders`);
-            await storage.normalizeNoteOrders(null);
+            // Normalize ALL note orders in the entire project
+            console.log(`PROJECT DUPLICATION: Normalizing all note orders in project ${newProject.id}`);
+            await storage.normalizeAllProjectNotes(newProject.id);
             
             console.log(`PROJECT DUPLICATION: Complete! ${sourceNotes.length} notes copied with correct hierarchy.`);
           } else {

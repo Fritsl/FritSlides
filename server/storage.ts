@@ -41,6 +41,7 @@ export interface IStorage {
   // Optimized batch version for imports
   updateNoteParentsBatch(updates: {id: number, parentId: number | null, order?: number | string}[]): Promise<boolean>;
   normalizeNoteOrders(parentId: number | null): Promise<boolean>;
+  normalizeAllProjectNotes(projectId: number): Promise<boolean>;
   
   // Session store
   sessionStore: any; // Use any for session store type to avoid type issues
@@ -414,25 +415,40 @@ export class DatabaseStorage implements IStorage {
   
   async normalizeNoteOrders(parentId: number | null): Promise<boolean> {
     try {
+      console.log(`ORDER NORMALIZATION: Starting for parent ${parentId === null ? 'ROOT' : parentId}`);
+
       // Get all notes with the same parent, ordered by their current order
+      // Specifically cast order to number to ensure correct sorting
       const notesWithSameParent = await db
         .select()
         .from(notes)
         .where(parentId ? eq(notes.parentId, parentId) : isNull(notes.parentId))
-        .orderBy(notes.order);
+        .orderBy(sql`CAST(${notes.order} AS FLOAT)`);
       
-      if (!notesWithSameParent.length) return true;
+      if (!notesWithSameParent.length) {
+        console.log(`ORDER NORMALIZATION: No notes found for parent ${parentId === null ? 'ROOT' : parentId}`);
+        return true;
+      }
       
-      // Instead of using multiple transactions which can lead to deadlocks,
-      // use a single transaction for the entire batch and prepare the data first
+      console.log(`ORDER NORMALIZATION: Found ${notesWithSameParent.length} notes to normalize for parent ${parentId === null ? 'ROOT' : parentId}`);
+      
+      // Create a list of the current orders for logging
+      const currentOrders = notesWithSameParent.map(n => `${n.id}:${n.order}`);
+      console.log(`ORDER NORMALIZATION: Current order values: ${currentOrders.join(', ')}`);
+      
+      // Build updates with sequential integers starting from 0
       const allUpdates = notesWithSameParent.map((note, index) => ({
         id: note.id,
         newOrder: index
       }));
       
+      // Log the new order assignments
+      const newOrders = allUpdates.map(u => `${u.id}:${u.newOrder}`);
+      console.log(`ORDER NORMALIZATION: New order values: ${newOrders.join(', ')}`);
+      
       // Single transaction for all updates to avoid deadlocks
       await db.transaction(async (tx) => {
-        // Process in bulk using a single query when possible
+        // Process in bulk using a Promise.all for better performance
         await Promise.all(allUpdates.map(update => 
           tx
             .update(notes)
@@ -441,11 +457,55 @@ export class DatabaseStorage implements IStorage {
         ));
       });
       
+      console.log(`ORDER NORMALIZATION: Successfully normalized ${allUpdates.length} notes for parent ${parentId === null ? 'ROOT' : parentId}`);
       return true;
     } catch (error) {
-      console.error("Error normalizing note orders:", error);
+      console.error(`ORDER NORMALIZATION ERROR for parent ${parentId === null ? 'ROOT' : parentId}:`, error);
       // Return false instead of throwing to make error handling more graceful
-      // This is a non-critical operation that can be retried later
+      return false;
+    }
+  }
+  
+  // Recursively normalize all notes in a project
+  async normalizeAllProjectNotes(projectId: number): Promise<boolean> {
+    try {
+      console.log(`PROJECT NOTE NORMALIZATION: Starting for project ${projectId}`);
+      
+      // First get all notes in the project
+      const allNotes = await db
+        .select()
+        .from(notes)
+        .where(eq(notes.projectId, projectId));
+      
+      console.log(`PROJECT NOTE NORMALIZATION: Found ${allNotes.length} notes in project ${projectId}`);
+      
+      // Build a hierarchy map to identify all unique parent IDs
+      const parentIds = new Set<number | null>();
+      allNotes.forEach(note => {
+        parentIds.add(note.parentId);
+      });
+      
+      // Convert to array and ensure null (root) comes first for better handling
+      const uniqueParentIds = Array.from(parentIds);
+      if (uniqueParentIds.includes(null)) {
+        // Remove null and add it to the front
+        const nullIndex = uniqueParentIds.indexOf(null);
+        uniqueParentIds.splice(nullIndex, 1);
+        uniqueParentIds.unshift(null);
+      }
+      
+      console.log(`PROJECT NOTE NORMALIZATION: Identified ${uniqueParentIds.length} unique parent levels to normalize`);
+      
+      // Normalize each parent ID group sequentially to avoid race conditions
+      for (const parentId of uniqueParentIds) {
+        console.log(`PROJECT NOTE NORMALIZATION: Normalizing notes with parent ${parentId === null ? 'ROOT' : parentId}`);
+        await this.normalizeNoteOrders(parentId);
+      }
+      
+      console.log(`PROJECT NOTE NORMALIZATION: Successfully normalized all notes in project ${projectId}`);
+      return true;
+    } catch (error) {
+      console.error(`PROJECT NOTE NORMALIZATION ERROR for project ${projectId}:`, error);
       return false;
     }
   }
@@ -828,6 +888,48 @@ export class MemStorage implements IStorage {
     } catch (error) {
       console.error("Error normalizing note orders in MemStorage:", error);
       throw error;
+    }
+  }
+  
+  // Recursively normalize all notes in a project
+  async normalizeAllProjectNotes(projectId: number): Promise<boolean> {
+    try {
+      console.log(`PROJECT NOTE NORMALIZATION (Memory): Starting for project ${projectId}`);
+      
+      // First get all notes in the project
+      const allNotes = Array.from(this.notes.values())
+        .filter(note => note.projectId === projectId);
+      
+      console.log(`PROJECT NOTE NORMALIZATION (Memory): Found ${allNotes.length} notes in project ${projectId}`);
+      
+      // Build a hierarchy map to identify all unique parent IDs
+      const parentIds = new Set<number | null>();
+      allNotes.forEach(note => {
+        parentIds.add(note.parentId);
+      });
+      
+      // Convert to array and ensure null (root) comes first for better handling
+      const uniqueParentIds = Array.from(parentIds);
+      if (uniqueParentIds.includes(null)) {
+        // Remove null and add it to the front
+        const nullIndex = uniqueParentIds.indexOf(null);
+        uniqueParentIds.splice(nullIndex, 1);
+        uniqueParentIds.unshift(null);
+      }
+      
+      console.log(`PROJECT NOTE NORMALIZATION (Memory): Identified ${uniqueParentIds.length} unique parent levels to normalize`);
+      
+      // Normalize each parent ID group sequentially to avoid race conditions
+      for (const parentId of uniqueParentIds) {
+        console.log(`PROJECT NOTE NORMALIZATION (Memory): Normalizing notes with parent ${parentId === null ? 'ROOT' : parentId}`);
+        await this.normalizeNoteOrders(parentId);
+      }
+      
+      console.log(`PROJECT NOTE NORMALIZATION (Memory): Successfully normalized all notes in project ${projectId}`);
+      return true;
+    } catch (error) {
+      console.error(`PROJECT NOTE NORMALIZATION ERROR (Memory) for project ${projectId}:`, error);
+      return false;
     }
   }
 }
