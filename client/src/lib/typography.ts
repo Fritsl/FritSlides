@@ -80,12 +80,10 @@ export interface TypographyStyle {
  * Avoids CSS conflicts by not mixing shorthand and non-shorthand properties
  */
 export function getTypographyStyles(contentType: ContentType, level: number, textLength: number = 0): TypographyStyle {
-  // Only extremely long content needs adaptive sizing
-  const needsAdaptiveSize = textLength > 300;
-  
-  // Use consistent base sizes for most content types to make slides more uniform
+  // Use fixed, consistent sizes for all slide types regardless of content length
+  // This ensures visual consistency between slides with similar content
   const baseSizes = {
-    [ContentType.Title]: needsAdaptiveSize ? 3.8 : 4.2, // Slightly larger for titles
+    [ContentType.Title]: 3.6, // Fixed size for titles
     [ContentType.Subtitle]: 3.0,
     [ContentType.Heading]: 2.8,
     [ContentType.Subheading]: 2.4,
@@ -95,16 +93,15 @@ export function getTypographyStyles(contentType: ContentType, level: number, tex
     [ContentType.Code]: 1.8, // Slightly smaller for code readability
   };
   
-  // Only slight adjustment based on level to maintain consistent sizing
-  // Use visual styling for levels instead of size variations
-  const levelScaleFactor = Math.max(0.9, 1 - (level * 0.05));
+  // Only a very minimal adjustment based on level for hierarchy
+  // Use visual styling like borders, backgrounds instead of size variations
+  const levelScaleFactor = Math.max(0.95, 1 - (level * 0.02));
   
-  // Scale down very long content but keep most content consistent
+  // No more scaling based on text length - maintain consistent sizes
+  // Only exception is for extremely long paragraphs (300+ chars)
   let lengthScaleFactor = 1;
-  if (textLength > 200) {
+  if (textLength > 300 && contentType === ContentType.Regular) {
     lengthScaleFactor = 0.9;
-  } else if (textLength > 300) {
-    lengthScaleFactor = 0.85;
   }
   
   const fontSize = baseSizes[contentType] * levelScaleFactor * lengthScaleFactor;
@@ -201,18 +198,17 @@ export function getAdvancedTypographyStyles(
     textShadow: '-1px 1px 1px rgba(0,0,0,0.25)', // Subtle depth effect
   };
   
-  // Only extremely long content needs adaptive sizing
-  const needsAdaptiveSize = textLength > 300;
-  const isLongContent = textLength > 100;
+  // No text length-based scaling to ensure consistency
+  // Special slides keep the same size regardless of content length
   
   // Apply specialized styling based on content type
   switch(contentType) {
     case SlideContentType.StartEndSlide:
-      // Special styling for start/end slides
+      // Special styling for start/end slides - fixed size
       return {
         ...baseStyle,
         fontFamily: FONTS.display,
-        fontSize: needsAdaptiveSize ? '3.8rem' : '4.5rem',
+        fontSize: '4.0rem', // Fixed size for all title slides
         fontWeight: WEIGHTS.bold,
         textTransform: 'uppercase',
         letterSpacing: '0.05em',
@@ -245,13 +241,13 @@ export function getAdvancedTypographyStyles(
       };
       
     case SlideContentType.Body:
-      // Regular content text with level-based styling
-      const sizeAdjustment = hasMedia ? 0.9 : 1; // Slight size reduction for media slides
+      // Regular content text with level-based styling but consistent size
+      // No more media-based size adjustment for consistency
       
       return {
         ...baseStyle,
         fontFamily: FONTS.body,
-        fontSize: `${2.2 * sizeAdjustment}rem`,
+        fontSize: '2.2rem', // Fixed size for all body text
         fontWeight: level % 2 === 0 ? WEIGHTS.regular : WEIGHTS.light,
         fontStyle: level > 3 ? 'italic' : 'normal',
         paddingLeft: level > 1 ? `${level * 0.5}rem` : undefined,
