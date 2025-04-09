@@ -395,20 +395,18 @@ export function calculatePacingInfo(
   // 1. The current slide has a time marker
   // 2. OR there's a next slide with a time marker
   
-  // If current note has a time marker, we can already show basic pacing
-  if (currentNote && currentNote.time && currentNote.time.trim() !== '') {
-    // We can show indicators, but without certain features that need both previous and next markers
-    if (!nextTimedNote) {
-      return {
-        previousTimedNote: currentNote,
-        nextTimedNote: null,
-        percentComplete: 0,
-        expectedSlideIndex: currentSlideIndex,
-        slideDifference: 0,
-        shouldShow: true, // Show the indicator even without a next time marker
-        expectedTimePosition: 0.5 // Default to center
-      };
-    }
+  // If current note has a time marker, but there's no next timed note,
+  // do not show the indicator dots (as per user request)
+  if (currentNote && currentNote.time && currentNote.time.trim() !== '' && !nextTimedNote) {
+    return {
+      previousTimedNote: currentNote,
+      nextTimedNote: null,
+      percentComplete: 0,
+      expectedSlideIndex: currentSlideIndex,
+      slideDifference: 0,
+      shouldShow: false, // Do NOT show the indicator for the last timed note
+      expectedTimePosition: 0.5
+    };
   }
   
   // If there's a next note with time marker but no previous/current marker, show basic indicator
@@ -479,46 +477,21 @@ export function calculatePacingInfo(
   const currentTimeMinutes = timeToMinutes(currentTimeString);
   
   // Handle the edge case where we're on the last slide with a time marker
-  // If current time is before the note's time, we're ahead of schedule
+  // User requested to NOT show dots for the last timed note
   if (!nextTimedNote && currentNote && currentNote.time) {
-    const noteTimeMinutes = timeToMinutes(currentNote.time);
-    const isAheadOfSchedule = currentTimeMinutes < noteTimeMinutes;
+    // Just logging for debugging
+    console.log('Last slide edge case check - not showing dots on last timed note');
     
-    console.log('Last slide edge case check:', {
-      currentTime: currentTimeString,
-      noteTime: currentNote.time,
-      isAheadOfSchedule,
-      currentTimeMinutes,
-      noteTimeMinutes,
-      minutesAhead: noteTimeMinutes - currentTimeMinutes
-    });
-    
-    if (isAheadOfSchedule) {
-      // Calculate how far ahead we are (in minutes)
-      const minutesAhead = noteTimeMinutes - currentTimeMinutes;
-      // Convert to slides (assume 5 minutes per slide)
-      const slidesAhead = minutesAhead / 5;
-      // Cap at 25 slides and amplify for visibility
-      const cappedSlidesAhead = Math.min(25, slidesAhead * 5);
-      
-      console.log('Using LAST SLIDE ahead of schedule special case:', {
-        minutesAhead,
-        slidesAhead,
-        cappedSlidesAhead,
-        expectedTimePosition: 0.3
-      });
-      
-      // Return fixed result for this special case
-      return {
-        previousTimedNote: null,
-        nextTimedNote: null,
-        percentComplete: 1, // We're at the end
-        expectedSlideIndex: currentSlideIndex,
-        slideDifference: cappedSlidesAhead, // Positive means ahead
-        shouldShow: true,
-        expectedTimePosition: 0.3 // Left of center (ahead of schedule)
-      };
-    }
+    // Return fixed result showing no dots
+    return {
+      previousTimedNote: null,
+      nextTimedNote: null,
+      percentComplete: 1, // We're at the end
+      expectedSlideIndex: currentSlideIndex,
+      slideDifference: 0,
+      shouldShow: false, // Do NOT show the indicator for the last timed note
+      expectedTimePosition: 0.5
+    };
   }
   
   // Handle the edge case where we're on the first slide with a time marker
@@ -621,24 +594,21 @@ export function calculatePacingInfo(
         expectedSlidePosition,
         slideDifference,
         cappedSlideDifference,
-        amplifiedDifference: slideDifference * 20,
-        finalPosition: 0.5 - ((slideDifference * 20) / (maxSlideDifference * 2))
+        finalPosition: 0.5 - (cappedSlideDifference / (maxSlideDifference * 2))
       });
       
       // When ahead (positive difference), gray dot should move left (value < 0.5)
       // When behind (negative difference), gray dot should move right (value > 0.5)
       
-      // Exaggerate small differences to make the effect more visible
-      // Multiply the difference by 20 to amplify movement for small differences
-      const amplifiedDifference = cappedSlideDifference * 20;
-      
-      // Apply a stronger cap after amplification
-      const finalCappedDifference = Math.max(-maxSlideDifference, Math.min(maxSlideDifference, amplifiedDifference));
+      // Use the original slide difference without excessive amplification
+      // Each slide difference should move the dot by a small amount (5 pixels)
+      // When ahead (positive difference) move gray dot left (value < 0.5)
+      // When behind (negative difference) move gray dot right (value > 0.5)
       
       // Convert to 0-1 scale where 0.5 is center
       // Divide by maxSlideDifference*2 to get a value between -0.5 and 0.5
       // Then subtract from 0.5 to get the final position
-      expectedTimePosition = 0.5 - (finalCappedDifference / (maxSlideDifference * 2));
+      expectedTimePosition = 0.5 - (cappedSlideDifference / (maxSlideDifference * 2));
       
     } catch (err) {
       // If any calculation error occurs, use default position (centered)
