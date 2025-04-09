@@ -20,7 +20,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateLastOpenedProject(userId: number, projectId: number): Promise<boolean>;
+  updateLastOpenedProject(userId: number, projectId: number | null): Promise<boolean>;
   
   // Project operations
   getProjects(userId: number): Promise<Project[]>;
@@ -34,7 +34,7 @@ export interface IStorage {
   getNote(id: number): Promise<Note | undefined>;
   createNote(note: InsertNote): Promise<Note>;
   updateNote(id: number, note: UpdateNote): Promise<Note | undefined>;
-  deleteNote(id: number): Promise<boolean>;
+  deleteNote(id: number, deleteChildren?: boolean): Promise<boolean>;
   updateNoteOrder(id: number, order: number | string): Promise<boolean>;
   updateNoteParent(id: number, parentId: number | null, order?: number | string): Promise<boolean>;
   
@@ -72,11 +72,35 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
   
-  async updateLastOpenedProject(userId: number, projectId: number): Promise<boolean> {
+  async updateLastOpenedProject(userId: number, projectId: number | null): Promise<boolean> {
     try {
+      // Make sure projectId is a number or null (not an object)
+      let validProjectId: number | null = null;
+      
+      if (projectId !== null && projectId !== undefined) {
+        // Handle the case where projectId might be an object by extracting number value
+        if (typeof projectId === 'object') {
+          console.warn(`Received object instead of number for projectId: ${JSON.stringify(projectId)}`);
+          // Try to extract id if it's in projectId.id format
+          if (projectId && typeof projectId === 'object' && 'id' in projectId) {
+            validProjectId = Number(projectId.id);
+          }
+        } else {
+          // Convert to number to ensure it's a proper integer
+          validProjectId = Number(projectId);
+        }
+        
+        // Final validation that we have a valid number
+        if (isNaN(validProjectId)) {
+          console.error(`Invalid projectId: ${projectId}, setting to null`);
+          validProjectId = null;
+        }
+      }
+      
+      // Now use the validated project ID
       const [updatedUser] = await db
         .update(users)
-        .set({ lastOpenedProjectId: projectId })
+        .set({ lastOpenedProjectId: validProjectId })
         .where(eq(users.id, userId))
         .returning();
       return !!updatedUser;
@@ -383,31 +407,23 @@ export class DatabaseStorage implements IStorage {
       
       if (!notesWithSameParent.length) return true;
       
-      // Process in small batches to avoid deadlocks
-      const batchSize = 10;
-      for (let startIdx = 0; startIdx < notesWithSameParent.length; startIdx += batchSize) {
-        const endIdx = Math.min(startIdx + batchSize, notesWithSameParent.length);
-        const batch = notesWithSameParent.slice(startIdx, endIdx);
-        
-        // Use a transaction for each small batch
-        await db.transaction(async (tx) => {
-          // Process sequentially within each transaction
-          for (let i = 0; i < batch.length; i++) {
-            const note = batch[i];
-            const newOrder = startIdx + i; // Maintain global ordering
-            
-            await tx
-              .update(notes)
-              .set({ order: newOrder, updatedAt: new Date() })
-              .where(eq(notes.id, note.id));
-          }
-        });
-        
-        // Small delay between batches to reduce database contention
-        if (notesWithSameParent.length > 30 && endIdx < notesWithSameParent.length) {
-          await new Promise(resolve => setTimeout(resolve, 20));
-        }
-      }
+      // Instead of using multiple transactions which can lead to deadlocks,
+      // use a single transaction for the entire batch and prepare the data first
+      const allUpdates = notesWithSameParent.map((note, index) => ({
+        id: note.id,
+        newOrder: index
+      }));
+      
+      // Single transaction for all updates to avoid deadlocks
+      await db.transaction(async (tx) => {
+        // Process in bulk using a single query when possible
+        await Promise.all(allUpdates.map(update => 
+          tx
+            .update(notes)
+            .set({ order: update.newOrder, updatedAt: new Date() })
+            .where(eq(notes.id, update.id))
+        ));
+      });
       
       return true;
     } catch (error) {
@@ -458,11 +474,34 @@ export class MemStorage implements IStorage {
     return user;
   }
   
-  async updateLastOpenedProject(userId: number, projectId: number): Promise<boolean> {
+  async updateLastOpenedProject(userId: number, projectId: number | null): Promise<boolean> {
     const user = this.users.get(userId);
     if (!user) return false;
     
-    const updatedUser = { ...user, lastOpenedProjectId: projectId };
+    // Make sure projectId is a number or null (not an object)
+    let validProjectId: number | null = null;
+    
+    if (projectId !== null && projectId !== undefined) {
+      // Handle the case where projectId might be an object by extracting number value
+      if (typeof projectId === 'object') {
+        console.warn(`Received object instead of number for projectId: ${JSON.stringify(projectId)}`);
+        // Try to extract id if it's in projectId.id format
+        if (projectId && typeof projectId === 'object' && 'id' in projectId) {
+          validProjectId = Number(projectId.id);
+        }
+      } else {
+        // Convert to number to ensure it's a proper integer
+        validProjectId = Number(projectId);
+      }
+      
+      // Final validation that we have a valid number
+      if (isNaN(validProjectId)) {
+        console.error(`Invalid projectId: ${projectId}, setting to null`);
+        validProjectId = null;
+      }
+    }
+    
+    const updatedUser = { ...user, lastOpenedProjectId: validProjectId };
     this.users.set(userId, updatedUser);
     return true;
   }
