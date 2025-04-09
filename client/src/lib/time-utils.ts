@@ -249,6 +249,8 @@ export function calculateTimeInfo(
     return null; // No next timed note found
   }
   
+  // We already have a check above for nextTimedNote
+
   // Count slides between the two time points
   const slideCount = countNotesBetween(notes, noteId, nextTimedNote.id, noteOrder);
   if (slideCount <= 0) {

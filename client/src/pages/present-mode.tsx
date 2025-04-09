@@ -1016,7 +1016,7 @@ export default function PresentMode() {
                       })()}
                       
                       {/* Pacing information - only show if both timing markers are available */}
-                      {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote ? (
+                      {pacingInfo.previousTimedNote || pacingInfo.nextTimedNote ? (
                         <div className="mt-1 pt-1 border-t border-gray-700">
                           <div className="flex justify-between text-[9px] sm:text-xs">
                             <span className={pacingInfo.slideDifference > 0 ? "text-green-400" : 
@@ -1026,15 +1026,19 @@ export default function PresentMode() {
                               'On schedule'}
                             </span>
                             <span className="opacity-70">
-                              {Math.round(pacingInfo.percentComplete * 100)}% between time points
+                              {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote ? 
+                                `${Math.round(pacingInfo.percentComplete * 100)}% between time points` :
+                                pacingInfo.nextTimedNote ? 'Starting segment' : 'Ending segment'}
                             </span>
                           </div>
                           
                           {/* Time markers */}
                           <div className="flex justify-between mt-1 text-[8px] sm:text-[10px] opacity-60">
                             <span>{pacingInfo.previousTimedNote?.time || '—'}</span>
-                            <span>{Math.floor(pacingInfo.percentComplete * 100)}%</span>
-                            <span>{pacingInfo.nextTimedNote && pacingInfo.nextTimedNote.time ? pacingInfo.nextTimedNote.time : '—'}</span>
+                            <span>{pacingInfo.previousTimedNote && pacingInfo.nextTimedNote ? 
+                              `${Math.floor(pacingInfo.percentComplete * 100)}%` : 
+                              currentNote?.time || 'Current'}</span>
+                            <span>{pacingInfo.nextTimedNote?.time || '—'}</span>
                           </div>
                         </div>
                       ) : (
@@ -1049,9 +1053,9 @@ export default function PresentMode() {
                           
                           {/* Simple time markers */}
                           <div className="flex justify-between mt-1 text-[8px] sm:text-[10px] opacity-60">
-                            <span>{pacingInfo.previousTimedNote && pacingInfo.previousTimedNote.time ? pacingInfo.previousTimedNote.time : '—'}</span>
+                            <span>{pacingInfo.previousTimedNote ? (pacingInfo.previousTimedNote as Note).time || '—' : '—'}</span>
                             <span>{currentNote?.time || 'No time set'}</span>
-                            <span>{pacingInfo.nextTimedNote && pacingInfo.nextTimedNote.time ? pacingInfo.nextTimedNote.time : '—'}</span>
+                            <span>{pacingInfo.nextTimedNote ? (pacingInfo.nextTimedNote as Note).time || '—' : '—'}</span>
                           </div>
                         </div>
                       )}
