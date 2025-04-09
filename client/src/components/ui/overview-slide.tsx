@@ -185,9 +185,9 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
               return (
                 <div key={note.id} className="flex items-start cursor-default">
                   {/* Simple white bullet, properly aligned */}
-                  <div className="relative flex items-center">
+                  <div className="relative flex">
                     <div 
-                      className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-1.5 mr-4 sm:mr-6 flex-shrink-0" 
+                      className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-3 mr-4 sm:mr-6 flex-shrink-0" 
                       style={{ 
                         backgroundColor: "white"
                       }}
@@ -267,9 +267,9 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
           return (
             <div key={note.id} className="flex items-start cursor-default">
               {/* Simple white bullet point, properly aligned with text */}
-              <div className="relative flex items-center">
+              <div className="relative flex">
                 <div 
-                  className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-1.5 mr-4 sm:mr-6 flex-shrink-0" 
+                  className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mt-3 mr-4 sm:mr-6 flex-shrink-0" 
                   style={{ 
                     backgroundColor: "white",
                   }}
