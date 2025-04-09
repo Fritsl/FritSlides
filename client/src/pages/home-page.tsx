@@ -561,7 +561,7 @@ function ProjectSettingsDialog({ isOpen, onOpenChange, form, onSubmit, isPending
               name="author"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>AUTHOR (Shown on End Slide)</FormLabel>
+                  <FormLabel>AUTHOR (Shown in presentation mode for navigation and on End Slide)</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter author name" {...field} value={field.value || ""} />
                   </FormControl>

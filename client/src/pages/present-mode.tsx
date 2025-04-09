@@ -752,11 +752,25 @@ export default function PresentMode() {
               <span className="hidden sm:inline">Click or → to advance • ← back • ↑↓ jump between sections • ESC to exit</span>
               <span className="inline sm:hidden">Tap to advance • ↑↓ jump sections</span>
             </p>
-            <FullscreenToggle 
-              buttonClassName="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100"
-              iconClassName="w-4 h-4"
-              showTooltip={false}
-            />
+            <div className="flex items-center">
+              {/* Author button - only show for regular slides */}
+              {currentNote && currentNote.id > 0 && (
+                <button 
+                  className="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100 mr-2 text-[10px] cursor-pointer"
+                  onClick={() => {
+                    // Navigate to the current note in edit mode
+                    exitPresentation();
+                  }}
+                >
+                  {currentProject?.author || "AUTHOR"}
+                </button>
+              )}
+              <FullscreenToggle 
+                buttonClassName="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100"
+                iconClassName="w-4 h-4"
+                showTooltip={false}
+              />
+            </div>
           </div>
           
           {/* Time tracking dots */}
