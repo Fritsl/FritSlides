@@ -106,9 +106,9 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
     );
   };
   
-  // Limit child notes to first 6 for preview
-  const limitedChildNotes = childNotes.slice(0, 6);
-  const hasMoreChildren = childNotes.length > 6;
+  // Limit child notes to first 10 for preview (increased from 6 since we removed icons)
+  const limitedChildNotes = childNotes.slice(0, 10);
+  const hasMoreChildren = childNotes.length > 10;
   
   // Get the next color theme for bullets to make them stand out
   const getNextThemeColor = (currentTheme: PresentationTheme): string => {
@@ -186,42 +186,23 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
               return (
                 <li key={note.id} className="cursor-default">
                   <div className="flex-1">
-                    {/* Child note content */}
+                    {/* Child note content - optimized for fitting on screen */}
                     <p 
                       style={{
                         ...generateTypographyStyles(getTypographyStyles(ContentType.List, 1)),
                         // No scaling based on content length - ensure consistent size
-                        textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                        textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
                       }}
+                      title={note.content.split('\\n')[0]} // Show full text on hover
                     >
                       {note.content.split('\\n')[0]}
                     </p>
                     
-                    {/* Icons for additional features */}
-                    <div className="flex mt-2 space-x-3 text-white/80 flex-wrap">
-                      {note.url && (
-                        <div className="flex items-center text-white/80">
-                          <Link size={14} className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
-                          <span className="text-xs">Link</span>
-                        </div>
-                      )}
-                      
-                      {(note.content.toLowerCase().includes('discuss') || 
-                        note.content.toLowerCase().includes('discussion')) && (
-                        <div className="flex items-center text-white/80">
-                          <MessageCircle size={14} className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
-                          <span className="text-xs">Discussion</span>
-                        </div>
-                      )}
-                      
-                      {/* Time markers are not shown in slides view */}
-                      
-                      {note.youtubeLink && (
-                        <div className="flex items-center text-white/80 ml-auto">
-                          <div className="text-xs bg-red-600/80 px-1.5 py-0.5 rounded">YouTube</div>
-                        </div>
-                      )}
-                    </div>
+                    {/* No icons shown on overview slides as requested */}
                   </div>
                 </li>
               );
@@ -260,42 +241,23 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
           return (
             <li key={note.id} className="cursor-default pl-2">
               <div className="flex-1">
-                {/* Child note content */}
+                {/* Child note content - optimized for fitting on screen */}
                 <p 
                   style={{
                     ...generateTypographyStyles(getTypographyStyles(ContentType.List, 1)),
                     // No scaling based on content length - ensure consistent size
-                    textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                    textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
                   }}
+                  title={note.content.split('\\n')[0]} // Show full text on hover
                 >
                   {note.content.split('\\n')[0]}
                 </p>
                 
-                {/* Icons for additional features */}
-                <div className="flex mt-2 space-x-3 text-white/80">
-                  {note.url && (
-                    <div className="flex items-center text-white/80">
-                      <Link size={14} className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
-                      <span className="text-xs sm:text-sm">Link</span>
-                    </div>
-                  )}
-                  
-                  {(note.content.toLowerCase().includes('discuss') || 
-                    note.content.toLowerCase().includes('discussion')) && (
-                    <div className="flex items-center text-white/80">
-                      <MessageCircle size={14} className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
-                      <span className="text-xs sm:text-sm">Discussion</span>
-                    </div>
-                  )}
-                  
-                  {/* Time markers are not shown in slides view */}
-                  
-                  {note.youtubeLink && (
-                    <div className="flex items-center text-white/80 ml-auto">
-                      <div className="text-xs sm:text-sm bg-red-600/80 px-2 py-0.5 rounded">YouTube</div>
-                    </div>
-                  )}
-                </div>
+                {/* No icons shown on overview slides as requested */}
               </div>
             </li>
           );

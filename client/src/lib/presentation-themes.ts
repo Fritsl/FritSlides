@@ -11,101 +11,101 @@ export type ThemeColors = {
 export type PresentationTheme = {
   name: string;
   colors: ThemeColors;
-  patternType: 'dots' | 'paths' | 'circles' | 'plus' | 'nodes';
+  patternType: 'dots' | 'paths' | 'circles' | 'plus' | 'nodes' | 'neural' | 'circuit' | 'brain' | 'code';
   patternDescription: string; // Describes the pattern in the theme
 };
 
-// Special theme for start/end slides with a distinct look
+// Special theme for start/end slides with a distinct look - AI Neural theme
 export const START_END_THEME: PresentationTheme = {
-  name: "Midnight Gradient",
+  name: "AI Neural",
   colors: {
-    base: "#3B82F6",   // Blue 500
-    mid: "#1E3A8A",    // Blue 900
-    dark: "#172554",   // Blue 950
-    accent: "#60A5FA"  // Blue 400
+    base: "#4F46E5",   // Indigo 600
+    mid: "#312E81",    // Indigo 900
+    dark: "#1E1B4B",   // Indigo 950
+    accent: "#818CF8"  // Indigo 400
   },
-  patternType: 'nodes',
-  patternDescription: "Elegant node pattern in #60A5FA at 15% opacity"
+  patternType: 'neural',
+  patternDescription: "Neural network pattern in #818CF8 at 15% opacity"
 };
 
 // Root themes for presentations, each with their gradient and patterns
 export const PRESENTATION_THEMES: PresentationTheme[] = [
-  // Glacier (Sky Blue)
+  // Neural (Deep Blue) - AI Neural Network Theme
   {
-    name: "Glacier",
+    name: "Neural",
     colors: {
-      base: "#0EA5E9",   // Sky Blue 500
-      mid: "#0C4A6E",    // Sky Blue 900
-      dark: "#082F49",   // Sky Blue 950
-      accent: "#38BDF8"  // Sky Blue 400
+      base: "#4F46E5",   // Indigo 600
+      mid: "#312E81",    // Indigo 900
+      dark: "#1E1B4B",   // Indigo 950
+      accent: "#818CF8"  // Indigo 400
     },
-    patternType: 'dots',
-    patternDescription: "Scattered dots and circles in #38BDF8 at 15% opacity"
+    patternType: 'neural',
+    patternDescription: "Neural network pattern in #818CF8 at 15% opacity"
   },
   
-  // Sand (Orange)
+  // Circuit (Emerald) - AI Circuit Board Theme
   {
-    name: "Sand",
+    name: "Circuit",
     colors: {
-      base: "#F97316",   // Orange 500
-      mid: "#9A3412",    // Orange 900
-      dark: "#431407",   // Orange 950
-      accent: "#FB923C"  // Orange 400
+      base: "#10B981",   // Emerald 500
+      mid: "#065F46",    // Emerald 900
+      dark: "#022C22",   // Emerald 950
+      accent: "#34D399"  // Emerald 400
     },
-    patternType: 'paths',
-    patternDescription: "Interlocking paths in #FB923C at 15% opacity"
+    patternType: 'circuit',
+    patternDescription: "Circuit board pattern in #34D399 at 15% opacity"
   },
   
-  // Pearl (Fuchsia)
+  // Digital (Violet) - AI Digital Brain Theme
   {
-    name: "Pearl",
+    name: "Digital",
     colors: {
-      base: "#D946EF",   // Fuchsia 500
-      mid: "#86198F",    // Fuchsia 900
-      dark: "#4A044E",   // Fuchsia 950
-      accent: "#F0ABFC"  // Fuchsia 300
+      base: "#8B5CF6",   // Violet 500
+      mid: "#5B21B6",    // Violet 900
+      dark: "#2E1065",   // Violet 950
+      accent: "#A78BFA"  // Violet 400
     },
-    patternType: 'circles',
-    patternDescription: "Small circles in #F0ABFC at 15% opacity"
+    patternType: 'brain',
+    patternDescription: "Abstract brain pattern in #A78BFA at 15% opacity"
   },
   
-  // Dark (Purple)
+  // Code (Cyan) - AI Programming Theme
   {
-    name: "Dark",
+    name: "Code",
     colors: {
-      base: "#A855F7",   // Purple 500
-      mid: "#6B21A8",    // Purple 900
-      dark: "#3B0764",   // Purple 950
-      accent: "#A855F7"  // Purple 500
-    },
-    patternType: 'plus',
-    patternDescription: "Plus signs in #A855F7 at 15% opacity"
-  },
-  
-  // Midnight (Cyan)
-  {
-    name: "Midnight",
-    colors: {
-      base: "#22D3EE",   // Cyan 400
+      base: "#06B6D4",   // Cyan 500
       mid: "#155E75",    // Cyan 900
       dark: "#083344",   // Cyan 950
       accent: "#22D3EE"  // Cyan 400
     },
-    patternType: 'nodes',
-    patternDescription: "Circular nodes in #22D3EE at 15% opacity"
+    patternType: 'code',
+    patternDescription: "Code brackets pattern in #22D3EE at 15% opacity"
   },
   
-  // Obsidian (Teal)
+  // Quantum (Blue) - AI Quantum Computing Theme
   {
-    name: "Obsidian",
+    name: "Quantum",
     colors: {
-      base: "#2DD4BF",   // Teal 400
-      mid: "#115E59",    // Teal 900
-      dark: "#042F2E",   // Teal 950
-      accent: "#5EEAD4"  // Teal 300
+      base: "#3B82F6",   // Blue 500
+      mid: "#1E3A8A",    // Blue 900
+      dark: "#172554",   // Blue 950
+      accent: "#60A5FA"  // Blue 400
+    },
+    patternType: 'nodes',
+    patternDescription: "Quantum nodes in #60A5FA at 15% opacity"
+  },
+  
+  // Tech (Rose) - AI Technology Theme
+  {
+    name: "Tech",
+    colors: {
+      base: "#F43F5E",   // Rose 500
+      mid: "#9F1239",    // Rose 900
+      dark: "#4C0519",   // Rose 950
+      accent: "#FB7185"  // Rose 400
     },
     patternType: 'dots',
-    patternDescription: "Scattered dots in #5EEAD4 at 15% opacity"
+    patternDescription: "Tech dots in #FB7185 at 15% opacity"
   }
 ];
 
@@ -130,6 +130,22 @@ export const generatePatternSvg = (patternType: string, accentColor: string): st
     case 'nodes':
       return `data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Ccircle stroke='${encodeURIComponent(accentColor)}' stroke-opacity='${opacity}' cx='16' cy='16' r='6'/%3E%3Cpath stroke='${encodeURIComponent(accentColor)}' stroke-opacity='${opacity*0.75}' d='M16 0v6m0 20v6M0 16h6m20 0h6'/%3E%3C/g%3E%3C/svg%3E`;
     
+    // Neural network pattern - interconnected nodes representing neural networks
+    case 'neural':
+      return `data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='${encodeURIComponent(accentColor)}' stroke-opacity='${opacity}'%3E%3Ccircle cx='15' cy='15' r='3'/%3E%3Ccircle cx='45' cy='15' r='3'/%3E%3Ccircle cx='15' cy='45' r='3'/%3E%3Ccircle cx='45' cy='45' r='3'/%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3Cpath stroke-width='1' d='M15 15l15 15m0 0l15-15m0 30l-15-15m0 0l-15 15m0-30l30 30'/%3E%3C/g%3E%3C/svg%3E`;
+      
+    // Circuit board pattern - representing technology and computing
+    case 'circuit':
+      return `data:image/svg+xml,%3Csvg width='50' height='50' viewBox='0 0 50 50' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='${encodeURIComponent(accentColor)}' stroke-opacity='${opacity}' stroke-width='1'%3E%3Cpath d='M10 10h5v5h5v5h-5v5h-5zM35 10h5v5h-5v5h5v5h-5v5h-5v-5h-5v5h-5v-5h5v-5h5v-5h5zM10 35h5v5h-5z'/%3E%3Ccircle cx='5' cy='5' r='2' fill='${encodeURIComponent(accentColor)}' fill-opacity='${opacity}'/%3E%3Ccircle cx='15' cy='15' r='2' fill='${encodeURIComponent(accentColor)}' fill-opacity='${opacity}'/%3E%3Ccircle cx='35' cy='35' r='2' fill='${encodeURIComponent(accentColor)}' fill-opacity='${opacity}'/%3E%3Ccircle cx='45' cy='45' r='2' fill='${encodeURIComponent(accentColor)}' fill-opacity='${opacity}'/%3E%3C/g%3E%3C/svg%3E`;
+      
+    // Brain pattern - abstract brain representation
+    case 'brain':
+      return `data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='${encodeURIComponent(accentColor)}' stroke-opacity='${opacity}'%3E%3Cpath d='M30 10c-2.5 0-5 1-6.5 2.5-1.5-1-3.5-1.5-5-1.5-5 0-9 4-9 9 0 2 0.5 3.5 1.5 5-1 1.5-1.5 3-1.5 5 0 5 4 9 9 9 1 0 2-0.5 3-1 1 2.5 3.5 4 6.5 4s5.5-1.5 6.5-4c1 0.5 2 1 3 1 5 0 9-4 9-9 0-2-0.5-3.5-1.5-5 1-1.5 1.5-3 1.5-5 0-5-4-9-9-9-1.5 0-3.5 0.5-5 1.5C35 11 32.5 10 30 10z'/%3E%3Cpath d='M20 20c0 1.5 0.5 3 1.5 4M40 20c0 1.5-0.5 3-1.5 4M25 37.5c1.5 1 3 1.5 5 1.5s3.5-0.5 5-1.5M20 30c-2.5 0-4.5-2-4.5-4.5M40 30c2.5 0 4.5-2 4.5-4.5'/%3E%3Ccircle cx='25' cy='25' r='2' fill='${encodeURIComponent(accentColor)}' fill-opacity='${opacity}'/%3E%3Ccircle cx='35' cy='25' r='2' fill='${encodeURIComponent(accentColor)}' fill-opacity='${opacity}'/%3E%3C/g%3E%3C/svg%3E`;
+      
+    // Code pattern - representing programming
+    case 'code':
+      return `data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg stroke='${encodeURIComponent(accentColor)}' stroke-opacity='${opacity}' fill='none'%3E%3Cpath d='M10 13l-6 6 6 6M30 13l6 6-6 6M17 8l6 24'/%3E%3C/g%3E%3C/svg%3E`;
+      
     default:
       return `data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='${encodeURIComponent(accentColor)}' fill-opacity='${opacity}'%3E%3Ccircle cx='3' cy='3' r='1'/%3E%3Ccircle cx='13' cy='13' r='1'/%3E%3Ccircle cx='8' cy='18' r='1'/%3E%3Ccircle cx='18' cy='8' r='1'/%3E%3C/g%3E%3C/svg%3E`;
   }
