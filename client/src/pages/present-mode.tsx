@@ -436,7 +436,7 @@ export default function PresentMode() {
       <div className="flex items-center space-x-1">
         {relevantAncestors.map((ancestor, index) => (
           <React.Fragment key={ancestor.id}>
-            <span className="max-w-[120px] truncate">{ancestor.content.split('\n')[0]}</span>
+            <span className="max-w-[240px] truncate">{ancestor.content.split('\n')[0]}</span>
             {index < relevantAncestors.length - 1 && <span className="mx-1">›</span>}
           </React.Fragment>
         ))}
