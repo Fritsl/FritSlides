@@ -47,6 +47,9 @@ export default function HomePage() {
   // State for search dialog
   const [isSearchDialogOpen, setIsSearchDialogOpen] = useState(false);
   
+  // State to track which note should be focused in the tree
+  const [focusedNoteId, setFocusedNoteId] = useState<number | null>(null);
+  
   // Create a hidden anchor element for downloads
   const downloadLinkRef = useRef<HTMLAnchorElement | null>(null);
 
@@ -58,11 +61,13 @@ export default function HomePage() {
     const params = new URLSearchParams(window.location.search);
     const projectIdParam = params.get('projectId');
     const noteIdParam = params.get('noteId');
+    const fromPresentParam = params.get('fromPresent');
     
     // Debug logging
     console.log("URL Parameters:", { 
       projectIdParam, 
       noteIdParam, 
+      fromPresentParam,
       fullUrl: window.location.href,
       search: window.location.search
     });
@@ -75,8 +80,25 @@ export default function HomePage() {
       if (projectExists) {
         setSelectedProjectId(projectId);
         
-        // If there's also a noteId, we could use it to focus that note in the editor
-        // (This would need a separate implementation to focus the specific note)
+        // If there's also a noteId, focus that specific note
+        if (noteIdParam) {
+          try {
+            const noteId = parseInt(noteIdParam, 10);
+            if (!isNaN(noteId)) {
+              console.log(`Setting focused note ID to ${noteId}`);
+              setFocusedNoteId(noteId);
+              
+              // If we're coming from presentation mode or search, explicitly set expand level to show all
+              // This ensures the note and its ancestors are visible
+              if (fromPresentParam === 'true') {
+                console.log("Coming from presentation mode, expanding all notes");
+                setExpandLevel(-1); // Expand all
+              }
+            }
+          } catch (e) {
+            console.error("Error parsing note ID:", e);
+          }
+        }
         
         // Clear URL parameters to avoid reloading on refresh
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -391,6 +413,7 @@ export default function HomePage() {
             isLoading={isLoadingNotes}
             expandLevel={expandLevel}
             onMaxDepthChange={setMaxNoteDepth}
+            focusedNoteId={focusedNoteId}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">
@@ -442,14 +465,17 @@ export default function HomePage() {
               // Temporarily expand to a higher level to ensure the note is visible
               setExpandLevel(-1); // Expand all
               
-              // Set URL to open the specific note for editing
-              setLocation(`/?noteId=${noteId}&projectId=${selectedProjectId}`);
+              // Set the focused note ID directly instead of using URL parameters
+              setFocusedNoteId(noteId);
               
               // Show confirmation toast
               toast({
                 title: "Note found",
                 description: "Navigating to the selected note",
               });
+              
+              // Close the search dialog
+              setIsSearchDialogOpen(false);
             }
           }}
         />

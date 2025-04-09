@@ -11,8 +11,9 @@ interface NoteTreeProps {
   projectId: number;
   notes: Note[];
   isLoading: boolean;
-  expandLevel?: number; // New prop to control the expansion level
+  expandLevel?: number; // Prop to control the expansion level
   onMaxDepthChange?: (maxDepth: number) => void; // Callback to notify the parent component of max depth
+  focusedNoteId?: number | null; // New prop to explicitly focus on a specific note
 }
 
 export default function NoteTree({ 
@@ -20,7 +21,8 @@ export default function NoteTree({
   notes, 
   isLoading, 
   expandLevel = -1, // Default to -1 which means no specific expansion level
-  onMaxDepthChange 
+  onMaxDepthChange,
+  focusedNoteId = null // New prop to focus on a specific note
 }: NoteTreeProps) {
   const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
   const [draggingNoteId, setDraggingNoteId] = useState<number | null>(null);
@@ -29,6 +31,9 @@ export default function NoteTree({
   
   // Track if we've already expanded to the editing note
   const [focusedOnEditingNote, setFocusedOnEditingNote] = useState(false);
+  
+  // Track if we've already expanded to the explicitly focused note
+  const [focusedOnSpecificNote, setFocusedOnSpecificNote] = useState(false);
   
   // Handle focusing on a specific note from URL parameters
   useEffect(() => {
@@ -80,6 +85,62 @@ export default function NoteTree({
       }, 100); // Short delay to allow rendering
     }
   }, [notes, editingNoteId, focusedOnEditingNote, expandedNodes]);
+  
+  // Handle focusing on a specific note that isn't being edited (from search or coming back from presentation)
+  useEffect(() => {
+    // Only run if we have notes, a focused note ID, and haven't focused yet
+    if (notes?.length && focusedNoteId && !focusedOnSpecificNote) {
+      console.log(`Explicitly focusing on note ID ${focusedNoteId} (not editing)`);
+      
+      // Find the note and all its ancestors
+      const targetNote = notes.find(note => note.id === focusedNoteId);
+      if (!targetNote) {
+        console.log(`Note ID ${focusedNoteId} not found for focusing`);
+        return;
+      }
+      
+      // Build a path of parent IDs from the note up to the root
+      const ancestorIds: number[] = [];
+      let currentNote = targetNote;
+      
+      // Add all parent IDs to the path
+      while (currentNote.parentId !== null) {
+        const parent = notes.find(note => note.id === currentNote.parentId);
+        if (!parent) break;
+        
+        ancestorIds.push(parent.id);
+        currentNote = parent;
+      }
+      
+      console.log(`Found ${ancestorIds.length} ancestors for focused note ${focusedNoteId}:`, ancestorIds);
+      
+      // Create a new expanded nodes object that expands all ancestors
+      const newExpandedNodes = { ...expandedNodes };
+      ancestorIds.forEach(id => {
+        newExpandedNodes[id] = true;
+      });
+      
+      // Update expanded nodes state
+      setExpandedNodes(newExpandedNodes);
+      setFocusedOnSpecificNote(true);
+      
+      // Scroll to the note
+      setTimeout(() => {
+        const noteElement = document.getElementById(`note-${focusedNoteId}`);
+        if (noteElement) {
+          noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Add a temporary highlight class to the note
+          noteElement.classList.add('highlight-focused-note');
+          setTimeout(() => {
+            noteElement.classList.remove('highlight-focused-note');
+          }, 3000); // Remove the highlight after 3 seconds
+          console.log(`Scrolled to focused note ${focusedNoteId}`);
+        } else {
+          console.log(`Element for focused note ${focusedNoteId} not found for scrolling`);
+        }
+      }, 100); // Short delay to allow rendering
+    }
+  }, [notes, focusedNoteId, focusedOnSpecificNote, expandedNodes]);
 
   // Calculate max depth of notes when notes change
   useEffect(() => {

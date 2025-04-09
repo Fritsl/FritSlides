@@ -35,3 +35,15 @@
   background-color: rgba(66, 153, 225, 0.6) !important; /* Blue highlight with transparency */
   color: white !important;
 }
+
+/* Highlight animation for focused notes */
+@keyframes highlight-pulse {
+  0% { background-color: rgba(var(--primary), 0.05); }
+  50% { background-color: rgba(var(--primary), 0.15); }
+  100% { background-color: rgba(var(--primary), 0.05); }
+}
+
+.highlight-focused-note {
+  animation: highlight-pulse 2s ease-in-out infinite;
+  border-left: 3px solid rgb(var(--primary)) !important;
+}
