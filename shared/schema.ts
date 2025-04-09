@@ -18,6 +18,7 @@ export const projects = pgTable("projects", {
   endSlogan: text("endSlogan"),
   author: text("author"),
   lastViewedSlideIndex: integer("lastViewedSlideIndex").default(0),
+  isLocked: boolean("isLocked").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -49,6 +50,7 @@ export const insertProjectSchema = createInsertSchema(projects).pick({
   startSlogan: true,
   endSlogan: true,
   author: true,
+  isLocked: true,
 });
 
 export const insertNoteSchema = createInsertSchema(notes).omit({
@@ -63,6 +65,11 @@ export const updateProjectSchema = createInsertSchema(projects).omit({
   createdAt: true,
 });
 
+// Special schema just for toggling lock status (to be more explicit in the API)
+export const toggleProjectLockSchema = z.object({
+  isLocked: z.boolean(),
+});
+
 export const updateNoteSchema = createInsertSchema(notes).omit({
   id: true,
   projectId: true,
@@ -75,6 +82,7 @@ export type User = typeof users.$inferSelect;
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type UpdateProject = z.infer<typeof updateProjectSchema>;
+export type ToggleProjectLock = z.infer<typeof toggleProjectLockSchema>;
 export type Project = typeof projects.$inferSelect;
 
 export type InsertNote = z.infer<typeof insertNoteSchema>;

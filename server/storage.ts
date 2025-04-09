@@ -1,9 +1,9 @@
-import { users, type User, type InsertUser, projects, type Project, type InsertProject, type UpdateProject, notes, type Note, type InsertNote, type UpdateNote } from "@shared/schema";
+import { users, type User, type InsertUser, projects, type Project, type InsertProject, type UpdateProject, notes, type Note, type InsertNote, type UpdateNote, type ToggleProjectLock } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import connectPg from "connect-pg-simple";
 import { db } from "./db";
-import { eq, and, desc, asc, isNull, sql } from "drizzle-orm";
+import { eq, and, desc, asc, isNull, sql, inArray } from "drizzle-orm";
 import { client } from "./db";
 import pg from "pg";
 
@@ -28,6 +28,7 @@ export interface IStorage {
   createProject(project: InsertProject): Promise<Project>;
   updateProject(id: number, data: UpdateProject): Promise<Project | undefined>;
   updateLastViewedSlideIndex(projectId: number, slideIndex: number): Promise<boolean>;
+  toggleProjectLock(id: number, lockStatus: ToggleProjectLock): Promise<Project | undefined>;
   deleteProject(id: number): Promise<boolean>;
   
   // Note operations
@@ -154,9 +155,44 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
   }
+  
+  async toggleProjectLock(id: number, lockStatus: ToggleProjectLock): Promise<Project | undefined> {
+    try {
+      // First check if project exists
+      const [project] = await db.select().from(projects).where(eq(projects.id, id));
+      if (!project) {
+        console.error(`Project with id ${id} not found`);
+        return undefined;
+      }
+      
+      // Update the project lock status
+      const [updatedProject] = await db
+        .update(projects)
+        .set({ isLocked: lockStatus.isLocked })
+        .where(eq(projects.id, id))
+        .returning();
+      
+      return updatedProject;
+    } catch (error) {
+      console.error(`Error toggling project lock status (id=${id}):`, error);
+      throw error;
+    }
+  }
 
   async deleteProject(id: number): Promise<boolean> {
     try {
+      // Check if the project exists and if it's locked
+      const [project] = await db.select().from(projects).where(eq(projects.id, id));
+      
+      if (!project) {
+        return false; // Project doesn't exist
+      }
+      
+      if (project.isLocked) {
+        console.error(`Cannot delete project (id=${id}) because it is locked`);
+        return false; // Project is locked, cannot delete
+      }
+      
       // First, clear any users' lastOpenedProjectId if it's set to this project
       await db
         .update(users)
@@ -198,6 +234,17 @@ export class DatabaseStorage implements IStorage {
 
   async createNote(insertNote: InsertNote): Promise<Note> {
     try {
+      // Check if the project exists and if it's locked
+      const [project] = await db.select().from(projects).where(eq(projects.id, insertNote.projectId));
+      
+      if (!project) {
+        throw new Error(`Project with id ${insertNote.projectId} not found`);
+      }
+      
+      if (project.isLocked) {
+        throw new Error(`Cannot create note in project ${insertNote.projectId} because it is locked`);
+      }
+      
       // Find max order value for siblings to place this note at the end
       const [maxOrderResult] = await db
         .select({ maxOrder: sql<number>`COALESCE(MAX(${notes.order}), -1)` })
@@ -226,14 +273,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateNote(id: number, updateData: UpdateNote): Promise<Note | undefined> {
-    const [updatedNote] = await db
-      .update(notes)
-      .set({ ...updateData, updatedAt: new Date() })
-      .where(eq(notes.id, id))
-      .returning();
+    try {
+      // First check if the note exists and find its project
+      const [noteToUpdate] = await db
+        .select()
+        .from(notes)
+        .where(eq(notes.id, id));
       
-    // @ts-ignore - TypeScript issue with drizzle-orm return types
-    return updatedNote;
+      if (!noteToUpdate) {
+        return undefined;
+      }
+      
+      // Check if the project is locked
+      const [project] = await db.select().from(projects).where(eq(projects.id, noteToUpdate.projectId));
+      
+      if (!project) {
+        throw new Error(`Project with id ${noteToUpdate.projectId} not found`);
+      }
+      
+      if (project.isLocked) {
+        throw new Error(`Cannot update note in project ${noteToUpdate.projectId} because it is locked`);
+      }
+      
+      // Proceed with the update
+      const [updatedNote] = await db
+        .update(notes)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(notes.id, id))
+        .returning();
+        
+      // @ts-ignore - TypeScript issue with drizzle-orm return types
+      return updatedNote;
+    } catch (error) {
+      console.error("Error updating note:", error);
+      throw error;
+    }
   }
 
   async deleteNote(id: number, deleteChildren: boolean = true): Promise<boolean> {
@@ -246,6 +320,17 @@ export class DatabaseStorage implements IStorage {
       
       if (!noteToDelete) {
         return false;
+      }
+      
+      // Check if the project is locked
+      const [project] = await db.select().from(projects).where(eq(projects.id, noteToDelete.projectId));
+      
+      if (!project) {
+        throw new Error(`Project with id ${noteToDelete.projectId} not found`);
+      }
+      
+      if (project.isLocked) {
+        throw new Error(`Cannot delete note in project ${noteToDelete.projectId} because it is locked`);
       }
       
       if (deleteChildren) {
@@ -291,6 +376,17 @@ export class DatabaseStorage implements IStorage {
         
       if (!noteToUpdate) return false;
       
+      // Check if the project is locked
+      const [project] = await db.select().from(projects).where(eq(projects.id, noteToUpdate.projectId));
+      
+      if (!project) {
+        throw new Error(`Project with id ${noteToUpdate.projectId} not found`);
+      }
+      
+      if (project.isLocked) {
+        throw new Error(`Cannot update note order in project ${noteToUpdate.projectId} because it is locked`);
+      }
+      
       // Store old parent for normalization
       const parentId = noteToUpdate.parentId;
       
@@ -327,6 +423,17 @@ export class DatabaseStorage implements IStorage {
         .where(eq(notes.id, id));
         
       if (!noteToUpdate) return false;
+      
+      // Check if the project is locked
+      const [project] = await db.select().from(projects).where(eq(projects.id, noteToUpdate.projectId));
+      
+      if (!project) {
+        throw new Error(`Project with id ${noteToUpdate.projectId} not found`);
+      }
+      
+      if (project.isLocked) {
+        throw new Error(`Cannot update note parent in project ${noteToUpdate.projectId} because it is locked`);
+      }
       
       // Store old parent for normalization
       const oldParentId = noteToUpdate.parentId;
@@ -382,8 +489,46 @@ export class DatabaseStorage implements IStorage {
   
   async updateNoteParentsBatch(updates: {id: number, parentId: number | null, order?: number | string}[]): Promise<boolean> {
     try {
+      if (!updates.length) return true;
+      
       // Track unique parent IDs that need normalization after updates
       const parentsToNormalize = new Set<number | null>();
+      
+      // First, get note IDs to fetch notes with their project IDs
+      const noteIds = updates.map(update => update.id);
+      
+      // Fetch all affected notes with a single query
+      const notesToUpdate = await db
+        .select()
+        .from(notes)
+        .where(inArray(notes.id, noteIds));
+      
+      if (!notesToUpdate.length) {
+        console.log("No valid notes found for batch update");
+        return true;
+      }
+      
+      // Collect all unique project IDs
+      const projectIds = new Set<number>();
+      for (const note of notesToUpdate) {
+        projectIds.add(note.projectId);
+      }
+      
+      // Check if any of the projects are locked
+      for (const projectId of projectIds) {
+        const [project] = await db
+          .select()
+          .from(projects)
+          .where(eq(projects.id, projectId));
+        
+        if (!project) {
+          throw new Error(`Project with id ${projectId} not found`);
+        }
+        
+        if (project.isLocked) {
+          throw new Error(`Cannot update notes in project ${projectId} because it is locked`);
+        }
+      }
       
       // Process updates in smaller, sequential batches to prevent deadlocks
       const batchSize = 10; // Smaller batch size to reduce deadlock risk
@@ -429,7 +574,7 @@ export class DatabaseStorage implements IStorage {
       return true;
     } catch (error) {
       console.error("Error in batch update of note parents:", error);
-      return false;
+      throw error; // Propagate the error to notify about locked projects
     }
   }
   
@@ -647,8 +792,34 @@ export class MemStorage implements IStorage {
       return false;
     }
   }
+  
+  async toggleProjectLock(id: number, lockStatus: ToggleProjectLock): Promise<Project | undefined> {
+    try {
+      const project = this.projects.get(id);
+      if (!project) return undefined;
+      
+      const updatedProject = { ...project, isLocked: lockStatus.isLocked };
+      this.projects.set(id, updatedProject);
+      return updatedProject;
+    } catch (error) {
+      console.error(`Error toggling project lock status (id=${id}):`, error);
+      throw error;
+    }
+  }
 
   async deleteProject(id: number): Promise<boolean> {
+    // Check if the project exists and if it's locked
+    const project = this.projects.get(id);
+    
+    if (!project) {
+      return false; // Project doesn't exist
+    }
+    
+    if (project.isLocked) {
+      console.error(`Cannot delete project (id=${id}) because it is locked`);
+      return false; // Project is locked, cannot delete
+    }
+    
     // Delete associated notes first
     const projectNotes = Array.from(this.notes.values()).filter(
       (note) => note.projectId === id
@@ -674,6 +845,17 @@ export class MemStorage implements IStorage {
 
   async createNote(insertNote: InsertNote): Promise<Note> {
     try {
+      // Check if the project exists and if it's locked
+      const project = this.projects.get(insertNote.projectId);
+      
+      if (!project) {
+        throw new Error(`Project with id ${insertNote.projectId} not found`);
+      }
+      
+      if (project.isLocked) {
+        throw new Error(`Cannot create note in project ${insertNote.projectId} because it is locked`);
+      }
+      
       const id = this.currentNoteId++;
       const now = new Date();
       
@@ -713,68 +895,111 @@ export class MemStorage implements IStorage {
   }
 
   async updateNote(id: number, updateData: UpdateNote): Promise<Note | undefined> {
-    const note = this.notes.get(id);
-    if (!note) return undefined;
-    
-    const updatedNote: Note = { 
-      ...note, 
-      ...updateData,
-      updatedAt: new Date() 
-    };
-    
-    this.notes.set(id, updatedNote);
-    return updatedNote;
+    try {
+      const note = this.notes.get(id);
+      if (!note) return undefined;
+      
+      // Check if the project is locked
+      const project = this.projects.get(note.projectId);
+      
+      if (!project) {
+        throw new Error(`Project with id ${note.projectId} not found`);
+      }
+      
+      if (project.isLocked) {
+        throw new Error(`Cannot update note in project ${note.projectId} because it is locked`);
+      }
+      
+      const updatedNote: Note = { 
+        ...note, 
+        ...updateData,
+        updatedAt: new Date() 
+      };
+      
+      this.notes.set(id, updatedNote);
+      return updatedNote;
+    } catch (error) {
+      console.error("Error updating note in MemStorage:", error);
+      throw error;
+    }
   }
 
   async deleteNote(id: number, deleteChildren: boolean = true): Promise<boolean> {
-    // Get the note to delete
-    const noteToDelete = this.notes.get(id);
-    if (!noteToDelete) return false;
-    
-    if (deleteChildren) {
-      // Find and delete all children recursively
-      const deleteDescendants = (parentId: number) => {
-        const children = Array.from(this.notes.values()).filter(
-          note => note.parentId === parentId
+    try {
+      // Get the note to delete
+      const noteToDelete = this.notes.get(id);
+      if (!noteToDelete) return false;
+      
+      // Check if the project is locked
+      const project = this.projects.get(noteToDelete.projectId);
+      
+      if (!project) {
+        throw new Error(`Project with id ${noteToDelete.projectId} not found`);
+      }
+      
+      if (project.isLocked) {
+        throw new Error(`Cannot delete note in project ${noteToDelete.projectId} because it is locked`);
+      }
+      
+      if (deleteChildren) {
+        // Find and delete all children recursively
+        const deleteDescendants = (parentId: number) => {
+          const children = Array.from(this.notes.values()).filter(
+            note => note.parentId === parentId
+          );
+          
+          for (const child of children) {
+            deleteDescendants(child.id); // Delete grandchildren
+            this.notes.delete(child.id); // Delete the child
+          }
+        };
+        
+        deleteDescendants(id);
+      } else {
+        // Reassign all direct children to the parent of the note being deleted
+        const childNotes = Array.from(this.notes.values()).filter(
+          note => note.parentId === id
         );
         
-        for (const child of children) {
-          deleteDescendants(child.id); // Delete grandchildren
-          this.notes.delete(child.id); // Delete the child
+        for (const child of childNotes) {
+          this.notes.set(child.id, {
+            ...child,
+            parentId: noteToDelete.parentId,
+            updatedAt: new Date()
+          });
         }
-      };
-      
-      deleteDescendants(id);
-    } else {
-      // Reassign all direct children to the parent of the note being deleted
-      const childNotes = Array.from(this.notes.values()).filter(
-        note => note.parentId === id
-      );
-      
-      for (const child of childNotes) {
-        this.notes.set(child.id, {
-          ...child,
-          parentId: noteToDelete.parentId,
-          updatedAt: new Date()
-        });
       }
+      
+      // Delete the note itself
+      const result = this.notes.delete(id);
+      
+      // If we reassigned children, normalize their order
+      if (!deleteChildren) {
+        await this.normalizeNoteOrders(noteToDelete.parentId);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error("Error deleting note in MemStorage:", error);
+      throw error;
     }
-    
-    // Delete the note itself
-    const result = this.notes.delete(id);
-    
-    // If we reassigned children, normalize their order
-    if (!deleteChildren) {
-      await this.normalizeNoteOrders(noteToDelete.parentId);
-    }
-    
-    return result;
   }
 
   async updateNoteOrder(id: number, order: number | string): Promise<boolean> {
     try {
       const note = this.notes.get(id);
       if (!note) return false;
+      
+      // Check if the project is locked
+      const project = this.projects.get(note.projectId);
+      
+      if (!project) {
+        throw new Error(`Project with id ${note.projectId} not found`);
+      }
+      
+      if (project.isLocked) {
+        throw new Error(`Cannot update note order in project ${note.projectId} because it is locked`);
+      }
       
       // Store the parent for normalization
       const parentId = note.parentId;
@@ -800,6 +1025,17 @@ export class MemStorage implements IStorage {
     try {
       const note = this.notes.get(id);
       if (!note) return false;
+      
+      // Check if the project is locked
+      const project = this.projects.get(note.projectId);
+      
+      if (!project) {
+        throw new Error(`Project with id ${note.projectId} not found`);
+      }
+      
+      if (project.isLocked) {
+        throw new Error(`Cannot update note parent in project ${note.projectId} because it is locked`);
+      }
       
       // Store old parent for normalization later
       const oldParentId = note.parentId;
@@ -853,12 +1089,41 @@ export class MemStorage implements IStorage {
     try {
       // Track unique parent IDs that need normalization after updates
       const parentsToNormalize = new Set<number | null>();
+      // Track unique project IDs to check lock status
+      const projectIds = new Set<number>();
       
-      // For MemStorage, we can process all updates at once
-      for (let i = 0; i < updates.length; i++) {
-        const { id, parentId, order } = updates[i];
-        const note = this.notes.get(id);
+      // First, collect all the notes and their project IDs
+      const notesToUpdate: Array<{note: Note, parentId: number | null, order?: number | string}> = [];
+      
+      for (const update of updates) {
+        const note = this.notes.get(update.id);
         if (!note) continue;
+        
+        notesToUpdate.push({
+          note,
+          parentId: update.parentId,
+          order: update.order
+        });
+        
+        projectIds.add(note.projectId);
+      }
+      
+      // Check if any of the projects are locked
+      for (const projectId of projectIds) {
+        const project = this.projects.get(projectId);
+        
+        if (!project) {
+          throw new Error(`Project with id ${projectId} not found`);
+        }
+        
+        if (project.isLocked) {
+          throw new Error(`Cannot update notes in project ${projectId} because it is locked`);
+        }
+      }
+      
+      // If no projects are locked, proceed with the updates
+      for (let i = 0; i < notesToUpdate.length; i++) {
+        const { note, parentId, order } = notesToUpdate[i];
         
         // Store old parent for normalization
         const oldParentId = note.parentId;
@@ -878,17 +1143,17 @@ export class MemStorage implements IStorage {
           updatedAt: new Date() 
         };
         
-        this.notes.set(id, updatedNote);
+        this.notes.set(note.id, updatedNote);
         
         // Log progress periodically
-        if (i % 25 === 0 || i === updates.length - 1) {
-          console.log(`Batch parent update progress (memory): ${i + 1}/${updates.length}`);
+        if (i % 25 === 0 || i === notesToUpdate.length - 1) {
+          console.log(`Batch parent update progress (memory): ${i + 1}/${notesToUpdate.length}`);
         }
       }
       
       // After all updates, normalize the order values for each affected parent
       // We skip this during large imports as it's done at the end
-      if (updates.length < 100) {
+      if (notesToUpdate.length < 100) {
         for (const parentId of parentsToNormalize) {
           await this.normalizeNoteOrders(parentId);
         }
@@ -897,7 +1162,7 @@ export class MemStorage implements IStorage {
       return true;
     } catch (error) {
       console.error("Error in batch update of note parents in MemStorage:", error);
-      return false;
+      throw error; // Propagate the error to notify the caller about locked projects
     }
   }
   
