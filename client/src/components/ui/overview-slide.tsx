@@ -14,6 +14,7 @@ import {
   ContentType, 
   determineContentType 
 } from '@/lib/typography';
+import { TimeDisplay } from './time-display';
 
 interface OverviewSlideProps {
   parentNote: Note;
@@ -229,10 +230,12 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                       )}
                       
                       {hasTimeMarker && (
-                        <div className="flex items-center text-white/80">
-                          <Clock size={14} className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
-                          <span className="text-xs">{note.time}</span>
-                        </div>
+                        <TimeDisplay 
+                          note={note} 
+                          notes={childNotes} 
+                          compact={true} 
+                          className="flex items-center text-white/80" 
+                        />
                       )}
                       
                       {note.youtubeLink && (
@@ -322,10 +325,12 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                   )}
                   
                   {hasTimeMarker && (
-                    <div className="flex items-center text-white/80">
-                      <Clock size={14} className="w-4 h-4 sm:w-5 sm:h-5 mr-1" />
-                      <span className="text-xs sm:text-sm">{note.time}</span>
-                    </div>
+                    <TimeDisplay 
+                      note={note} 
+                      notes={childNotes} 
+                      compact={true} 
+                      className="flex items-center text-white/80" 
+                    />
                   )}
                   
                   {note.youtubeLink && (

@@ -19,6 +19,12 @@ import {
   generateTypographyStyles,
   FONTS
 } from "@/lib/typography";
+import { 
+  findNextTimedNote, 
+  calculateTimeInfo, 
+  timeToMinutes, 
+  minutesToTime 
+} from "@/lib/time-utils";
 import { OverviewSlide } from "@/components/ui/overview-slide";
 import { FullscreenToggle } from "@/components/ui/fullscreen-toggle";
 import screenfull from "screenfull";
@@ -817,6 +823,31 @@ export default function PresentMode() {
                           {getNextTimedSlide()?.content.length! > 20 ? '...' : ''} @ {getNextTimedSlide()?.time}
                         </div>
                       )}
+                      
+                      {/* Time allocation info */}
+                      {currentNote?.time && getNextTimedSlide()?.time && (
+                        <div className="mt-1 border-t border-gray-700 pt-1 text-[9px] sm:text-xs">
+                          {(() => {
+                            const timeInfo = calculateTimeInfo(
+                              flattenedNotes, 
+                              currentNote.id,
+                              flattenedNotes.map(note => note.id)
+                            );
+                            
+                            return timeInfo ? (
+                              <div className="grid grid-cols-2 gap-x-2 text-left">
+                                <span className="opacity-70">Slides:</span>
+                                <span>{timeInfo.slideCount}</span>
+                                <span className="opacity-70">Total time:</span>
+                                <span>{timeInfo.totalMinutes} min</span>
+                                <span className="opacity-70">Per slide:</span>
+                                <span>{timeInfo.formattedPerSlide}</span>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                      )}
+                      
                       <div className="mt-1 text-[9px] sm:text-xs opacity-70">
                         {getSlideDifference() > 0 ? `${getSlideDifference()} slides ahead of schedule` :
                          getSlideDifference() < 0 ? `${Math.abs(getSlideDifference())} slides behind schedule` :

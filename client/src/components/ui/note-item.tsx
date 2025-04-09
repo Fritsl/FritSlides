@@ -10,6 +10,7 @@ import { FileUpload } from "./file-upload";
 import { ConfirmationDialog } from "./confirmation-dialog";
 import { MoveNoteDialog } from "./move-note-dialog";
 import { FullscreenToggle } from "./fullscreen-toggle";
+import { TimeDisplay } from "./time-display";
 import { useNotes, useNoteEditing } from "@/hooks/use-notes";
 import { getLevelColor } from "@/lib/colors";
 import {
@@ -751,9 +752,12 @@ export default function NoteItem({
                     </div>
                   )}
                   {note.time && (
-                    <div className="text-yellow-200" title={`Time: ${note.time}`}>
-                      <Clock className="h-4 w-4" />
-                    </div>
+                    <TimeDisplay 
+                      note={note} 
+                      notes={allNotes || []} 
+                      compact={true} 
+                      className="flex items-center" 
+                    />
                   )}
                   {note.isDiscussion && (
                     <div className="text-blue-200" title="Discussion slide">
