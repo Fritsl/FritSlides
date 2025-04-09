@@ -178,13 +178,15 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
           </div>
           
           <div className="flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
-            <ul className="list-disc pl-5 sm:pl-6 space-y-3 sm:space-y-4">
+            <ul className="pl-5 sm:pl-6 space-y-3 sm:space-y-4">
             {limitedChildNotes.map((note, index) => {
               // Check if note has time marker
               const hasTimeMarker = note.time && note.time.trim().length > 0;
               
               return (
-                <li key={note.id} className="cursor-default">
+                <li key={note.id} className="cursor-default flex items-center">
+                  <span className="inline-block w-2 h-2 rounded-full bg-white mr-3 flex-shrink-0" 
+                        style={{ marginTop: '0.1em' }}></span>
                   <div className="flex-1">
                     {/* Child note content - optimized for fitting on screen */}
                     <p 
@@ -233,13 +235,15 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
       </div>
       
       <div className="flex flex-col overflow-y-auto max-w-3xl mx-auto">
-        <ul className="list-disc pl-6 sm:pl-8 space-y-4 sm:space-y-6">
+        <ul className="pl-6 sm:pl-8 space-y-4 sm:space-y-6">
         {limitedChildNotes.map((note, index) => {
           // Check if note has time marker
           const hasTimeMarker = note.time && note.time.trim().length > 0;
           
           return (
-            <li key={note.id} className="cursor-default pl-2">
+            <li key={note.id} className="cursor-default flex items-center">
+              <span className="inline-block w-2 h-2 rounded-full bg-white mr-3 flex-shrink-0" 
+                    style={{ marginTop: '0.1em' }}></span>
               <div className="flex-1">
                 {/* Child note content - optimized for fitting on screen */}
                 <p 
