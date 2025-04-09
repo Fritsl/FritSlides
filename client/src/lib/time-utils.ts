@@ -374,10 +374,17 @@ export function calculatePacingInfo(
       if (isBehindSchedule) {
         // Calculate how far behind we are (in minutes)
         const minutesBehind = currentTimeMinutes - noteTimeMinutes;
-        // Convert to slides (assume 5 minutes per slide)
+        // For presentation, still calculate the slide difference
         const slidesBehind = minutesBehind / 5;
-        // Cap at 25 slides and amplify for visibility
         const cappedSlidesBehind = Math.min(25, slidesBehind * 5);
+        
+        // NEW: Calculate position based directly on minutes offset
+        // Maximum offset is 30 minutes (from center) for visual representation
+        const MAX_MINUTES_OFFSET = 30;
+        const offsetRatio = Math.min(1, minutesBehind / MAX_MINUTES_OFFSET);
+        // Apply exponential dampening for better visual (sqrt gives more movement for small values)
+        const dampedOffset = Math.sqrt(offsetRatio) * 0.2; // Maximum 0.2 (20%) offset from center
+        const timePosition = 0.5 + dampedOffset; // Right of center (behind schedule)
         
         console.log('START SLIDE: Using time from first timed note:', {
           currentTime: currentTimeString,
@@ -385,7 +392,7 @@ export function calculatePacingInfo(
           minutesBehind,
           slidesBehind,
           cappedSlidesBehind,
-          expectedTimePosition: 0.7
+          expectedTimePosition: timePosition
         });
         
         // Return result showing we're behind schedule
@@ -394,15 +401,24 @@ export function calculatePacingInfo(
           nextTimedNote: firstTimedNote,
           percentComplete: 0,
           expectedSlideIndex: currentSlideIndex,
-          slideDifference: -cappedSlidesBehind, // Negative means behind
+          slideDifference: -cappedSlidesBehind, // Negative means behind (keep for UI)
           shouldShow: true,
-          expectedTimePosition: 0.7 // Right of center (behind schedule)
+          expectedTimePosition: timePosition
         };
       } else {
         // We're ahead of schedule
         const minutesAhead = noteTimeMinutes - currentTimeMinutes;
+        // For presentation, still calculate the slide difference 
         const slidesAhead = minutesAhead / 5;
         const cappedSlidesAhead = Math.min(25, slidesAhead * 5);
+        
+        // NEW: Calculate position based directly on minutes offset
+        // Maximum offset is 30 minutes (from center) for visual representation
+        const MAX_MINUTES_OFFSET = 30;
+        const offsetRatio = Math.min(1, minutesAhead / MAX_MINUTES_OFFSET);
+        // Apply exponential dampening for better visual (sqrt gives more movement for small values)
+        const dampedOffset = Math.sqrt(offsetRatio) * 0.2; // Maximum 0.2 (20%) offset from center
+        const timePosition = 0.5 - dampedOffset; // Left of center (ahead of schedule)
         
         console.log('START SLIDE: Using time from first timed note (ahead):', {
           currentTime: currentTimeString,
@@ -410,7 +426,7 @@ export function calculatePacingInfo(
           minutesAhead,
           slidesAhead,
           cappedSlidesAhead,
-          expectedTimePosition: 0.3
+          expectedTimePosition: timePosition
         });
         
         // Return result showing we're ahead of schedule
@@ -419,9 +435,9 @@ export function calculatePacingInfo(
           nextTimedNote: firstTimedNote,
           percentComplete: 0,
           expectedSlideIndex: currentSlideIndex,
-          slideDifference: cappedSlidesAhead, // Positive means ahead
+          slideDifference: cappedSlidesAhead, // Positive means ahead (keep for UI)
           shouldShow: true,
-          expectedTimePosition: 0.3 // Left of center (ahead of schedule)
+          expectedTimePosition: timePosition
         };
       }
     }
@@ -505,18 +521,34 @@ export function calculatePacingInfo(
     // If it's before the scheduled time, we're ahead
     if (currentTimeMinutes < noteTimeMinutes) {
       const minutesAhead = noteTimeMinutes - currentTimeMinutes;
+      // Keep the slide difference calculation for UI purposes
       const slidesAhead = Math.min(5, Math.max(0, minutesAhead / 5));
       slideDiff = slidesAhead;
-      // Move dot slightly left to show ahead (at most by 0.05)
-      timeOffset = 0.5 - (slidesAhead / 50);
+      
+      // NEW: Calculate position based directly on minutes difference
+      // Max visual offset at 10 minutes ahead/behind
+      const MAX_MINUTES_OFFSET = 10;
+      const offsetRatio = Math.min(1, minutesAhead / MAX_MINUTES_OFFSET);
+      // Apply square root for better visual effect (more perceptible for small values)
+      const dampedOffset = Math.sqrt(offsetRatio) * 0.2; // Maximum 0.2 (20%) offset from center
+      // Left of center (ahead of schedule)
+      timeOffset = 0.5 - dampedOffset;
     } 
     // If it's after the scheduled time, we're behind
     else if (currentTimeMinutes > noteTimeMinutes) {
       const minutesBehind = currentTimeMinutes - noteTimeMinutes;
+      // Keep the slide difference calculation for UI purposes
       const slidesBehind = Math.min(5, Math.max(0, minutesBehind / 5));
       slideDiff = -slidesBehind;
-      // Move dot slightly right to show behind (at most by 0.05)
-      timeOffset = 0.5 + (slidesBehind / 50);
+      
+      // NEW: Calculate position based directly on minutes difference
+      // Max visual offset at 10 minutes ahead/behind
+      const MAX_MINUTES_OFFSET = 10;
+      const offsetRatio = Math.min(1, minutesBehind / MAX_MINUTES_OFFSET);
+      // Apply square root for better visual effect (more perceptible for small values)
+      const dampedOffset = Math.sqrt(offsetRatio) * 0.2; // Maximum 0.2 (20%) offset from center
+      // Right of center (behind schedule)
+      timeOffset = 0.5 + dampedOffset;
     }
     
     return {
@@ -664,27 +696,37 @@ export function calculatePacingInfo(
     if (isBehindSchedule) {
       // Calculate how far behind we are (in minutes)
       const minutesBehind = currentTimeMinutes - noteTimeMinutes;
-      // Convert to slides (assume 5 minutes per slide)
+      // Keep slide calculation for UI purposes
       const slidesBehind = minutesBehind / 5;
-      // Cap at 25 slides and amplify for visibility
       const cappedSlidesBehind = Math.min(25, slidesBehind * 5);
+      
+      // NEW: Calculate position based directly on minutes difference
+      // Maximum offset at 10 minutes behind
+      const MAX_MINUTES_OFFSET = 10;
+      const offsetRatio = Math.min(1, minutesBehind / MAX_MINUTES_OFFSET);
+      // Apply square root for better visual effect
+      const dampedOffset = Math.sqrt(offsetRatio) * 0.2;
+      // Right of center (behind schedule)
+      const timePosition = 0.5 + dampedOffset;
       
       console.log('Using FIRST SLIDE behind schedule special case:', {
         minutesBehind,
         slidesBehind,
         cappedSlidesBehind,
-        expectedTimePosition: 0.7
+        offsetRatio,
+        dampedOffset,
+        expectedTimePosition: timePosition
       });
       
-      // Return fixed result for this special case
+      // Return result for this special case
       return {
         previousTimedNote: null,
         nextTimedNote: null,
         percentComplete: 0, // We're at the beginning
         expectedSlideIndex: currentSlideIndex,
-        slideDifference: -cappedSlidesBehind, // Negative means behind
+        slideDifference: -cappedSlidesBehind, // Negative means behind (for UI)
         shouldShow: true,
-        expectedTimePosition: 0.7 // Right of center (behind schedule)
+        expectedTimePosition: timePosition // Now based on minutes offset
       };
     }
   }
@@ -732,35 +774,43 @@ export function calculatePacingInfo(
       const expectedSlidePosition = startSlide + (timeProgress * slidesBetweenTimedNotes);
       
       // 4. Offset Calculation - Compare expected slide with actual slide
-      // Calculate how many slides ahead/behind we are
+      // Calculate how many slides ahead/behind we are (keep for UI purposes)
       const slideDifference = currentSlideIndex - expectedSlidePosition;
       
-      // Each slide difference moves the dot by 5 pixels (represented as a value between 0-1)
-      // Cap at +/- 25 slides (125 pixels)
-      const maxSlideDifference = 25;
-      const cappedSlideDifference = Math.max(-maxSlideDifference, Math.min(maxSlideDifference, slideDifference));
+      // NEW: Calculate expected time position based on minutes difference rather than slides
+      // First, calculate the expected time at the current slide position based on linear interpolation
+      const expectedTimeAtCurrentSlide = previousTimeMinutes + 
+          ((currentSlideIndex - previousNoteIndex) / slidesBetweenTimedNotes) * timeSegmentDuration;
+      
+      // Calculate minutes ahead/behind
+      const minutesDifference = currentTimeMinutes - expectedTimeAtCurrentSlide;
+      
+      // Define a maximum offset in minutes that will produce the maximum visual displacement
+      const MAX_MINUTES_OFFSET = 10; // 10 minutes off schedule = maximum visual displacement
+      
+      // Calculate offset ratio (0-1 scale, capped at MAX_MINUTES_OFFSET)
+      const offsetRatio = Math.min(1, Math.abs(minutesDifference) / MAX_MINUTES_OFFSET);
+      
+      // Apply square root for better visual effect (more perceptible for small values)
+      const dampedOffset = Math.sqrt(offsetRatio) * 0.2; // Maximum 0.2 (20%) offset from center
+      
+      // Set position: behind schedule (positive minutes difference) = move right, ahead = move left
+      expectedTimePosition = minutesDifference > 0 
+          ? 0.5 + dampedOffset  // Behind schedule - dot moves right
+          : 0.5 - dampedOffset; // Ahead of schedule - dot moves left
       
       // Debug log to track the calculation
-      console.log('Slide difference calculation:', {
+      console.log('Time position calculation:', {
         currentSlideIndex,
         expectedSlidePosition,
         slideDifference,
-        cappedSlideDifference,
-        finalPosition: 0.5 - (cappedSlideDifference / (maxSlideDifference * 2))
+        currentTimeMinutes,
+        expectedTimeAtCurrentSlide,
+        minutesDifference,
+        offsetRatio,
+        dampedOffset,
+        finalPosition: expectedTimePosition
       });
-      
-      // When ahead (positive difference), gray dot should move left (value < 0.5)
-      // When behind (negative difference), gray dot should move right (value > 0.5)
-      
-      // Use the original slide difference without excessive amplification
-      // Each slide difference should move the dot by a small amount (5 pixels)
-      // When ahead (positive difference) move gray dot left (value < 0.5)
-      // When behind (negative difference) move gray dot right (value > 0.5)
-      
-      // Convert to 0-1 scale where 0.5 is center
-      // Divide by maxSlideDifference*2 to get a value between -0.5 and 0.5
-      // Then subtract from 0.5 to get the final position
-      expectedTimePosition = 0.5 - (cappedSlideDifference / (maxSlideDifference * 2));
       
     } catch (err) {
       // If any calculation error occurs, use default position (centered)
