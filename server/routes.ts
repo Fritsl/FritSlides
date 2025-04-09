@@ -62,6 +62,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get projects" });
     }
   });
+  
+  app.get("/api/projects/:id", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      
+      // Check if project exists and belongs to user
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      if (project.userId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to access this project" });
+      }
+      
+      res.json(project);
+    } catch (err) {
+      console.error("Error getting project:", err);
+      res.status(500).json({ message: "Failed to get project" });
+    }
+  });
 
   app.post("/api/projects", isAuthenticated, async (req, res) => {
     try {
