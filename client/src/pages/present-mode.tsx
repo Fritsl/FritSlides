@@ -1024,7 +1024,7 @@ export default function PresentMode() {
                           <div className="flex justify-between mt-1 text-[8px] sm:text-[10px] opacity-60">
                             <span>{pacingInfo.previousTimedNote?.time || '—'}</span>
                             <span>{Math.floor(pacingInfo.percentComplete * 100)}%</span>
-                            <span>{pacingInfo.nextTimedNote?.time || '—'}</span>
+                            <span>{pacingInfo.nextTimedNote && pacingInfo.nextTimedNote.time ? pacingInfo.nextTimedNote.time : '—'}</span>
                           </div>
                         </div>
                       ) : (
@@ -1039,9 +1039,9 @@ export default function PresentMode() {
                           
                           {/* Simple time markers */}
                           <div className="flex justify-between mt-1 text-[8px] sm:text-[10px] opacity-60">
-                            <span>{pacingInfo.previousTimedNote?.time || '—'}</span>
+                            <span>{pacingInfo.previousTimedNote && pacingInfo.previousTimedNote.time ? pacingInfo.previousTimedNote.time : '—'}</span>
                             <span>{currentNote?.time || 'No time set'}</span>
-                            <span>{pacingInfo.nextTimedNote?.time || '—'}</span>
+                            <span>{pacingInfo.nextTimedNote && pacingInfo.nextTimedNote.time ? pacingInfo.nextTimedNote.time : '—'}</span>
                           </div>
                         </div>
                       )}
