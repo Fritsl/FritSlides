@@ -109,73 +109,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Not authorized to duplicate this project" });
         }
         
-        // Generate a unique name for the copy
-        let newName = req.body.name || sourceProject.name;
-        console.log(`DUPLICATION NAMING: Starting with name "${newName}"`);
+        // Generate a unique name for the copy - simplified approach
+        const sourceName = sourceProject.name;
+        let newName;
         
-        // Get all user projects to check for existing names
-        const userProjects = await storage.getProjects(req.user!.id);
-        
-        // Handle custom naming requests - if user explicitly provided a name, respect it
-        // but check if it already exists
-        if (req.body.name && req.body.name !== sourceProject.name) {
-          console.log(`DUPLICATION NAMING: User provided custom name: "${req.body.name}"`);
-          // If the custom name already exists, we need to make it unique
-          if (userProjects.some(p => p.name === req.body.name)) {
-            console.log(`DUPLICATION NAMING: Custom name already exists, will append suffix`);
-            newName = req.body.name + " (Copy)";
-          } else {
-            // Use the custom name as-is
-            newName = req.body.name;
-            console.log(`DUPLICATION NAMING: Using custom name as-is: "${newName}"`);
-          }
+        // Use provided name if given, otherwise base on source
+        if (req.body.name) {
+          newName = req.body.name;
         } else {
-          // Automatic naming based on source project
-          // First normalize the base name by removing all copy patterns
-          let baseName = sourceProject.name;
-          // Match any copy pattern, including custom ones like "Copy x"
-          baseName = baseName.replace(/\s*\(Copy.*?\)$/g, '');
-          console.log(`DUPLICATION NAMING: Base name after removing all copy suffixes: "${baseName}"`);
-          
-          // Find all projects that have this base name with any copy suffix
-          const baseNamePattern = new RegExp(`^${escapeRegExp(baseName)}\\s*\\(Copy.*?\\)$`);
-          const copies = userProjects.filter(p => baseNamePattern.test(p.name));
-          
-          console.log(`DUPLICATION NAMING: Found ${copies.length} existing copies of "${baseName}"`);
-          
-          // Find the standard copies with numeric patterns
-          const standardCopyRegex = new RegExp(`^${escapeRegExp(baseName)}\\s*\\(Copy(?:\\s+(\\d+))?\\)$`);
-          
-          // Find the highest copy number
-          let highestCopyNum = 0;
-          copies.forEach(project => {
-            const match = project.name.match(standardCopyRegex);
-            if (match) {
-              const num = match[1] ? parseInt(match[1]) : 1;
-              console.log(`DUPLICATION NAMING: Found copy with number ${num}`);
-              highestCopyNum = Math.max(highestCopyNum, num);
-            }
-          });
-          
-          console.log(`DUPLICATION NAMING: Highest existing copy number: ${highestCopyNum}`);
-          
-          // Create new name with incremented number
-          if (highestCopyNum === 0) {
-            newName = `${baseName} (Copy)`;
-          } else {
-            newName = `${baseName} (Copy ${highestCopyNum + 1})`;
-          }
+          // Always append " (Copy)" to the source name
+          newName = `${sourceName} (Copy)`;
         }
         
-        // Final check - make sure the resulting name doesn't exist
+        // Make sure name is unique
+        const userProjects = await storage.getProjects(req.user!.id);
         if (userProjects.some(p => p.name === newName)) {
-          console.log(`DUPLICATION NAMING: Final name already exists, adding timestamp`);
-          // Rare case: Add timestamp to ensure uniqueness
-          const timestamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+          // If the name already exists, add a timestamp for uniqueness
+          const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '-');
           newName = `${newName} ${timestamp}`;
         }
         
-        console.log(`DUPLICATION NAMING: Final name for new project: "${newName}"`);
+        console.log(`PROJECT DUPLICATION: Using name "${newName}" for duplicated project`);
         
         // Create new project with the same settings but new name
         const newProject = await storage.createProject({
