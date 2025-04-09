@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useNoteEditing } from "@/hooks/use-notes";
 import { Button } from "@/components/ui/button";
 import { Project, User, Note } from "@shared/schema";
 import { 
@@ -28,7 +29,10 @@ import {
   PlayCircle,
   Presentation,
   Search,
-  Clock
+  Clock,
+  RotateCcw,
+  Lock,
+  Unlock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
@@ -72,6 +76,7 @@ export default function Header({
 }: HeaderProps) {
   const { logoutMutation } = useAuth();
   const { toast } = useToast();
+  const { editingNoteId, setEditingNoteId, isEditing } = useNoteEditing();
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
   // Function to open project settings
@@ -205,6 +210,30 @@ export default function Header({
         )}
         
         <div className="flex items-center">
+          {/* Editing status indicator */}
+          {isEditing && (
+            <div className="mr-2 px-2 py-1 bg-red-500/20 rounded text-xs flex items-center border border-red-500/30">
+              <Lock className="h-3 w-3 mr-1" />
+              <span>Editing note #{editingNoteId}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 ml-1 hover:bg-red-500/20"
+                onClick={() => {
+                  setEditingNoteId(null);
+                  localStorage.removeItem('newNoteCreated');
+                  localStorage.removeItem('lastCreatedNoteId');
+                  toast({
+                    title: "Edit mode cleared",
+                    description: `Released edit lock for note #${editingNoteId}`,
+                  });
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+          
           {/* Present mode button - only show when project has notes */}
           {currentProject && onPresentMode && notes && notes.length > 0 && (
             <Button
@@ -396,6 +425,29 @@ export default function Header({
                   >
                     <Presentation className="h-4 w-4 mr-2" />
                     <span>Presentation Mode</span>
+                  </DropdownMenuItem>
+                  
+                  {/* Reset Editing State */}
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      // Clear editing state
+                      setEditingNoteId(null);
+                      // Also clear localStorage edit flags
+                      localStorage.removeItem('newNoteCreated');
+                      localStorage.removeItem('lastCreatedNoteId');
+                      
+                      toast({
+                        title: isEditing ? "Edit mode cleared" : "Editing state reset",
+                        description: isEditing 
+                          ? `Cleared edit lock for note #${editingNoteId}`
+                          : "Editing state has been reset. You can now edit any note.",
+                        variant: "default",
+                      });
+                    }}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    <span>Reset Edit Lock</span>
+                    {isEditing && <Lock className="h-4 w-4 ml-auto text-red-500" />}
                   </DropdownMenuItem>
                 </>
               )}
