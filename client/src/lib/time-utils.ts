@@ -469,10 +469,12 @@ export function calculatePacingInfo(
   
   // 1. Time Segment Identification
   // We already have previousTimeMinutes and nextTimeMinutes
+  // Start slide is the slide with the previous time marker
   const startSlide = previousNoteIndex;
+  // End slide is the slide with the next time marker
   const endSlide = nextNoteIndex;
   
-  // Default position is middle
+  // Default position is middle (0.5)
   let expectedTimePosition = 0.5;
   
   // Safety check - only calculate if we have valid time markers AND a valid segment
@@ -490,30 +492,25 @@ export function calculatePacingInfo(
       timeProgress = Math.max(0, Math.min(1, timeProgress));
       
       // 3. Expected Position - Calculate which slide we should be on based on time progress
-      const expectedSlideProgress = startSlide + (timeProgress * slidesBetweenTimedNotes);
+      const expectedSlidePosition = startSlide + (timeProgress * slidesBetweenTimedNotes);
       
-      // Find the difference between where we should be (based on time) and where we are
-      const slideOffsetFromExpected = currentSlideIndex - Math.round(expectedSlideProgress);
+      // 4. Offset Calculation - Compare expected slide with actual slide
+      // Calculate how many slides ahead/behind we are
+      const slideDifference = currentSlideIndex - expectedSlidePosition;
       
-      // 4. Offset Calculation - Convert slide difference to visual offset
-      // Each slide difference moves the dot by a set amount of pixels
-      // We represent this as a percentage of the full width (0-1 range)
-      // where 0.5 is center, 0 is far left, 1 is far right
-      
-      // We need to invert the value: if we're ahead (positive offset), 
-      // the gray dot moves left (value < 0.5)
-      // If we're behind (negative offset), the gray dot moves right (value > 0.5)
-      
-      // Calculate position: 0.5 is center, range is 0-1
-      // Cap the offset at +/- 25 slides
+      // Each slide difference moves the dot by 5 pixels (represented as a value between 0-1)
+      // Cap at +/- 25 slides (125 pixels)
       const maxSlideDifference = 25;
-      const normalizedOffset = Math.max(-maxSlideDifference, Math.min(maxSlideDifference, -slideOffsetFromExpected)) / maxSlideDifference;
+      const cappedSlideDifference = Math.max(-maxSlideDifference, Math.min(maxSlideDifference, slideDifference));
       
-      // Scale to 0-1 range with 0.5 as center
-      expectedTimePosition = 0.5 + (normalizedOffset * 0.5);
+      // Convert to 0-1 scale where 0.5 is center
+      // Note: we negate the difference because:
+      // - When ahead (positive difference), gray dot should move left (value < 0.5)
+      // - When behind (negative difference), gray dot should move right (value > 0.5)
+      expectedTimePosition = 0.5 - (cappedSlideDifference / (maxSlideDifference * 2));
       
     } catch (err) {
-      // If any calculation error occurs, use default position
+      // If any calculation error occurs, use default position (centered)
       console.error('Error calculating time position:', err);
       expectedTimePosition = 0.5;
     }

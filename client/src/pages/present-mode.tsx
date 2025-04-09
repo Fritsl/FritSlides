@@ -937,34 +937,25 @@ export default function PresentMode() {
                         padding: '4px'
                       }}
                     >
-                      {/* Track background for dots */}
+                      {/* White dot (current position) - always centered */}
                       <div 
-                        className="absolute h-1 bg-gray-800/50 rounded-full w-4/5 top-1/2 transform -translate-y-1/2"
-                        style={{
-                          left: '10%', // Position the track
-                          width: '80%', // 80% width so it doesn't touch edges
-                        }}
-                      ></div>
-                      
-                      {/* White dot (current position) - always centered, lower z-index */}
-                      <div 
-                        className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white/70 transition-all duration-300 z-5"
+                        className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white/60 transition-all duration-300"
                         style={{
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          boxShadow: '0 0 6px rgba(255,255,255,0.6)'
+                          boxShadow: '0 0 6px rgba(255,255,255,0.5)'
                         }}
                       />
                       
-                      {/* Gray dot (expected position based on time) - higher z-index for visibility on top */}
+                      {/* Gray dot (expected position based on time offset from center) */}
                       {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && pacingInfo.shouldShow && (
                         <div 
                           className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-all duration-300 z-10"
                           style={{
                             transform: `translateX(-50%)`,
-                            left: `${pacingInfo.expectedTimePosition * 100}%`, // Position based on timeProgress
-                            backgroundColor: 'rgba(150, 150, 150, 0.9)',
-                            boxShadow: '0 0 5px rgba(150,150,150,0.8)'
+                            left: `calc(50% + ${(pacingInfo.expectedTimePosition - 0.5) * 250}px)`, // Using pixel offset: 5px per slide difference
+                            backgroundColor: 'rgba(150, 150, 150, 0.7)',
+                            boxShadow: '0 0 5px rgba(150,150,150,0.6)'
                           }}
                         />
                       )}
@@ -992,15 +983,6 @@ export default function PresentMode() {
                         <span className="text-gray-400">
                           Gray dot:
                         </span> Where you should be based on time
-                        {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && pacingInfo.shouldShow && (
-                          <div className="mt-1 text-[8px]">
-                            {pacingInfo.expectedTimePosition < 0.5 ? 
-                              'Gray dot left of white = you\'re ahead of schedule' :
-                            pacingInfo.expectedTimePosition > 0.5 ? 
-                              'Gray dot right of white = you\'re behind schedule' :
-                              'Dots aligned = you\'re on schedule'}
-                          </div>
-                        )}
                       </div>
                       
                       {/* Time allocation info */}
