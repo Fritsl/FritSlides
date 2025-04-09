@@ -114,9 +114,37 @@ export function calculateLevel(parentId: number | null, notesMap: Map<number, an
   return 1 + calculateLevel(parent.parentId, notesMap);
 }
 
-// Get typography styles based on content type and hierarchy level
-// Using consistent sizing with visual design elements to differentiate hierarchy
-export function getTypographyStyles(contentType: ContentType, level: number, textLength: number = 0): any {
+// Define interface for typography styles to improve type safety
+interface TypographyStyle {
+  fontSize: string;
+  fontWeight: string | number;
+  fontStyle: "normal" | "italic" | "oblique";
+  lineHeight: number;
+  letterSpacing: string;
+  // Borders
+  borderTop?: string;
+  borderRight?: string;
+  borderBottom?: string;
+  borderLeft?: string;
+  // Padding
+  paddingTop?: string;
+  paddingRight?: string;
+  paddingBottom?: string;
+  paddingLeft?: string;
+  // Visual styling
+  borderRadius?: string;
+  boxShadow?: string;
+  background?: string;
+  fontFamily?: string;
+  margin?: string;
+}
+
+/**
+ * Get typography styles based on content type and hierarchy level
+ * Using consistent sizing with visual design elements to differentiate hierarchy
+ * Avoids CSS conflicts by not mixing shorthand and non-shorthand properties
+ */
+export function getTypographyStyles(contentType: ContentType, level: number, textLength: number = 0): TypographyStyle {
   // Only extremely long content needs adaptive sizing
   const needsAdaptiveSize = textLength > 300;
   
@@ -147,7 +175,7 @@ export function getTypographyStyles(contentType: ContentType, level: number, tex
   const fontSize = baseSizes[contentType] * levelScaleFactor * lengthScaleFactor;
   
   // Base style for all types
-  const baseStyle = {
+  const baseStyle: TypographyStyle = {
     fontSize: `${fontSize}rem`,
     fontWeight: contentType.includes('title') || contentType.includes('heading') ? 'bold' : 'normal',
     fontStyle: contentType === ContentType.Quote ? 'italic' : 'normal',
@@ -155,87 +183,91 @@ export function getTypographyStyles(contentType: ContentType, level: number, tex
     letterSpacing: contentType.includes('title') ? '0.04em' : 'normal',
   };
   
-  // Apply visual style treatments by level instead of size variations
-  // Additional styling will be added based on level and type
-  let additionalStyles = {};
+  // Create a result object starting with base styles
+  const result: TypographyStyle = { ...baseStyle };
   
   // Apply level-specific visual treatments
   if (level > 1) {
-    // Apply different styles based on level depth
     if (level === 2) {
-      additionalStyles = {
-        ...additionalStyles,
-        borderBottom: contentType.includes('heading') ? '2px solid rgba(255,255,255,0.3)' : 'none',
-        paddingBottom: '0.3rem',
-      };
+      if (contentType.includes('heading')) {
+        result.borderBottom = '2px solid rgba(255,255,255,0.3)';
+        result.paddingBottom = '0.3rem';
+      }
     } else if (level === 3) {
-      additionalStyles = {
-        ...additionalStyles,
-        borderLeft: '3px solid rgba(255,255,255,0.4)',
-        paddingLeft: '0.8rem',
-        fontStyle: contentType.includes('regular') ? 'italic' : baseStyle.fontStyle,
-      };
+      result.borderLeft = '3px solid rgba(255,255,255,0.4)';
+      result.paddingLeft = '0.8rem';
+      
+      if (contentType.includes('regular')) {
+        result.fontStyle = 'italic';
+      }
     } else if (level >= 4) {
-      additionalStyles = {
-        ...additionalStyles,
-        background: 'rgba(255,255,255,0.05)',
-        padding: '0.4rem 0.8rem',
-        borderRadius: '4px',
-        boxShadow: '1px 1px 3px rgba(0,0,0,0.1)',
-      };
+      result.background = 'rgba(255,255,255,0.05)';
+      result.paddingTop = '0.4rem';
+      result.paddingRight = '0.8rem';
+      result.paddingBottom = '0.4rem';
+      result.paddingLeft = '0.8rem';
+      result.borderRadius = '4px';
+      result.boxShadow = '1px 1px 3px rgba(0,0,0,0.1)';
     }
   }
   
   // Content-type specific treatments
   if (contentType === ContentType.Code) {
-    additionalStyles = {
-      ...additionalStyles,
-      background: 'rgba(0,0,0,0.2)',
-      padding: '0.8rem',
-      borderRadius: '4px',
-      border: '1px solid rgba(255,255,255,0.1)',
-      fontFamily: 'monospace',
-    };
+    result.background = 'rgba(0,0,0,0.2)';
+    result.paddingTop = '0.8rem';
+    result.paddingRight = '0.8rem';
+    result.paddingBottom = '0.8rem';
+    result.paddingLeft = '0.8rem';
+    result.borderRadius = '4px';
+    result.borderTop = '1px solid rgba(255,255,255,0.1)';
+    result.borderRight = '1px solid rgba(255,255,255,0.1)';
+    result.borderBottom = '1px solid rgba(255,255,255,0.1)';
+    result.borderLeft = '1px solid rgba(255,255,255,0.1)';
+    result.fontFamily = 'monospace';
   } else if (contentType === ContentType.Quote) {
-    additionalStyles = {
-      ...additionalStyles,
-      borderLeft: '4px solid rgba(255,255,255,0.4)',
-      paddingLeft: '1rem',
-      background: 'rgba(255,255,255,0.02)',
-      borderRadius: '0 4px 4px 0',
-    };
+    result.borderLeft = '4px solid rgba(255,255,255,0.4)';
+    result.paddingLeft = '1rem';
+    result.background = 'rgba(255,255,255,0.02)';
+    result.borderRadius = '0 4px 4px 0';
   } else if (contentType === ContentType.List) {
-    additionalStyles = {
-      ...additionalStyles,
-      paddingLeft: level > 1 ? `${level * 0.4}rem` : '0',
-    };
+    if (level > 1) {
+      result.paddingLeft = `${level * 0.4}rem`;
+    }
   }
   
-  // Return combined styles
-  return {
-    ...baseStyle,
-    ...additionalStyles
-  };
+  return result;
 }
 
-// Generate CSS style object from typography configuration
-export function generateTypographyStyles(styles: any): React.CSSProperties {
+/**
+ * Generate CSS style object from typography configuration
+ * Converts our TypographyStyle interface to React's CSSProperties
+ * Avoids CSS conflicts by not including both shorthand and non-shorthand properties
+ */
+export function generateTypographyStyles(styles: TypographyStyle): React.CSSProperties {
   return {
     fontSize: styles.fontSize,
     fontWeight: styles.fontWeight,
     fontStyle: styles.fontStyle,
     lineHeight: styles.lineHeight,
     letterSpacing: styles.letterSpacing,
-    // Additional visual styling properties
+    
+    // Individual borders instead of using "border" shorthand
+    borderTop: styles.borderTop,
+    borderRight: styles.borderRight,
     borderBottom: styles.borderBottom,
-    paddingBottom: styles.paddingBottom,
     borderLeft: styles.borderLeft,
+    
+    // Individual padding instead of using "padding" shorthand
+    paddingTop: styles.paddingTop,
+    paddingRight: styles.paddingRight,
+    paddingBottom: styles.paddingBottom,
     paddingLeft: styles.paddingLeft,
-    background: styles.background,
-    padding: styles.padding,
+    
+    // Other styling properties
     borderRadius: styles.borderRadius,
     boxShadow: styles.boxShadow,
-    border: styles.border,
+    background: styles.background,
     fontFamily: styles.fontFamily,
+    margin: styles.margin,
   };
 }
