@@ -1,0 +1,508 @@
+// Unified Typography System for FritSlides
+// Provides consistent styling across all presentation modes
+// with visual hierarchy cues that maintain consistent base sizes
+
+// Font definitions
+export const FONTS = {
+  display: '"Bebas Neue", sans-serif',     // Display font for headlines and start/end slides
+  body: '"IBM Plex Sans", sans-serif',     // Primary font for all other text
+  monospace: '"IBM Plex Mono", monospace', // Font for code blocks
+};
+
+// Font weight definitions - matches IBM Plex Sans weights
+export const WEIGHTS = {
+  light: 300,    // Light weight
+  regular: 400,  // Regular weight
+  medium: 500,   // Medium weight
+  semibold: 600, // Semibold weight
+  bold: 700,     // Bold weight
+};
+
+// Content types for regular slides
+export enum ContentType {
+  Title = 'title',           // Main slide titles
+  Subtitle = 'subtitle',     // Slide subtitles
+  Heading = 'heading',       // Major section headers
+  Subheading = 'subheading', // Secondary headers
+  Regular = 'regular',       // Regular content
+  Quote = 'quote',           // Quotations
+  List = 'list',             // Bullet points
+  Code = 'code',             // Code blocks
+}
+
+// Content types for special slides (start/end/overview)
+export enum SlideContentType {
+  StartEndSlide = 'startEndSlide',  // Start/End slide content
+  Headline = 'headline',            // Major section headers
+  Subheading = 'subheading',        // Secondary headers
+  Body = 'body',                    // Regular content
+  List = 'list',                    // Bullet points
+  Code = 'code',                    // Code blocks
+  Quote = 'quote',                  // Quotations
+  Caption = 'caption',              // Smaller supplementary text
+  Overview = 'overview'             // Overview slide bullets
+}
+
+// Define interface for typography styles to improve type safety
+export interface TypographyStyle {
+  fontSize: string;
+  fontWeight: string | number;
+  fontStyle: "normal" | "italic" | "oblique";
+  lineHeight: number;
+  letterSpacing: string;
+  fontFamily?: string;
+  textTransform?: 'uppercase' | 'lowercase' | 'capitalize' | 'none';
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
+  
+  // Borders
+  borderTop?: string;
+  borderRight?: string;
+  borderBottom?: string;
+  borderLeft?: string;
+  
+  // Padding
+  paddingTop?: string;
+  paddingRight?: string;
+  paddingBottom?: string;
+  paddingLeft?: string;
+  
+  // Visual styling
+  borderRadius?: string;
+  boxShadow?: string;
+  background?: string;
+  margin?: string;
+  textShadow?: string;
+}
+
+/**
+ * Get typography styles based on content type and hierarchy level for regular slides
+ * Using consistent sizing with visual design elements to differentiate hierarchy
+ * Avoids CSS conflicts by not mixing shorthand and non-shorthand properties
+ */
+export function getTypographyStyles(contentType: ContentType, level: number, textLength: number = 0): TypographyStyle {
+  // Only extremely long content needs adaptive sizing
+  const needsAdaptiveSize = textLength > 300;
+  
+  // Use consistent base sizes for most content types to make slides more uniform
+  const baseSizes = {
+    [ContentType.Title]: needsAdaptiveSize ? 3.8 : 4.2, // Slightly larger for titles
+    [ContentType.Subtitle]: 3.0,
+    [ContentType.Heading]: 2.8,
+    [ContentType.Subheading]: 2.4,
+    [ContentType.Regular]: 2.2, // More readable consistent size
+    [ContentType.Quote]: 2.2,
+    [ContentType.List]: 2.2,
+    [ContentType.Code]: 1.8, // Slightly smaller for code readability
+  };
+  
+  // Only slight adjustment based on level to maintain consistent sizing
+  // Use visual styling for levels instead of size variations
+  const levelScaleFactor = Math.max(0.9, 1 - (level * 0.05));
+  
+  // Scale down very long content but keep most content consistent
+  let lengthScaleFactor = 1;
+  if (textLength > 200) {
+    lengthScaleFactor = 0.9;
+  } else if (textLength > 300) {
+    lengthScaleFactor = 0.85;
+  }
+  
+  const fontSize = baseSizes[contentType] * levelScaleFactor * lengthScaleFactor;
+  
+  // Base style for all types
+  const baseStyle: TypographyStyle = {
+    fontSize: `${fontSize}rem`,
+    fontWeight: contentType.includes('title') || contentType.includes('heading') ? 'bold' : 'normal',
+    fontStyle: contentType === ContentType.Quote ? 'italic' : 'normal',
+    lineHeight: contentType === ContentType.Code ? 1.4 : 1.6,
+    letterSpacing: contentType.includes('title') ? '0.04em' : 'normal',
+    textShadow: '-1px 1px 1px rgba(0,0,0,0.15)', // Subtle depth effect
+  };
+  
+  // Set appropriate font family
+  if (contentType === ContentType.Code) {
+    baseStyle.fontFamily = FONTS.monospace;
+  } else if (contentType === ContentType.Title || contentType === ContentType.Subtitle) {
+    baseStyle.fontFamily = FONTS.display;
+  } else {
+    baseStyle.fontFamily = FONTS.body;
+  }
+  
+  // Create a result object starting with base styles
+  const result: TypographyStyle = { ...baseStyle };
+  
+  // Apply level-specific visual treatments
+  if (level > 1) {
+    if (level === 2) {
+      if (contentType.includes('heading')) {
+        result.borderBottom = '2px solid rgba(255,255,255,0.3)';
+        result.paddingBottom = '0.3rem';
+      }
+    } else if (level === 3) {
+      result.borderLeft = '3px solid rgba(255,255,255,0.4)';
+      result.paddingLeft = '0.8rem';
+      
+      if (contentType.includes('regular')) {
+        result.fontStyle = 'italic';
+      }
+    } else if (level >= 4) {
+      result.background = 'rgba(255,255,255,0.05)';
+      result.paddingTop = '0.4rem';
+      result.paddingRight = '0.8rem';
+      result.paddingBottom = '0.4rem';
+      result.paddingLeft = '0.8rem';
+      result.borderRadius = '4px';
+      result.boxShadow = '1px 1px 3px rgba(0,0,0,0.1)';
+    }
+  }
+  
+  // Content-type specific treatments
+  if (contentType === ContentType.Code) {
+    result.background = 'rgba(0,0,0,0.2)';
+    result.paddingTop = '0.8rem';
+    result.paddingRight = '0.8rem';
+    result.paddingBottom = '0.8rem';
+    result.paddingLeft = '0.8rem';
+    result.borderRadius = '4px';
+    result.borderTop = '1px solid rgba(255,255,255,0.1)';
+    result.borderRight = '1px solid rgba(255,255,255,0.1)';
+    result.borderBottom = '1px solid rgba(255,255,255,0.1)';
+    result.borderLeft = '1px solid rgba(255,255,255,0.1)';
+  } else if (contentType === ContentType.Quote) {
+    result.borderLeft = '4px solid rgba(255,255,255,0.4)';
+    result.paddingLeft = '1rem';
+    result.background = 'rgba(255,255,255,0.02)';
+    result.borderRadius = '0 4px 4px 0';
+  } else if (contentType === ContentType.List) {
+    if (level > 1) {
+      result.paddingLeft = `${level * 0.4}rem`;
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Get typography styles for special slides like Start/End slides
+ */
+export function getAdvancedTypographyStyles(
+  contentType: SlideContentType,
+  level: number,
+  textLength: number = 0,
+  hasMedia: boolean = false
+): TypographyStyle {
+  // Base style for all special slide types
+  const baseStyle: TypographyStyle = {
+    fontSize: '2.2rem',
+    fontWeight: WEIGHTS.regular,
+    fontStyle: 'normal',
+    lineHeight: 1.5,
+    letterSpacing: 'normal',
+    textShadow: '-1px 1px 1px rgba(0,0,0,0.25)', // Subtle depth effect
+  };
+  
+  // Only extremely long content needs adaptive sizing
+  const needsAdaptiveSize = textLength > 300;
+  const isLongContent = textLength > 100;
+  
+  // Apply specialized styling based on content type
+  switch(contentType) {
+    case SlideContentType.StartEndSlide:
+      // Special styling for start/end slides
+      return {
+        ...baseStyle,
+        fontFamily: FONTS.display,
+        fontSize: needsAdaptiveSize ? '3.8rem' : '4.5rem',
+        fontWeight: WEIGHTS.bold,
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        lineHeight: 1.2,
+        textAlign: 'center',
+      };
+      
+    case SlideContentType.Headline:
+      // Major section headers
+      return {
+        ...baseStyle,
+        fontFamily: FONTS.display,
+        fontSize: '3.2rem',
+        fontWeight: WEIGHTS.bold,
+        letterSpacing: '0.02em',
+        lineHeight: 1.3,
+        borderBottom: '2px solid rgba(255,255,255,0.4)',
+        paddingBottom: '0.5rem',
+      };
+      
+    case SlideContentType.Subheading:
+      // Secondary headers
+      return {
+        ...baseStyle,
+        fontFamily: FONTS.body,
+        fontSize: '2.6rem',
+        fontWeight: WEIGHTS.semibold,
+        borderLeft: '3px solid rgba(255,255,255,0.3)',
+        paddingLeft: '0.8rem',
+      };
+      
+    case SlideContentType.Body:
+      // Regular content text with level-based styling
+      const sizeAdjustment = hasMedia ? 0.9 : 1; // Slight size reduction for media slides
+      
+      return {
+        ...baseStyle,
+        fontFamily: FONTS.body,
+        fontSize: `${2.2 * sizeAdjustment}rem`,
+        fontWeight: level % 2 === 0 ? WEIGHTS.regular : WEIGHTS.light,
+        fontStyle: level > 3 ? 'italic' : 'normal',
+        paddingLeft: level > 1 ? `${level * 0.5}rem` : undefined,
+        borderLeft: level > 2 ? `${Math.min(level-2, 3)}px solid rgba(255,255,255,${0.1 * level})` : undefined,
+        background: level > 4 ? 'rgba(255,255,255,0.03)' : undefined,
+        borderRadius: level > 3 ? '4px' : undefined,
+        boxShadow: level > 4 ? 'inset 0 0 5px rgba(0,0,0,0.1)' : undefined,
+      };
+      
+    case SlideContentType.List:
+      // Bullet points with padding based on level
+      return {
+        ...baseStyle,
+        fontFamily: FONTS.body,
+        fontSize: '2.0rem',
+        paddingLeft: level > 0 ? `${level * 0.8}rem` : undefined,
+      };
+      
+    case SlideContentType.Code:
+      // Code blocks with monospace font
+      return {
+        ...baseStyle,
+        fontFamily: FONTS.monospace,
+        fontSize: '1.8rem',
+        lineHeight: 1.4,
+        background: 'rgba(0,0,0,0.2)',
+        paddingTop: '0.8rem',
+        paddingRight: '0.8rem',
+        paddingBottom: '0.8rem',
+        paddingLeft: '0.8rem',
+        borderRadius: '4px',
+        borderTop: '1px solid rgba(255,255,255,0.1)',
+        borderRight: '1px solid rgba(255,255,255,0.1)',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
+        borderLeft: '1px solid rgba(255,255,255,0.1)',
+      };
+      
+    case SlideContentType.Quote:
+      // Quote styling
+      return {
+        ...baseStyle,
+        fontFamily: FONTS.body,
+        fontSize: '2.2rem',
+        fontStyle: 'italic',
+        borderLeft: '4px solid rgba(255,255,255,0.4)',
+        paddingLeft: '1rem',
+        background: 'rgba(255,255,255,0.02)',
+        borderRadius: '0 4px 4px 0',
+      };
+      
+    case SlideContentType.Caption:
+      // Smaller caption text
+      return {
+        ...baseStyle,
+        fontFamily: FONTS.body,
+        fontSize: '1.6rem',
+        fontWeight: WEIGHTS.light,
+        fontStyle: 'italic',
+        lineHeight: 1.3,
+      };
+      
+    case SlideContentType.Overview:
+      // Overview slides with different styling
+      return {
+        ...baseStyle,
+        fontFamily: FONTS.body,
+        fontSize: '1.8rem',
+        fontWeight: WEIGHTS.medium,
+      };
+      
+    default:
+      return baseStyle;
+  }
+}
+
+/**
+ * Generate CSS style object from typography configuration
+ * Converts our TypographyStyle interface to React's CSSProperties
+ * Avoids CSS conflicts by not including both shorthand and non-shorthand properties
+ */
+export function generateTypographyStyles(styles: TypographyStyle): React.CSSProperties {
+  return {
+    fontSize: styles.fontSize,
+    fontWeight: styles.fontWeight,
+    fontStyle: styles.fontStyle,
+    lineHeight: styles.lineHeight,
+    letterSpacing: styles.letterSpacing,
+    fontFamily: styles.fontFamily,
+    textTransform: styles.textTransform,
+    textAlign: styles.textAlign,
+    
+    // Individual borders instead of using "border" shorthand
+    borderTop: styles.borderTop,
+    borderRight: styles.borderRight,
+    borderBottom: styles.borderBottom,
+    borderLeft: styles.borderLeft,
+    
+    // Individual padding instead of using "padding" shorthand
+    paddingTop: styles.paddingTop,
+    paddingRight: styles.paddingRight,
+    paddingBottom: styles.paddingBottom,
+    paddingLeft: styles.paddingLeft,
+    
+    // Other styling properties
+    borderRadius: styles.borderRadius,
+    boxShadow: styles.boxShadow,
+    background: styles.background,
+    margin: styles.margin,
+    textShadow: styles.textShadow,
+  };
+}
+
+/**
+ * Helper function to determine content type based on content text
+ */
+export function determineContentType(content: string): ContentType {
+  if (!content || content.trim() === '') {
+    return ContentType.Regular;
+  }
+  
+  const trimmedContent = content.trim();
+  
+  // Title and subtitle detection
+  if (trimmedContent.length < 60) {
+    if (trimmedContent.startsWith('# ')) {
+      return ContentType.Title;
+    }
+    if (trimmedContent.startsWith('## ')) {
+      return ContentType.Subtitle;
+    }
+  }
+  
+  // Heading detection
+  if (trimmedContent.startsWith('### ')) {
+    return ContentType.Heading;
+  }
+  
+  // Subheading detection
+  if (trimmedContent.startsWith('#### ')) {
+    return ContentType.Subheading;
+  }
+  
+  // Quote detection
+  if (trimmedContent.startsWith('> ')) {
+    return ContentType.Quote;
+  }
+  
+  // Code block detection
+  if (trimmedContent.startsWith('```') || trimmedContent.startsWith('    ')) {
+    return ContentType.Code;
+  }
+  
+  // List detection
+  const hasListMarkers = /^[ \t]*[-*•][ \t]/.test(trimmedContent) || 
+                         /^[ \t]*\d+\.[ \t]/.test(trimmedContent);
+  if (hasListMarkers || trimmedContent.includes('\n- ') || trimmedContent.includes('\n* ')) {
+    return ContentType.List;
+  }
+  
+  // Default to regular
+  return ContentType.Regular;
+}
+
+/**
+ * Format content based on content type detection
+ */
+export function formatContent(content: string): string {
+  if (!content) return '';
+  
+  // Prepare content by trimming and handling special prefixes
+  let formattedContent = content.trim();
+  
+  // Remove heading markers
+  if (formattedContent.startsWith('# ')) {
+    formattedContent = formattedContent.substring(2);
+  } else if (formattedContent.startsWith('## ')) {
+    formattedContent = formattedContent.substring(3);
+  } else if (formattedContent.startsWith('### ')) {
+    formattedContent = formattedContent.substring(4);
+  } else if (formattedContent.startsWith('#### ')) {
+    formattedContent = formattedContent.substring(5);
+  }
+  
+  // Remove quote markers
+  if (formattedContent.startsWith('> ')) {
+    formattedContent = formattedContent.substring(2);
+  }
+  
+  // Return the processed content
+  return formattedContent;
+}
+
+/**
+ * Convert YouTube URL to embed format with optional timestamp
+ */
+export function getYoutubeEmbedUrl(url: string, time: string): string {
+  const videoId = extractYoutubeVideoId(url);
+  if (!videoId) return '';
+  
+  let embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`;
+  
+  // Add time parameter if provided
+  if (time) {
+    // Convert HH:MM:SS or MM:SS to seconds
+    const timeParts = time.split(':').map(Number);
+    let seconds = 0;
+    
+    if (timeParts.length === 3) {
+      // HH:MM:SS format
+      seconds = timeParts[0] * 3600 + timeParts[1] * 60 + timeParts[2];
+    } else if (timeParts.length === 2) {
+      // MM:SS format
+      seconds = timeParts[0] * 60 + timeParts[1];
+    } else if (timeParts.length === 1) {
+      // SS format
+      seconds = timeParts[0];
+    }
+    
+    if (seconds > 0) {
+      embedUrl += `&start=${seconds}`;
+    }
+  }
+  
+  return embedUrl;
+}
+
+/**
+ * Extract YouTube video ID from different URL formats
+ */
+function extractYoutubeVideoId(url: string): string | null {
+  if (!url) return null;
+  
+  // Handle youtu.be format
+  if (url.includes('youtu.be/')) {
+    const match = url.match(/youtu\.be\/([^?&]+)/);
+    return match ? match[1] : null;
+  }
+  
+  // Handle youtube.com format
+  const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Calculate hierarchical level of a note based on its parent chain
+ */
+export function calculateLevel(parentId: number | null, notesMap: Map<number, any>): number {
+  if (parentId === null) return 1;
+  
+  const parent = notesMap.get(parentId);
+  if (!parent) return 1;
+  
+  return 1 + calculateLevel(parent.parentId, notesMap);
+}

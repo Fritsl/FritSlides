@@ -1,13 +1,25 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useProjects } from "@/hooks/use-projects";
 import { useNotes } from "@/hooks/use-notes";
 import { Note, Project } from "@shared/schema";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Users } from "lucide-react";
-import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, PresentationTheme } from "@/lib/presentation-themes";
-import { formatContent, ContentType, getYoutubeEmbedUrl, calculateLevel, getTypographyStyles, generateTypographyStyles } from "@/components/slide-components";
+import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, PresentationTheme, START_END_THEME } from "@/lib/presentation-themes";
+import { 
+  formatContent, 
+  getYoutubeEmbedUrl, 
+  calculateLevel, 
+  ContentType, 
+  SlideContentType,
+  getTypographyStyles, 
+  getAdvancedTypographyStyles,
+  generateTypographyStyles,
+  FONTS
+} from "@/lib/typography";
 import { OverviewSlide } from "@/components/ui/overview-slide";
+import { FullscreenToggle } from "@/components/ui/fullscreen-toggle";
+import screenfull from "screenfull";
 
 // Define the PresentationNote interface extending the Note interface
 interface PresentationNote extends Note {
@@ -19,6 +31,7 @@ interface PresentationNote extends Note {
   isStartSlide?: boolean; // Flag for project start slide
   isEndSlide?: boolean; // Flag for project end slide
   author?: string | null; // Author for end slides
+  debugInfo?: string; // Debug information for development
 }
 
 // Define the TimeSegment interface for tracking time
@@ -30,7 +43,32 @@ interface TimeSegment {
   currentProgress: number; // Progress between 0-1 indicating position between time points
 }
 
-export default function PresentMode() {
+// Determine content type based on content features
+function determineContentType(content: string): ContentType {
+  if (!content) return ContentType.Regular;
+  
+  // Check for code blocks with triple backticks
+  if (content.includes("```")) return ContentType.Code;
+  
+  // Check for list items
+  if (content.match(/^(\s*[-*+]|\s*\d+\.)\s/m)) return ContentType.List;
+  
+  // Check for block quotes
+  if (content.match(/^>\s/m)) return ContentType.Quote;
+  
+  // Check for headings based on length and characteristics
+  if (content.length < 30) {
+    return content === content.toUpperCase() ? ContentType.Title : ContentType.Heading;
+  }
+  
+  // Check for subheadings
+  if (content.length < 60) return ContentType.Subheading;
+  
+  // Default to regular content
+  return ContentType.Regular;
+}
+
+export default function PresentModeFixed() {
   const [, setLocation] = useLocation();
   const { projectId: projectIdParam } = useParams<{ projectId: string }>();
   const projectId = projectIdParam ? parseInt(projectIdParam, 10) : null;
@@ -53,6 +91,9 @@ export default function PresentMode() {
     return projects.find((p) => p.id === projectId) || null;
   }, [projects, projectId]);
   
+  // Store root notes for display on the start slide
+  const [rootNotes, setRootNotes] = useState<PresentationNote[]>([]);
+  
   // Process notes into presentation format
   const flattenedNotes = useMemo(() => {
     if (!notes || notes.length === 0) return [];
@@ -64,13 +105,13 @@ export default function PresentMode() {
     });
     
     // First pass: calculate levels and identify parent-child relationships
-    const rootNotes: PresentationNote[] = [];
+    const rootNotesArray: PresentationNote[] = [];
     notes.forEach(note => {
       const presentationNote = notesMap.get(note.id)!;
       if (note.parentId === null) {
         // This is a root-level note
         presentationNote.level = 0;
-        rootNotes.push(presentationNote);
+        rootNotesArray.push(presentationNote);
       } else {
         // This is a child note, find its parent and update it
         const parent = notesMap.get(note.parentId);
@@ -82,7 +123,7 @@ export default function PresentMode() {
         } else {
           // If parent not found (data inconsistency), treat as root
           presentationNote.level = 0;
-          rootNotes.push(presentationNote);
+          rootNotesArray.push(presentationNote);
         }
       }
     });
@@ -98,12 +139,12 @@ export default function PresentMode() {
     const result: PresentationNote[] = [];
     
     // Add a start slide for the project
-    const project = projects.find((p) => p.id === projectId);
+    const project = projects?.find((p) => p.id === projectId);
     if (project) {
       const startSlide: PresentationNote = {
         id: -1, // Use negative ID to avoid conflicts
-        projectId,
-        content: `${project.name}`,
+        projectId: projectId ?? 0,
+        content: project.startSlogan || project.name.toUpperCase(), // Use startSlogan if available, otherwise use uppercase project name
         createdAt: new Date(),
         updatedAt: new Date(),
         order: "",
@@ -121,7 +162,10 @@ export default function PresentMode() {
     }
     
     // Sort root notes by order
-    rootNotes.sort((a, b) => String(a.order).localeCompare(String(b.order)));
+    rootNotesArray.sort((a, b) => String(a.order).localeCompare(String(b.order)));
+    
+    // Set the root notes for use in the start slide
+    setRootNotes(rootNotesArray);
     
     // Use a rootIndex to keep track of which root note each slide belongs to
     // This is used for consistent theming of related slides
@@ -129,30 +173,36 @@ export default function PresentMode() {
     
     // Helper function to recursively add all levels of notes
     const addNoteAndChildren = (note: PresentationNote, currentRootIndex: number) => {
-      // Add the note itself with the root index
-      const noteWithIndex = { ...note, rootIndex: currentRootIndex };
-      result.push(noteWithIndex);
+      // Check if this note has children
+      const hasChildren = note.childNotes && note.childNotes.length > 0;
       
-      // Recursively add all children if any
-      if (note.childNotes && note.childNotes.length > 0) {
-        // Sort children by order
-        const sortedChildren = [...note.childNotes].sort((a, b) => 
-          String(a.order).localeCompare(String(b.order))
-        );
-        
-        // For root notes, add an overview slide showing all direct children
-        if (note.level === 0) {
-          const overviewSlide: PresentationNote = {
-            ...note,
-            id: -100 - result.length, // Use a unique negative ID
-            isOverviewSlide: true,
-            childNotes: sortedChildren,
-            rootIndex: currentRootIndex
-          };
-          result.push(overviewSlide);
-        }
-        
-        // Add each child recursively
+      // Sort children by order if any exist
+      const sortedChildren = hasChildren 
+        ? [...note.childNotes!].sort((a, b) => String(a.order).localeCompare(String(b.order)))
+        : [];
+      
+      // Process based on note level and whether it has children
+      if (note.level === 0 && hasChildren) {
+        // Root note with children - ONLY create an overview slide, not a regular slide
+        const overviewSlide: PresentationNote = {
+          ...note,
+          id: -100 - result.length, // Use a unique negative ID
+          isOverviewSlide: true,
+          childNotes: sortedChildren,
+          rootIndex: currentRootIndex
+        };
+        result.push(overviewSlide);
+      } else if (note.level !== 0 || !hasChildren) {
+        // Either a non-root note OR a root note WITHOUT children - add as regular slide
+        const noteWithIndex = { 
+          ...note, 
+          rootIndex: currentRootIndex
+        };
+        result.push(noteWithIndex);
+      }
+      
+      // Process all children recursively
+      if (hasChildren) {
         sortedChildren.forEach(childNote => {
           addNoteAndChildren(childNote, currentRootIndex);
         });
@@ -160,7 +210,7 @@ export default function PresentMode() {
     };
     
     // Process each root note and all its descendants
-    rootNotes.forEach(rootNote => {
+    rootNotesArray.forEach(rootNote => {
       addNoteAndChildren(rootNote, rootIndex);
       rootIndex++; // Increment for the next root branch
     });
@@ -169,8 +219,8 @@ export default function PresentMode() {
     if (project) {
       const endSlide: PresentationNote = {
         id: -2, // Use negative ID to avoid conflicts
-        projectId,
-        content: `End of presentation`,
+        projectId: projectId ?? 0,
+        content: project.endSlogan || "End of presentation",
         createdAt: new Date(),
         updatedAt: new Date(),
         order: "",
@@ -204,9 +254,16 @@ export default function PresentMode() {
   const isStartSlide = !!currentNote?.isStartSlide;
   const isEndSlide = !!currentNote?.isEndSlide;
   
-  // Get the theme for the current slide based on its rootIndex
+  // Get the theme for the current slide based on its type and rootIndex
   const theme = useMemo(() => {
     if (!currentNote) return getPresentationTheme(0, 0);
+    
+    // Use special theme for start and end slides
+    if (currentNote.isStartSlide || currentNote.isEndSlide) {
+      return START_END_THEME;
+    }
+    
+    // Use regular theme for other slides based on rootIndex
     return getPresentationTheme(
       currentNote.level || 0,
       currentNote.rootIndex !== undefined ? currentNote.rootIndex : 0
@@ -235,29 +292,38 @@ export default function PresentMode() {
     }
   };
   
-  const requestFullscreen = () => {
-    const docElement = document.documentElement;
-    if (docElement.requestFullscreen) {
-      docElement.requestFullscreen()
-        .then(() => setIsFullscreen(true))
-        .catch(err => console.error("Fullscreen request was rejected:", err));
-    } else {
-      console.warn("Fullscreen API is not supported");
-    }
+  const exitPresentation = () => {
+    // Navigate back to home page, which shows all projects including the current one
+    setLocation('/');
   };
   
-  const exitPresentation = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
-        .then(() => setIsFullscreen(false))
-        .catch(err => console.error("Error exiting fullscreen:", err));
-    }
+  // Function to find the index of the next/previous root note or start/end slide
+  const findRootNoteIndex = (direction: 'next' | 'prev'): number => {
+    if (!flattenedNotes.length) return currentSlideIndex;
     
-    // Navigate back to the project page
-    if (projectId) {
-      setLocation(`/project/${projectId}`);
+    // Define what we consider "major slides" - includes Start, End and Overview slides
+    const isMajorSlide = (note: PresentationNote): boolean => 
+      Boolean(note.isStartSlide || note.isEndSlide || note.isOverviewSlide);
+    
+    // Find all major slide indexes
+    const majorSlideIndexes = flattenedNotes
+      .map((note, index) => ({ note, index }))
+      .filter(({ note }) => isMajorSlide(note))
+      .map(({ index }) => index);
+    
+    // If no special slides found, return current index
+    if (majorSlideIndexes.length === 0) return currentSlideIndex;
+    
+    if (direction === 'next') {
+      // Find the next major slide after current position
+      const nextIndex = majorSlideIndexes.find(index => index > currentSlideIndex);
+      // If found, return it. Otherwise return the first major slide (loop around)
+      return nextIndex !== undefined ? nextIndex : majorSlideIndexes[0];
     } else {
-      setLocation('/');
+      // Find the previous major slides before current position (in reverse order)
+      const prevIndexes = majorSlideIndexes.filter(index => index < currentSlideIndex).reverse();
+      // If found, return the first previous. Otherwise return the last major slide (loop around)
+      return prevIndexes.length > 0 ? prevIndexes[0] : majorSlideIndexes[majorSlideIndexes.length - 1];
     }
   };
   
@@ -272,12 +338,16 @@ export default function PresentMode() {
         case "ArrowLeft":
           goToPrevSlide();
           break;
+        case "ArrowUp":
+          // Jump to next root note or special slide
+          setCurrentSlideIndex(findRootNoteIndex('next'));
+          break;
+        case "ArrowDown":
+          // Jump to previous root note or special slide
+          setCurrentSlideIndex(findRootNoteIndex('prev'));
+          break;
         case "Escape":
           exitPresentation();
-          break;
-        case "f":
-        case "F":
-          requestFullscreen();
           break;
         case "t":
         case "T":
@@ -331,6 +401,20 @@ export default function PresentMode() {
     return nextTimed;
   };
   
+  // Find out which root a note belongs to (for theming consistency)
+  const findRootIndex = (note: PresentationNote): number => {
+    if (note.rootIndex !== undefined) return note.rootIndex;
+    if (!note.parentId) return 0; // Default to 0 for notes without parents
+    
+    // Search through the notes to find the root node
+    const parentNote = flattenedNotes.find(n => n.id === note.parentId);
+    if (parentNote) {
+      return findRootIndex(parentNote);
+    }
+    
+    return 0; // Default if we can't determine the root
+  };
+  
   // Render the presentation
   return (
     <div className="fixed inset-0 w-screen h-screen flex flex-col bg-black overflow-hidden">
@@ -365,111 +449,285 @@ export default function PresentMode() {
             }}
             style={themeStyles}
           >
-            {/* Render appropriate slide based on type */}
-            {isOverviewSlide ? (
-              // Overview slide with chapter markers
-              <OverviewSlide 
-                parentNote={currentNote} 
-                childNotes={currentNote.childNotes!}
-                theme={theme}
-              />
-            ) : isStartSlide ? (
-              // Start slide with project start slogan
-              <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
-                <div className="w-full text-white text-center">
-                  <div className="content mb-10">
-                    {formatContent(currentNote.content)}
-                  </div>
-                  <div className="mt-16 opacity-70 text-sm">
-                    {currentProject?.name}
-                  </div>
-                </div>
-              </div>
-            ) : isEndSlide ? (
-              // End slide with project end slogan and author
-              <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10">
-                <div className="w-full text-white text-center">
-                  <div className="content mb-10">
-                    {formatContent(currentNote.content)}
-                  </div>
-                  {currentNote.author && (
-                    <div className="mt-8 opacity-80 text-lg">
-                      {currentNote.author}
-                    </div>
-                  )}
-                  <div className="mt-16 opacity-70 text-sm">
-                    {currentProject?.name}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // Regular slide with content
-              <div className="max-w-6xl w-full h-full flex flex-col items-center justify-center p-10 relative">
-                {/* Discussion icon overlay */}
-                {currentNote.isDiscussion && (
-                  <div className="absolute top-4 right-4 text-white opacity-80 transition-opacity animate-pulse">
-                    <Users className="h-12 w-12 sm:h-12 sm:w-12 md:h-16 md:w-16" />
-                  </div>
-                )}
-                <div className="w-full text-white">
-                  <div className="content mb-10">
-                    {formatContent(currentNote.content)}
-                  </div>
-                  
-                  {/* URL link if present - with typography styling */}
-                  {currentNote.url && (
-                    <div className="mt-8">
-                      <a
-                        href={currentNote.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          ...generateTypographyStyles(getTypographyStyles(
-                            ContentType.Regular,
-                            level + 1,
-                            (currentNote.linkText || currentNote.url).length
-                          )),
-                          color: 'rgba(255, 255, 255, 0.9)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
-                          paddingBottom: '0.5rem',
-                          width: 'fit-content'
-                        }}
-                        className="hover:text-white"
-                      >
-                        <span className="mr-2">🔗</span>
-                        {currentNote.linkText || currentNote.url}
-                      </a>
-                    </div>
-                  )}
-                  
-                  {/* YouTube embed if present */}
-                  {currentNote.youtubeLink && (
-                    <div className="mt-8 rounded overflow-hidden aspect-video bg-black/20 shadow-xl">
-                      <iframe
-                        className="w-full h-full"
-                        src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
-                        title="YouTube video"
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      ></iframe>
-                    </div>
-                  )}
-                  
-                  {/* Images if present */}
-                  {currentNote.images && currentNote.images.length > 0 && (
-                    <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {currentNote.images.map((image: string, idx: number) => (
-                        <div key={idx} className="rounded overflow-hidden shadow-xl">
-                          <img 
-                            src={image} 
-                            alt={`Note image ${idx + 1}`} 
-                            className="w-full h-auto object-cover" 
-                          />
+            {currentNote && (
+              <div className="flex flex-col h-full w-full">
+                <div className="flex-grow flex items-center justify-center">
+                  {isOverviewSlide ? (
+                    // Overview slide with chapter markers
+                    <OverviewSlide 
+                      parentNote={currentNote} 
+                      childNotes={currentNote.childNotes || []}
+                      theme={theme}
+                    />
+                  ) : isStartSlide ? (
+                    // Start slide with project start slogan and root notes
+                    <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center">
+                      <div className="w-full text-white">
+                        {/* Title using advanced typography system */}
+                        <div className="slide-content flex flex-col items-center justify-center mb-12">
+                          <div 
+                            className="text-center"
+                            style={generateTypographyStyles(getAdvancedTypographyStyles(
+                              SlideContentType.StartEndSlide,
+                              0,
+                              currentNote.content.length
+                            ))}
+                          >
+                            {currentNote.content}
+                          </div>
                         </div>
-                      ))}
+                        
+                        {/* Root notes with bullets and numbers - same color for all bullets */}
+                        {rootNotes && rootNotes.length > 0 && (
+                          <div className="flex flex-col items-center mt-8 space-y-6">
+                            <div className="flex flex-col space-y-4 items-start">
+                              {rootNotes.map((rootNote, index) => {
+                                // Use a vibrant orange color from Sand theme to make bullets stand out more
+                                const accentColor = "#F97316"; // Orange 500 from Sand theme
+                                
+                                return (
+                                  <div key={rootNote.id} className="flex items-center group">
+                                    <div className="relative mr-4">
+                                      {/* Numbered bullet with theme color */}
+                                      <div 
+                                        className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+                                        style={{ 
+                                          backgroundColor: accentColor,
+                                          boxShadow: "0 0 10px rgba(255, 255, 255, 0.5)"
+                                        }}
+                                      >
+                                        <span className="text-white font-bold">{index + 1}</span>
+                                      </div>
+                                      {/* Pulse effect on hover */}
+                                      <div 
+                                        className="absolute top-0 left-0 w-10 h-10 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
+                                        style={{ backgroundColor: accentColor }}
+                                      ></div>
+                                    </div>
+                                    
+                                    {/* Root note title */}
+                                    <div 
+                                      className="text-white text-xl md:text-2xl font-medium"
+                                      style={{
+                                        fontFamily: FONTS.body,
+                                        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                      }}
+                                    >
+                                      {rootNote.content.split('\n')[0]}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : isEndSlide ? (
+                    // End slide with project end slogan
+                    <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center">
+                      <div className="w-full text-white">
+                        {/* Title using advanced typography system - matching Start Slide style */}
+                        <div className="slide-content flex flex-col items-center justify-center">
+                          <div 
+                            className="text-center"
+                            style={generateTypographyStyles(getAdvancedTypographyStyles(
+                              SlideContentType.StartEndSlide,
+                              0,
+                              currentNote.content.length
+                            ))}
+                          >
+                            {currentNote.content}
+                          </div>
+                        </div>
+                        
+                        {/* Author attribution if available */}
+                        {currentNote.author && (
+                          <div 
+                            className="mt-12 text-center opacity-80"
+                            style={generateTypographyStyles(getAdvancedTypographyStyles(
+                              SlideContentType.Caption,
+                              0,
+                              currentNote.author.length
+                            ))}
+                          >
+                            {currentNote.author}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    // Regular slide with content - smart layout based on content type
+                    <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center relative">
+                      {/* Discussion icon overlay */}
+                      {currentNote.isDiscussion && (
+                        <div className="absolute top-4 right-4 text-white opacity-80 transition-opacity animate-pulse">
+                          <Users className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12" />
+                        </div>
+                      )}
+                      
+                      {/* Determine if slide has media */}
+                      {(currentNote.youtubeLink || (currentNote.images && currentNote.images.length > 0)) ? (
+                        // Slide with media - adapt layout based on content
+                        <div className="w-full h-full flex flex-col md:flex-row md:justify-between items-center text-white">
+                          {/* Content column - sized based on media presence */}
+                          <div className="w-full md:w-1/2 flex flex-col items-center justify-center md:pr-8 order-2 md:order-1">
+                            <div 
+                              className="slide-content w-full"
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: determineContentType(currentNote.content) === ContentType.List 
+                                  ? 'flex-start' 
+                                  : 'center',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  ...generateTypographyStyles(getTypographyStyles(
+                                    determineContentType(currentNote.content),
+                                    level,
+                                    currentNote.content.length
+                                  )),
+                                  // Slightly reduce font size for slides with media to improve layout
+                                  fontSize: `calc(${generateTypographyStyles(getTypographyStyles(
+                                    determineContentType(currentNote.content),
+                                    level,
+                                    currentNote.content.length
+                                  )).fontSize} * 0.85)`
+                                }}
+                              >
+                                {formatContent(currentNote.content)}
+                              </div>
+                              
+                              {/* URL link if present */}
+                              {currentNote.url && (
+                                <div className="mt-4 self-start">
+                                  <a
+                                    href={currentNote.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      ...generateTypographyStyles(getTypographyStyles(
+                                        ContentType.Regular,
+                                        level,
+                                        (currentNote.linkText || currentNote.url).length
+                                      )),
+                                      color: 'rgba(255, 255, 255, 0.9)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      // Using text decoration instead of border to avoid conflicts
+                                      textDecoration: 'underline',
+                                      textDecorationColor: 'rgba(255, 255, 255, 0.3)',
+                                      textDecorationThickness: '1px',
+                                      paddingBottom: '0.5rem',
+                                      width: 'fit-content'
+                                    }}
+                                    className="hover:text-white transition-colors"
+                                  >
+                                    <span className="mr-2">🔗</span>
+                                    {currentNote.linkText || currentNote.url}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Media column */}
+                          <div className="w-full md:w-1/2 flex flex-col items-center justify-center md:pl-8 mb-6 md:mb-0 order-1 md:order-2">
+                            {/* YouTube embed if present */}
+                            {currentNote.youtubeLink && (
+                              <div className="rounded-lg overflow-hidden aspect-video bg-black/20 shadow-xl w-full max-w-full">
+                                <iframe
+                                  className="w-full h-full"
+                                  src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
+                                  title="YouTube video"
+                                  frameBorder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                ></iframe>
+                              </div>
+                            )}
+                            
+                            {/* Images if present and no YouTube */}
+                            {!currentNote.youtubeLink && currentNote.images && currentNote.images.length > 0 && (
+                              <div className="w-full grid grid-cols-1 gap-4">
+                                {currentNote.images.slice(0, 2).map((image: string, idx: number) => (
+                                  <div key={idx} className={`rounded-lg overflow-hidden shadow-xl ${currentNote.images!.length === 1 ? 'aspect-[16/10] max-h-[60vh]' : 'aspect-[16/9] max-h-[30vh]'}`}>
+                                    <img 
+                                      src={image} 
+                                      alt={`Slide image ${idx + 1}`} 
+                                      className="w-full h-full object-contain" 
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        // Slide with text only - center content
+                        <div className="w-full h-full flex flex-col items-center justify-center text-white">
+                          <div 
+                            className="slide-content w-full"
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: determineContentType(currentNote.content) === ContentType.List 
+                                ? 'flex-start' 
+                                : 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            {/* Auto-detect content type and apply appropriate styling */}
+                            <div
+                              className="text-content"
+                              style={{
+                                ...generateTypographyStyles(getTypographyStyles(
+                                  determineContentType(currentNote.content),
+                                  level,
+                                  currentNote.content.length
+                                )),
+                                margin: determineContentType(currentNote.content) === ContentType.List 
+                                  ? '0 auto 0 15%' 
+                                  : '0 auto',
+                              }}
+                            >
+                              {formatContent(currentNote.content)}
+                            </div>
+                            
+                            {/* URL link if present */}
+                            {currentNote.url && (
+                              <div className="mt-6 self-center">
+                                <a
+                                  href={currentNote.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    ...generateTypographyStyles(getTypographyStyles(
+                                      ContentType.Regular,
+                                      level,
+                                      (currentNote.linkText || currentNote.url).length
+                                    )),
+                                    color: 'rgba(255, 255, 255, 0.9)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    // Using text decoration instead of border to avoid conflicts
+                                    textDecoration: 'underline',
+                                    textDecorationColor: 'rgba(255, 255, 255, 0.3)',
+                                    textDecorationThickness: '1px',
+                                    paddingBottom: '0.5rem',
+                                  }}
+                                  className="hover:text-white transition-colors"
+                                >
+                                  <span className="mr-2">🔗</span>
+                                  {currentNote.linkText || currentNote.url}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -478,55 +736,47 @@ export default function PresentMode() {
           </div>
 
           {/* Minimal footer with navigation hints */}
-          <div className="absolute bottom-0 left-0 right-0 text-center p-1 flex justify-between items-center">
-            <div className="w-8"></div>
-            <p className="text-white/30 text-[10px]">
-              {currentProject?.name} • {currentSlideIndex + 1}/{flattenedNotes.length} • 
-              {isStartSlide ? 'Start' : isEndSlide ? 'End' : isOverviewSlide ? 'Chapter overview' : ''} • 
-              Click or → to advance • ← back • ESC to exit
+          <div className="absolute bottom-0 left-0 right-0 text-center p-1 px-2 flex justify-between items-center bg-black/30 backdrop-blur-sm">
+            <div className="w-4 sm:w-8"></div>
+            <p className="text-white/40 text-[8px] sm:text-[10px] whitespace-nowrap overflow-hidden overflow-ellipsis">
+              <span className="hidden sm:inline">{currentProject?.name} • </span>
+              {currentSlideIndex + 1}/{flattenedNotes.length}
+              <span className="hidden xs:inline"> • {isStartSlide ? 'Start' : isEndSlide ? 'End' : isOverviewSlide ? 'Overview' : ''}</span> • 
+              <span className="hidden sm:inline">Click or → to advance • ← back • ↑↓ jump between sections • ESC to exit</span>
+              <span className="inline sm:hidden">Tap to advance • ↑↓ jump sections</span>
             </p>
-            <button 
-              onClick={(e) => {
-                e.stopPropagation(); // Prevent triggering next slide
-                requestFullscreen();
-              }}
-              className="w-6 h-6 flex items-center justify-center text-white/20 hover:text-white/60 opacity-60 hover:opacity-100 transition-opacity"
-              title="Enter fullscreen (F)"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 3 21 3 21 9"></polyline>
-                <polyline points="9 21 3 21 3 15"></polyline>
-                <line x1="21" y1="3" x2="14" y2="10"></line>
-                <line x1="3" y1="21" x2="10" y2="14"></line>
-              </svg>
-            </button>
+            <FullscreenToggle 
+              buttonClassName="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100"
+              iconClassName="w-4 h-4"
+              showTooltip={false}
+            />
           </div>
           
           {/* Time tracking dots */}
           {timeDotsVisible && (
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10">
+            <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div 
-                      className="relative h-8 flex items-center justify-center"
+                      className="relative h-6 sm:h-8 flex items-center justify-center"
                       style={{ 
                         // Calculate width based on maximum potential offset
-                        width: '250px' // 25 slides * 5px + center area
+                        width: '200px' // 25 slides * 4px + center area
                       }}
                     >
                       {/* Black dot (target position) */}
                       <div 
-                        className="absolute w-3 h-3 rounded-full bg-black/50 transition-all duration-300"
+                        className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-black/60 transition-all duration-300"
                         style={{
-                          transform: `translateX(${getSlideDifference() * -5}px)`,
+                          transform: `translateX(${getSlideDifference() * -4}px)`,
                           left: '50%'
                         }}
                       />
                       
                       {/* White dot (current position) */}
                       <div 
-                        className="absolute w-3 h-3 rounded-full bg-white/50 transition-all duration-300"
+                        className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white/60 transition-all duration-300"
                         style={{
                           left: '50%',
                           transform: 'translateX(-50%)'
@@ -534,7 +784,7 @@ export default function PresentMode() {
                       />
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-black/80 text-white text-xs">
+                  <TooltipContent side="top" className="bg-black/90 text-white text-[10px] sm:text-xs p-2 sm:p-3">
                     <div className="text-center">
                       <div>
                         <span className="opacity-80">Now:</span> {currentNote?.time ? `${currentNote.time}` : 'No time marker'} 
@@ -545,7 +795,7 @@ export default function PresentMode() {
                           {getNextTimedSlide()?.content.length! > 20 ? '...' : ''} @ {getNextTimedSlide()?.time}
                         </div>
                       )}
-                      <div className="mt-1 text-xs opacity-70">
+                      <div className="mt-1 text-[9px] sm:text-xs opacity-70">
                         {getSlideDifference() > 0 ? `${getSlideDifference()} slides ahead of schedule` :
                          getSlideDifference() < 0 ? `${Math.abs(getSlideDifference())} slides behind schedule` :
                          'On schedule'}
