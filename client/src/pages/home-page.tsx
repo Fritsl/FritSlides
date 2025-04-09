@@ -55,6 +55,14 @@ export default function HomePage() {
     const projectIdParam = params.get('projectId');
     const noteIdParam = params.get('noteId');
     
+    // Debug logging
+    console.log("URL Parameters:", { 
+      projectIdParam, 
+      noteIdParam, 
+      fullUrl: window.location.href,
+      search: window.location.search
+    });
+    
     if (projectIdParam && projects && projects.length > 0) {
       // If there's a projectId in the URL, validate and use it
       const projectId = parseInt(projectIdParam, 10);

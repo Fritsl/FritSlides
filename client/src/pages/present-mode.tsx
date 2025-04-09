@@ -6,6 +6,8 @@ import { Note, Project } from "@shared/schema";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Users } from "lucide-react";
 import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, PresentationTheme, START_END_THEME } from "@/lib/presentation-themes";
+import '@fontsource/raleway';
+import '@fontsource/roboto';
 import { 
   formatContent, 
   getYoutubeEmbedUrl, 
@@ -293,13 +295,16 @@ export default function PresentMode() {
   };
   
   const exitPresentation = () => {
-    // Since we don't have a specific "/projects/" route, go to the home page
-    // with an optional query parameter to identify the note for potential focus
+    // If we're viewing a regular slide (not start/end/overview), navigate back to that specific note
     if (currentNote && currentNote.id > 0) {
-      // Navigate to home page with the noteId as a query parameter
-      setLocation(`/?projectId=${projectId}&noteId=${currentNote.id}`);
+      console.log(`Exiting presentation to noteId: ${currentNote.id}`);
+      
+      // Navigate directly to the home page with both query parameters
+      // Need to force a hard navigation since the wouter router doesn't properly handle query params
+      window.location.href = `/?projectId=${projectId}&noteId=${currentNote.id}`;
     } else {
       // If it's a special slide or we can't determine the note, just go to home
+      console.log("Exiting presentation to home (no specific note)");
       setLocation('/');
     }
   };

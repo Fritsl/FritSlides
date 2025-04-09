@@ -25,7 +25,61 @@ export default function NoteTree({
   const [expandedNodes, setExpandedNodes] = useState<Record<number, boolean>>({});
   const [draggingNoteId, setDraggingNoteId] = useState<number | null>(null);
   const [maxDepth, setMaxDepth] = useState(0);
-  const { createNote, updateNoteParent, updateNoteOrder } = useNotes(projectId);
+  const { createNote, updateNoteParent, updateNoteOrder, editingNoteId } = useNotes(projectId);
+  
+  // Track if we've already expanded to the editing note
+  const [focusedOnEditingNote, setFocusedOnEditingNote] = useState(false);
+  
+  // Handle focusing on a specific note from URL parameters
+  useEffect(() => {
+    // Only run if we have notes, an editing note ID, and haven't focused yet
+    if (notes?.length && editingNoteId && !focusedOnEditingNote) {
+      console.log(`Focusing on note ID ${editingNoteId} from URL parameter`);
+      
+      // Find the note and all its ancestors
+      const targetNote = notes.find(note => note.id === editingNoteId);
+      if (!targetNote) {
+        console.log(`Note ID ${editingNoteId} not found`);
+        return;
+      }
+      
+      // Build a path of parent IDs from the note up to the root
+      const ancestorIds: number[] = [];
+      let currentNote = targetNote;
+      
+      // Add all parent IDs to the path
+      while (currentNote.parentId !== null) {
+        const parent = notes.find(note => note.id === currentNote.parentId);
+        if (!parent) break;
+        
+        ancestorIds.push(parent.id);
+        currentNote = parent;
+      }
+      
+      console.log(`Found ${ancestorIds.length} ancestors for note ${editingNoteId}:`, ancestorIds);
+      
+      // Create a new expanded nodes object that expands all ancestors
+      const newExpandedNodes = { ...expandedNodes };
+      ancestorIds.forEach(id => {
+        newExpandedNodes[id] = true;
+      });
+      
+      // Update expanded nodes state
+      setExpandedNodes(newExpandedNodes);
+      setFocusedOnEditingNote(true);
+      
+      // Since we found and handled the targeted note, scroll to it if possible
+      setTimeout(() => {
+        const noteElement = document.getElementById(`note-${editingNoteId}`);
+        if (noteElement) {
+          noteElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          console.log(`Scrolled to note ${editingNoteId}`);
+        } else {
+          console.log(`Element for note ${editingNoteId} not found for scrolling`);
+        }
+      }, 100); // Short delay to allow rendering
+    }
+  }, [notes, editingNoteId, focusedOnEditingNote, expandedNodes]);
 
   // Calculate max depth of notes when notes change
   useEffect(() => {

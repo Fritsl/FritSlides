@@ -1,9 +1,12 @@
 // Advanced Typography System for Presentation Mode
 // Creates dynamic visual hierarchy with responsive sizing
 
+// Import Raleway font
+import '@fontsource/raleway';
+
 // Font family definitions
 export const FONTS = {
-  primary: "'Times New Roman', serif",
+  primary: "'Raleway', sans-serif",
   display: "'Roboto', sans-serif",
   monospace: "monospace"
 };
@@ -130,7 +133,10 @@ export function getTypographyStyles(
         return {
           ...headingBase,
           // If needed, only extremely long headings get adaptive sizing
-          size: needsAdaptiveSize ? 'clamp(2.5rem, 6vw, 3.2rem)' : '3.2rem'
+          size: needsAdaptiveSize ? 'clamp(2.5rem, 6vw, 3.2rem)' : '3.2rem',
+          // Add 2px underline with 30% opacity for level 1 elements
+          borderBottom: '2px solid rgba(255,255,255,0.3)',
+          paddingBottom: '0.4rem'
         };
         
       // Level 2: Regular centered heading
