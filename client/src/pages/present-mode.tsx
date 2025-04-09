@@ -932,30 +932,27 @@ export default function PresentMode() {
                       style={{ 
                         // Calculate width based on maximum potential offset
                         width: '140px', // 25 slides * 4px + center area
-                        backgroundColor: 'rgba(255,255,255,0.05)',
-                        borderRadius: '20px',
-                        padding: '4px'
                       }}
                     >
                       {/* White dot (current position) - always centered */}
                       <div 
-                        className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white/60 transition-all duration-300"
+                        className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white/80 transition-all duration-300"
                         style={{
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          boxShadow: '0 0 6px rgba(255,255,255,0.5)'
+                          boxShadow: '0 0 4px rgba(255,255,255,0.5)'
                         }}
                       />
                       
-                      {/* Gray dot (expected position based on time offset from center) */}
+                      {/* Black dot with transparency (expected position based on time offset from center) */}
                       {pacingInfo.shouldShow && (
                         <div 
-                          className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-all duration-300 z-10"
+                          className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300 z-10"
                           style={{
                             transform: `translateX(-50%)`,
-                            left: `calc(50% + ${(pacingInfo.expectedTimePosition - 0.5) * 1000}px)`, // Increase the pixel offset to make it more visible
-                            backgroundColor: 'rgba(150, 150, 150, 0.7)',
-                            boxShadow: '0 0 5px rgba(150,150,150,0.6)'
+                            left: `calc(50% + ${(pacingInfo.expectedTimePosition - 0.5) * 500}px)`, // Reduced amplitude by half (500px instead of 1000px)
+                            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                            boxShadow: '0 0 3px rgba(0, 0, 0, 0.4)'
                           }}
                         />
                       )}
@@ -981,7 +978,7 @@ export default function PresentMode() {
                       <div className="mt-1 text-[9px] sm:text-xs">
                         <span className="text-white/80">White dot:</span> Your current position<br/>
                         <span className="text-gray-400">
-                          Gray dot:
+                          Black dot:
                         </span> Where you should be based on time
                       </div>
                       
@@ -1046,7 +1043,7 @@ export default function PresentMode() {
                             {pacingInfo.previousTimedNote ? 
                               'Add time to upcoming slides to track pacing' : 
                               pacingInfo.nextTimedNote ?
-                              'Both white and gray dots will appear when you\'re between two timed slides' :
+                              'Both white and black dots will appear when you\'re between two timed slides' :
                               'Add time markers to track presentation pacing'}
                           </div>
                           
