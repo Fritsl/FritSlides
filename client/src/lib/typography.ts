@@ -192,8 +192,8 @@ export function getAdvancedTypographyStyles(
     textShadow: '-1px 1px 1px rgba(0,0,0,0.25)', // Subtle depth effect
   };
   
-  // No text length-based scaling to ensure consistency
-  // Special slides keep the same size regardless of content length
+  // CRITICAL FIX: No scaling based on text length or media presence
+  // This ensures 100% consistent font sizes regardless of slide content
   
   // Apply specialized styling based on content type
   switch(contentType) {

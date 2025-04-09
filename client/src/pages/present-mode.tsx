@@ -470,7 +470,7 @@ export default function PresentMode() {
                             style={generateTypographyStyles(getAdvancedTypographyStyles(
                               SlideContentType.StartEndSlide,
                               0,
-                              currentNote.content.length
+                              0 // Fixed size for all slides regardless of content length
                             ))}
                           >
                             {currentNote.content}
@@ -534,7 +534,7 @@ export default function PresentMode() {
                             style={generateTypographyStyles(getAdvancedTypographyStyles(
                               SlideContentType.StartEndSlide,
                               0,
-                              currentNote.content.length
+                              0 // Fixed size for all slides regardless of content length
                             ))}
                           >
                             {currentNote.content}
@@ -548,7 +548,7 @@ export default function PresentMode() {
                             style={generateTypographyStyles(getAdvancedTypographyStyles(
                               SlideContentType.Caption,
                               0,
-                              currentNote.author.length
+                              0 // Fixed size for caption text
                             ))}
                           >
                             {currentNote.author}
@@ -587,9 +587,8 @@ export default function PresentMode() {
                                   ...generateTypographyStyles(getTypographyStyles(
                                     determineContentType(currentNote.content),
                                     level,
-                                    currentNote.content.length
+                                    0 // Fixed size for all content regardless of length
                                   ))
-                                  // No longer scaling font size to ensure consistency between slides
                                 }}
                               >
                                 {formatContent(currentNote.content)}
@@ -606,7 +605,7 @@ export default function PresentMode() {
                                       ...generateTypographyStyles(getTypographyStyles(
                                         ContentType.Regular,
                                         level,
-                                        (currentNote.linkText || currentNote.url).length
+                                        0 // Fixed size for links too
                                       )),
                                       color: 'rgba(255, 255, 255, 0.9)',
                                       display: 'flex',
@@ -681,7 +680,7 @@ export default function PresentMode() {
                                 ...generateTypographyStyles(getTypographyStyles(
                                   determineContentType(currentNote.content),
                                   level,
-                                  currentNote.content.length
+                                  0 // Fixed size for all content regardless of length
                                 )),
                                 // No longer scaling font size to ensure consistency between slides
                                 margin: determineContentType(currentNote.content) === ContentType.List 
@@ -703,7 +702,7 @@ export default function PresentMode() {
                                     ...generateTypographyStyles(getTypographyStyles(
                                       ContentType.Regular,
                                       level,
-                                      (currentNote.linkText || currentNote.url).length
+                                      0 // Fixed size for links too
                                     )),
                                     color: 'rgba(255, 255, 255, 0.9)',
                                     display: 'flex',
