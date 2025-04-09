@@ -406,7 +406,13 @@ export default function HomePage() {
         onExportNotes={handleExportNotes}
         onImportNotes={handleImportNotes}
         onPresentMode={enterPresentationMode}
-        onToggleTimedNotes={() => setShowOnlyTimedNotes(!showOnlyTimedNotes)}
+        onToggleTimedNotes={() => {
+          setShowOnlyTimedNotes(!showOnlyTimedNotes);
+          // When showing only timed notes, expand all branches
+          if (!showOnlyTimedNotes) {
+            setExpandLevel(-1); // -1 expands all levels
+          }
+        }}
         showOnlyTimedNotes={showOnlyTimedNotes}
       />
       

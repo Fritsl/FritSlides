@@ -188,10 +188,27 @@ export default function NoteTree({
     if (onMaxDepthChange) onMaxDepthChange(Math.max(0, maxTreeDepth - 1));
   }, [notes, onMaxDepthChange]);
   
-  // Handle expand level changes
+  // Handle expand level changes or when showing only timed notes
   useEffect(() => {
-    // If expandLevel is -1, do nothing (maintains current expansion state)
-    if (expandLevel === -1) return;
+    // When showing only timed notes, expand all nodes for better visibility
+    if (showOnlyTimedNotes) {
+      const newExpandedState: Record<number, boolean> = {};
+      notes.forEach(note => {
+        newExpandedState[note.id] = true; // Expand all nodes
+      });
+      setExpandedNodes(newExpandedState);
+      return;
+    }
+    
+    // If expandLevel is -1, expand everything
+    if (expandLevel === -1) {
+      const newExpandedState: Record<number, boolean> = {};
+      notes.forEach(note => {
+        newExpandedState[note.id] = true; // Expand all nodes
+      });
+      setExpandedNodes(newExpandedState);
+      return;
+    }
     
     // Expand or collapse nodes based on their level
     const newExpandedState: Record<number, boolean> = {};
@@ -222,7 +239,7 @@ export default function NoteTree({
     
     // Update expanded nodes state
     setExpandedNodes(newExpandedState);
-  }, [expandLevel, notes]);
+  }, [expandLevel, notes, showOnlyTimedNotes]);
 
   // Build the hierarchical structure of notes
   const buildNoteTree = useCallback(() => {
