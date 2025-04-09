@@ -4,12 +4,12 @@
 
 // Font definitions
 export const FONTS = {
-  display: '"Bebas Neue", sans-serif',     // Display font for headlines and start/end slides
-  body: '"IBM Plex Sans", sans-serif',     // Primary font for all other text
-  monospace: '"IBM Plex Mono", monospace', // Font for code blocks
+  display: '"Roboto", sans-serif',     // Display font for headlines and start/end slides
+  body: '"Times New Roman", serif',    // Primary font for all other text
+  monospace: 'monospace',              // Font for code blocks
 };
 
-// Font weight definitions - matches IBM Plex Sans weights
+// Font weight definitions - matches Roboto weights
 export const WEIGHTS = {
   light: 300,    // Light weight
   regular: 400,  // Regular weight

@@ -3,9 +3,9 @@
 
 // Font family definitions
 export const FONTS = {
-  primary: "'IBM Plex Sans', sans-serif",
-  display: "'Bebas Neue', sans-serif",
-  monospace: "'IBM Plex Mono', monospace"
+  primary: "'Times New Roman', serif",
+  display: "'Roboto', sans-serif",
+  monospace: "monospace"
 };
 
 // Font weight definitions

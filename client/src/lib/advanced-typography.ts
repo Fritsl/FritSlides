@@ -3,11 +3,11 @@
 
 // Font definitions - matching exact specs from requirements
 export const FONTS = {
-  display: '"Bebas Neue", sans-serif',  // Display font for headlines and start/end slides
-  body: '"IBM Plex Sans", sans-serif',  // Primary font for all other text
+  display: '"Roboto", sans-serif',      // Display font for headlines and start/end slides
+  body: '"Times New Roman", serif',     // Primary font for all other text
 };
 
-// Font weight definitions - matches IBM Plex Sans weights
+// Font weight definitions - matches Roboto weights
 export const WEIGHTS = {
   light: 300,    // Light weight
   regular: 400,  // Regular weight
@@ -106,9 +106,9 @@ export function getAdvancedTypographyStyles(
   if (contentType === SlideContentType.StartEndSlide) {
     return {
       ...defaults,
-      fontFamily: FONTS.display, // Bebas Neue
+      fontFamily: FONTS.display, // Roboto
       fontSize: needsAdaptiveSize ? 'clamp(3.5rem, 8vw, 7rem)' : '7rem',
-      fontWeight: WEIGHTS.regular, // Bebas Neue is already bold by design
+      fontWeight: WEIGHTS.bold, // Using bold weight for emphasis
       letterSpacing: '-0.025em',
       lineHeight: '1.1',
       textTransform: 'uppercase',
@@ -123,7 +123,7 @@ export function getAdvancedTypographyStyles(
   if (contentType === SlideContentType.Overview && level <= 1) {
     return {
       ...defaults,
-      fontFamily: FONTS.body, // IBM Plex Sans
+      fontFamily: FONTS.body, // Times New Roman
       fontSize: '2rem',
       fontWeight: WEIGHTS.regular,
       lineHeight: '1.625',
