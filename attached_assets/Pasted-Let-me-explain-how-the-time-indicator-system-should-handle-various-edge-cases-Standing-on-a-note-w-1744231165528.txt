@@ -1,0 +1,53 @@
+Let me explain how the time indicator system should handle various edge cases:
+
+Standing on a note with time:
+    Show progress within the current time segment
+    Grey dot position should be calculated relative to next timed note
+    If no next timed note exists, the indicator should remain centered
+
+No notes with time:
+    Time indicator should remain hidden (opacity set to 0)
+    Both dots should be invisible since there's no timing context
+
+Last note with time:
+    System should detect it's the final time marker
+    Time indicator should remain visible but centered
+    No offset calculation should occur since there's no "next" target
+
+Note with no time, but time on previous notes:
+    System should look backward to find the last time marker
+    Calculate expected position based on that time marker and the next one found
+    Show progress between those two points
+
+Note with no time, but time on later notes:
+    System should look forward to find the next time marker
+    No progress should be shown until reaching a slide between two time markers
+    Indicator should remain hidden until entering a timed segment
+
+Start and End slides:
+    Special case: these slides should be excluded from time calculations
+    Time indicator should be hidden on these slides
+    System should resume calculations when entering the main presentation content
+
+The code handles this through the TimeIndicator component's effect hooks:
+
+First effect finds the relevant time markers:
+
+for (let i = currentIndex; i >= 0; i--) { // Look backward for previous time marker }
+
+Second effect calculates progress only when valid markers exist:
+
+if (hasTimeInfo && timeInfo) { calculateProgress(); }
+
+Visibility is controlled by the hasTimeInfo state:
+
+style={{
+  opacity: hasTimeInfo ? 1 : 0
+}}
+
+This should create a robust system that gracefully handles edge cases by:
+
+Only showing the indicator when meaningful timing data exists
+Maintaining visual consistency during transitions
+Preventing invalid calculations when time markers are missing
+Providing smooth fallbacks for incomplete timing information

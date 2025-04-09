@@ -355,9 +355,19 @@ export function calculatePacingInfo(
     expectedTimePosition: 0.5 // Default to center
   };
   
-  // Verify we have valid inputs
-  if (!notes?.length || !presentationOrder?.length || currentSlideIndex < 0 || 
+  // Safety check for invalid inputs to prevent crashes
+  if (!notes || !Array.isArray(notes) || notes.length === 0 || 
+      !presentationOrder || !Array.isArray(presentationOrder) || presentationOrder.length === 0 ||
+      typeof currentSlideIndex !== 'number' || currentSlideIndex < 0 || 
       currentSlideIndex >= presentationOrder.length) {
+    
+    console.warn('Pacing info calculation skipped due to invalid inputs:', {
+      notesLength: notes?.length || 0,
+      orderLength: presentationOrder?.length || 0,
+      currentSlideIndex,
+      validRange: currentSlideIndex >= 0 && currentSlideIndex < (presentationOrder?.length || 0)
+    });
+    
     return defaultResult;
   }
   
@@ -395,17 +405,46 @@ export function calculatePacingInfo(
   // 1. The current slide has a time marker
   // 2. OR there's a next slide with a time marker
   
-  // If current note has a time marker, but there's no next timed note,
-  // do not show the indicator dots (as per user request)
+  // If current note has a time marker but there's no next timed note,
+  // we should still show the indicator with the centered dots
   if (currentNote && currentNote.time && currentNote.time.trim() !== '' && !nextTimedNote) {
+    // Get the current time for comparison
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const mins = now.getMinutes().toString().padStart(2, '0');
+    const currentTimeString = `${hours}:${mins}`;
+    const currentTimeMinutes = timeToMinutes(currentTimeString);
+    const noteTimeMinutes = timeToMinutes(currentNote.time);
+    
+    // Determine if we're ahead/behind schedule to show a slight offset
+    let timeOffset = 0.5; // Default centered
+    let slideDiff = 0;
+    
+    // If it's before the scheduled time, we're ahead
+    if (currentTimeMinutes < noteTimeMinutes) {
+      const minutesAhead = noteTimeMinutes - currentTimeMinutes;
+      const slidesAhead = Math.min(5, Math.max(0, minutesAhead / 5));
+      slideDiff = slidesAhead;
+      // Move dot slightly left to show ahead (at most by 0.05)
+      timeOffset = 0.5 - (slidesAhead / 50);
+    } 
+    // If it's after the scheduled time, we're behind
+    else if (currentTimeMinutes > noteTimeMinutes) {
+      const minutesBehind = currentTimeMinutes - noteTimeMinutes;
+      const slidesBehind = Math.min(5, Math.max(0, minutesBehind / 5));
+      slideDiff = -slidesBehind;
+      // Move dot slightly right to show behind (at most by 0.05)
+      timeOffset = 0.5 + (slidesBehind / 50);
+    }
+    
     return {
       previousTimedNote: currentNote,
       nextTimedNote: null,
       percentComplete: 0,
       expectedSlideIndex: currentSlideIndex,
-      slideDifference: 0,
-      shouldShow: false, // Do NOT show the indicator for the last timed note
-      expectedTimePosition: 0.5
+      slideDifference: slideDiff,
+      shouldShow: true, // Show the indicator on the last timed note
+      expectedTimePosition: timeOffset
     };
   }
   
@@ -427,10 +466,20 @@ export function calculatePacingInfo(
     return defaultResult;
   }
   
-  // At this point, we know both effectivePreviousNote and nextTimedNote are not null
+  // Add another safety check just to be 100% sure we never have null references
+  if (!effectivePreviousNote || !nextTimedNote) {
+    console.warn('Safety check: effectivePreviousNote or nextTimedNote is null at time conversion');
+    return {
+      ...defaultResult,
+      previousTimedNote: effectivePreviousNote || null,
+      nextTimedNote: nextTimedNote || null,
+      shouldShow: !!(currentNote?.time)
+    };
+  }
+  
   // Convert time strings to minutes
-  const previousTimeMinutes = timeToMinutes(effectivePreviousNote!.time || '');
-  const nextTimeMinutes = timeToMinutes(nextTimedNote!.time || '');
+  const previousTimeMinutes = timeToMinutes(effectivePreviousNote.time || '');
+  const nextTimeMinutes = timeToMinutes(nextTimedNote.time || '');
   
   // Handle time crossing midnight (e.g., prev=23:00, next=01:00)
   let timeSegmentDuration = nextTimeMinutes - previousTimeMinutes;
@@ -438,13 +487,44 @@ export function calculatePacingInfo(
     timeSegmentDuration += 24 * 60; // Add a full day
   }
   
+  // Add safety check for effectivePreviousNote to prevent crashes
+  if (!effectivePreviousNote || typeof effectivePreviousNote.id !== 'number') {
+    console.warn('Safety check: effectivePreviousNote is null or id is not a number');
+    return {
+      ...defaultResult,
+      nextTimedNote: nextTimedNote,
+      shouldShow: currentNote?.time ? true : false
+    };
+  }
+  
   // Find the previous note index in the presentation order
-  const previousNoteIndex = effectivePreviousNote!.id === currentNoteId 
+  const previousNoteIndex = effectivePreviousNote.id === currentNoteId 
     ? currentSlideIndex 
-    : presentationOrder.indexOf(effectivePreviousNote!.id);
+    : presentationOrder.indexOf(effectivePreviousNote.id);
     
   // Calculate the number of slides between previous and next timed notes
-  const nextNoteIndex = presentationOrder.indexOf(nextTimedNoteId!);
+  // Add null check for nextTimedNoteId to prevent crashes
+  if (nextTimedNoteId === null || typeof nextTimedNoteId !== 'number') {
+    console.warn('Safety check: nextTimedNoteId is null or not a number');
+    return {
+      ...defaultResult,
+      previousTimedNote: effectivePreviousNote,
+      shouldShow: currentNote?.time ? true : false
+    };
+  }
+  
+  const nextNoteIndex = presentationOrder.indexOf(nextTimedNoteId);
+  
+  // Verify that the index is valid before continuing
+  if (nextNoteIndex === -1) {
+    console.warn('Safety check: nextTimedNoteId not found in presentation order');
+    return {
+      ...defaultResult,
+      previousTimedNote: effectivePreviousNote,
+      shouldShow: currentNote?.time ? true : false
+    };
+  }
+  
   const slidesBetweenTimedNotes = nextNoteIndex - previousNoteIndex;
   
   if (slidesBetweenTimedNotes <= 0) {
@@ -476,23 +556,7 @@ export function calculatePacingInfo(
   const currentTimeString = `${hours}:${mins}`;
   const currentTimeMinutes = timeToMinutes(currentTimeString);
   
-  // Handle the edge case where we're on the last slide with a time marker
-  // User requested to NOT show dots for the last timed note
-  if (!nextTimedNote && currentNote && currentNote.time) {
-    // Just logging for debugging
-    console.log('Last slide edge case check - not showing dots on last timed note');
-    
-    // Return fixed result showing no dots
-    return {
-      previousTimedNote: null,
-      nextTimedNote: null,
-      percentComplete: 1, // We're at the end
-      expectedSlideIndex: currentSlideIndex,
-      slideDifference: 0,
-      shouldShow: false, // Do NOT show the indicator for the last timed note
-      expectedTimePosition: 0.5
-    };
-  }
+  // This case is already handled earlier in the function
   
   // Handle the edge case where we're on the first slide with a time marker
   // If current time is after the note's time, we're behind schedule
