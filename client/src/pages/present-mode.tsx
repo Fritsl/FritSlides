@@ -927,55 +927,36 @@ export default function PresentMode() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div 
-                      className="relative h-6 sm:h-8 flex items-center justify-center"
+                      className="relative h-8 sm:h-10 flex items-center justify-center"
                       style={{ 
                         // Calculate width based on maximum potential offset
-                        width: '200px', // 25 slides * 4px + center area
+                        width: '140px', // 25 slides * 4px + center area
                         backgroundColor: 'rgba(255,255,255,0.05)',
-                        borderRadius: '12px'
+                        borderRadius: '20px',
+                        padding: '4px'
                       }}
                     >
-                      {/* Progress line between time markers - always show */}
-                      <div 
-                        className="absolute h-0.5 bg-gray-600/40"
-                        style={{
-                          width: '80%',
-                          left: '10%',
-                          top: '50%'
-                        }}
-                      />
-                      
-                      {/* Progress indicator on timeline - only show when we have both markers */}
-                      {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && (
-                        <div 
-                          className="absolute h-0.5 bg-blue-400/60"
-                          style={{
-                            width: `${pacingInfo.percentComplete * 80}%`,
-                            left: '10%',
-                            top: '50%',
-                            transition: 'width 0.5s ease-in-out'
-                          }}
-                        />
-                      )}
-                      
                       {/* Grey dot (expected position based on timing) - only show when we have complete timing */}
                       {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && (
                         <div 
-                          className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gray-400/70 transition-all duration-300"
+                          className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-all duration-300"
                           style={{
-                            transform: `translateX(${pacingInfo.slideDifference * 4}px)`,
-                            left: '50%'
+                            transform: `translateX(${pacingInfo.slideDifference * 3}px) translateX(-50%)`,
+                            left: '50%',
+                            backgroundColor: pacingInfo.slideDifference > 0 ? 'rgba(74, 222, 128, 0.7)' : 
+                                           pacingInfo.slideDifference < 0 ? 'rgba(251, 146, 60, 0.7)' : 
+                                           'rgba(96, 165, 250, 0.7)'
                           }}
                         />
                       )}
                       
                       {/* White dot (current position) - always centered */}
                       <div 
-                        className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white/70 transition-all duration-300 z-10"
+                        className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-white/80 transition-all duration-300 z-10"
                         style={{
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          boxShadow: '0 0 4px rgba(255,255,255,0.6)'
+                          boxShadow: '0 0 6px rgba(255,255,255,0.8)'
                         }}
                       />
                     </div>
@@ -992,8 +973,12 @@ export default function PresentMode() {
                         </div>
                       )}
                       
-                      <div className="mt-1 text-[9px] sm:text-xs text-blue-300">
-                        Time markers are fixed reference points - progress is based on slide position between markers, not real-time clock
+                      <div className="mt-1 text-[9px] sm:text-xs">
+                        <span className="text-white/80">White dot:</span> Your current position<br/>
+                        <span className={pacingInfo.slideDifference > 0 ? "text-green-400" : 
+                                         pacingInfo.slideDifference < 0 ? "text-orange-400" : "text-blue-400"}>
+                          Colored dot:
+                        </span> Expected position based on time markers
                       </div>
                       
                       {/* Time allocation info */}
@@ -1046,9 +1031,9 @@ export default function PresentMode() {
                         <div className="mt-1 pt-1 border-t border-gray-700">
                           <div className="text-[9px] sm:text-xs text-yellow-300">
                             {pacingInfo.previousTimedNote ? 
-                              'Add time to an upcoming slide to track pacing' : 
+                              'Add time to upcoming slides to track pacing' : 
                               pacingInfo.nextTimedNote ?
-                              'Current slide has no time marker' :
+                              'Both white and colored dots will appear when you\'re between two timed slides' :
                               'Add time markers to track presentation pacing'}
                           </div>
                           
