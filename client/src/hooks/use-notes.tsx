@@ -58,6 +58,14 @@ export function NoteEditingProvider({ children }: { children: React.ReactNode })
     // Get noteId from URL if available
     const params = new URLSearchParams(window.location.search);
     const noteIdParam = params.get('noteId');
+    const fromPresent = params.get('fromPresent');
+    
+    // If coming from presentation mode (fromPresent=true), don't start editing
+    if (fromPresent === 'true') {
+      return null;
+    }
+    
+    // Otherwise, parse the noteId parameter if available
     if (noteIdParam) {
       try {
         const noteId = parseInt(noteIdParam, 10);

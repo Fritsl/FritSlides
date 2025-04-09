@@ -302,7 +302,8 @@ export default function PresentMode() {
       
       // Navigate directly to the home page with both query parameters
       // Need to force a hard navigation since the wouter router doesn't properly handle query params
-      window.location.href = `/?projectId=${projectId}&noteId=${currentNote.id}`;
+      // Add fromPresent=true to indicate we're coming from presentation mode (should not start editing)
+      window.location.href = `/?projectId=${projectId}&noteId=${currentNote.id}&fromPresent=true`;
     } else {
       // If it's a special slide or we can't determine the note, just go to home
       console.log("Exiting presentation to home (no specific note)");
