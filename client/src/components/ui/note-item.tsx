@@ -657,7 +657,7 @@ export default function NoteItem({
                   <Input
                     name="time"
                     type="text"
-                    placeholder="HH:MM"
+                    placeholder="HH:MM (e.g. 14:30)"
                     value={formData.time}
                     onChange={handleInputChange}
                     className="w-24 select-text cursor-text text-xs h-8"

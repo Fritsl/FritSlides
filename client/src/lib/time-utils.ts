@@ -2,9 +2,21 @@ import { Note } from "@shared/schema";
 
 /**
  * Ensures time is in HH:MM format with colon
+ * This function FORCES a colon into the time string regardless of input format
  */
 export function formatTimeString(time: string): string {
   if (!time || time.trim() === '') return '';
+  
+  // First, check if there's already a colon
+  if (time.includes(':')) {
+    // Already has a colon, ensure proper formatting
+    const parts = time.split(':');
+    if (parts.length === 2) {
+      const hours = parts[0].padStart(2, '0');
+      const minutes = parts[1].padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+  }
   
   // Remove any non-digit characters
   const digitsOnly = time.replace(/[^\d]/g, '');
@@ -54,7 +66,7 @@ export function minutesToTime(minutes: number): string {
   const mins = Math.floor(totalSeconds / 60);
   const secs = totalSeconds % 60;
   
-  // Return as MM:SS format
+  // Return as MM:SS format - always include both minutes and seconds
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 

@@ -40,7 +40,7 @@ export function TimeDisplay({ note, notes, className = '', compact = false }: Ti
             {compact ? (
               // Compact view (just time and slide count)
               <span className="text-yellow-200 text-xs flex items-center">
-                {note.time} · {timeInfo.slideCount} slides · Sausage · Sausage
+                {timeInfo.startTime} · {timeInfo.slideCount} slides · Avg: {timeInfo.averageTimePerSlide}
               </span>
             ) : (
               // Full view
