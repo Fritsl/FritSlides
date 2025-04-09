@@ -348,9 +348,8 @@ export function calculatePacingInfo(
     return defaultResult;
   }
   
-  // Current time in minutes since midnight
-  const now = new Date();
-  const currentTimeMinutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+  // We no longer use the real-time clock for pacing
+  // Instead, we calculate progress based on current slide position between time markers
   
   // Find the previous and next timed slides
   const previousTimedNote = findPreviousTimedNote(notes, presentationOrder, currentSlideIndex);
@@ -439,14 +438,15 @@ export function calculatePacingInfo(
     return defaultResult; // Invalid slide sequence
   }
   
-  // Calculate how far we are between the time points (0-1)
-  let elapsedTime = currentTimeMinutes - previousTimeMinutes;
-  if (elapsedTime < 0) {
-    elapsedTime += 24 * 60; // Handle crossing midnight
-  }
+  // Instead of using real-time clock, calculate progress based on current slide position
+  // between the two time-marked slides
   
-  // Calculate percentage of time segment that has elapsed (0-1)
-  const percentComplete = Math.min(1, Math.max(0, elapsedTime / timeSegmentDuration));
+  // Calculate percentage of slides completed between the time markers (0-1)
+  // If we're at the previous timed note, we're at 0%
+  // If we're at the next timed note, we're at 100%
+  // If we're somewhere in between, calculate based on position
+  const slidesProgress = currentSlideIndex - previousNoteIndex;
+  const percentComplete = Math.min(1, Math.max(0, slidesProgress / slidesBetweenTimedNotes));
   
   // Calculate which slide we should be on based on timing
   const slideProgress = slidesBetweenTimedNotes * percentComplete;

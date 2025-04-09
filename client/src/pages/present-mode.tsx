@@ -983,14 +983,18 @@ export default function PresentMode() {
                   <TooltipContent side="top" className="bg-black/90 text-white text-[10px] sm:text-xs p-2 sm:p-3">
                     <div className="text-center">
                       <div>
-                        <span className="opacity-80">Now:</span> {currentNote?.time ? `${currentNote.time}` : 'No time marker'} 
+                        <span className="opacity-80">Current:</span> {currentNote?.time ? `${currentNote.time}` : 'No time marker'} 
                       </div>
                       {getNextTimedSlide() && (
                         <div>
-                          <span className="opacity-80">Next:</span> {getNextTimedSlide()?.content.slice(0, 20)}
+                          <span className="opacity-80">Next time point:</span> {getNextTimedSlide()?.content.slice(0, 20)}
                           {getNextTimedSlide()?.content.length! > 20 ? '...' : ''} @ {getNextTimedSlide()?.time}
                         </div>
                       )}
+                      
+                      <div className="mt-1 text-[9px] sm:text-xs text-blue-300">
+                        Time markers are fixed reference points - progress is based on slide position between markers, not real-time clock
+                      </div>
                       
                       {/* Time allocation info */}
                       {currentNote?.time && getNextTimedSlide()?.time && (
@@ -1027,7 +1031,7 @@ export default function PresentMode() {
                               'On schedule'}
                             </span>
                             <span className="opacity-70">
-                              {Math.round(pacingInfo.percentComplete * 100)}% through segment
+                              {Math.round(pacingInfo.percentComplete * 100)}% between time points
                             </span>
                           </div>
                           
