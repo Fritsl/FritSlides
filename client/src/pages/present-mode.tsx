@@ -56,9 +56,9 @@ function determineContentType(content: string): ContentType {
   // Check for block quotes
   if (content.match(/^>\s/m)) return ContentType.Quote;
   
-  // Check for headings based on length and characteristics
+  // Check for headings based on length only
   if (content.length < 30) {
-    return content === content.toUpperCase() ? ContentType.Title : ContentType.Heading;
+    return ContentType.Heading;
   }
   
   // Check for subheadings

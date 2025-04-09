@@ -465,7 +465,7 @@ export function determineSlideContentType(
   
   // Check for what appears to be a headline
   if (content.length < 60) {
-    if (content === content.toUpperCase() || content.match(/^#\s/)) {
+    if (content.match(/^#\s/)) {
       return SlideContentType.Headline;
     } else if (content.length < 100) {
       return SlideContentType.Subheading;
