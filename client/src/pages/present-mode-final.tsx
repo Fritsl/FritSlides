@@ -284,12 +284,8 @@ export default function PresentModeFixed() {
   };
   
   const exitPresentation = () => {
-    // Navigate back to the project page
-    if (projectId) {
-      setLocation(`/project/${projectId}`);
-    } else {
-      setLocation('/');
-    }
+    // Navigate back to home page, which shows all projects including the current one
+    setLocation('/');
   };
   
   // Function to find the index of the next/previous root note or start/end slide

@@ -51,7 +51,7 @@ export interface TypographyStyles {
 
 /**
  * Get typography styles based on content type, hierarchical level, and content length
- * Implements the comprehensive typography system with responsive scaling according to detailed specs
+ * Uses fixed sizes by default and only adapts when necessary
  */
 export function getAdvancedTypographyStyles(
   contentType: SlideContentType,
@@ -73,26 +73,30 @@ export function getAdvancedTypographyStyles(
     overflowWrap: 'break-word',
     whiteSpace: 'pre-line', // Preserves line breaks from source content
     textShadow: '-1.5px 1.5px 1.5px rgba(0,0,0,0.4)', // Universal depth effect
-    transition: 'all 500ms ease-in-out' // Smooth transitions for all text changes
+    transition: 'all 250ms ease-in-out' // Smooth transitions but shorter for better UX
   };
 
+  // Check if content is extremely long - only these would need adaptive sizing
+  const needsAdaptiveSize = textLength > 200;
   // Determine if content is "long" based on character count (>50 chars)
   const isLongContent = textLength > 50;
+  // Check if content is very short
+  const isVeryShortContent = textLength <= 15;
 
   // Start/End Slides - Use Bebas Neue at massive scales with uppercase treatment
   if (contentType === SlideContentType.StartEndSlide) {
     return {
       ...defaults,
       fontFamily: FONTS.display, // Bebas Neue
-      // Size scaling: 5xl (mobile) → 7xl (tablet) → 9xl (desktop)
-      fontSize: 'clamp(3rem, 8vw, 8rem)', 
+      // Use fixed size by default, but use adaptive sizing for very long content
+      fontSize: needsAdaptiveSize ? 'clamp(3rem, 8vw, 8rem)' : '8rem',
       fontWeight: WEIGHTS.regular, // Bebas Neue is already bold by design
-      letterSpacing: 'tracking-tight', // -0.025em
+      letterSpacing: '-0.025em', // tracking-tight
       lineHeight: '1', // Default line height
       textTransform: 'uppercase',
       textAlign: 'center',
-      maxWidth: 'max-w-5xl',
-      margin: 'mx-auto',
+      maxWidth: '80%',
+      margin: '0 auto',
     };
   }
 
@@ -101,14 +105,14 @@ export function getAdvancedTypographyStyles(
     return {
       ...defaults,
       fontFamily: FONTS.body, // IBM Plex Sans
-      fontSize: 'clamp(1.25rem, 3vw, 1.5rem)', // text-xl -> text-2xl
+      fontSize: '1.5rem', // fixed size
       fontWeight: WEIGHTS.regular,
       lineHeight: '1.625', // leading-relaxed
       textAlign: 'left'
     };
   }
 
-  // Apply styles based on hierarchical level
+  // Apply styles based on hierarchical level for headlines
   switch (level) {
     // Root / Level 1 Slides
     case 0:
@@ -117,16 +121,15 @@ export function getAdvancedTypographyStyles(
         return {
           ...defaults,
           fontFamily: FONTS.display, // Bebas Neue
-          // Long content: 5xl (mobile) → 8xl (desktop)
-          // Short content: 6xl (mobile) → 9xl (desktop)
-          fontSize: isLongContent 
-            ? 'clamp(3rem, 7vw, 6rem)' 
-            : 'clamp(3.75rem, 9vw, 8rem)',
+          // Use fixed size by default, adapt only if needed
+          fontSize: needsAdaptiveSize 
+            ? (isLongContent ? 'clamp(3rem, 7vw, 6rem)' : 'clamp(3.75rem, 9vw, 8rem)')
+            : (isLongContent ? '6rem' : '8rem'),
           fontWeight: WEIGHTS.bold,
           letterSpacing: '-0.025em', // tracking-tight
           lineHeight: '1.1',
           textAlign: 'center',
-          margin: 'mb-6',
+          margin: '0 0 1.5rem 0',
         };
       }
       break;
@@ -137,11 +140,10 @@ export function getAdvancedTypographyStyles(
         return {
           ...defaults,
           fontFamily: FONTS.display, // Bebas Neue
-          // Long content: 4xl (mobile) → 7xl (desktop)
-          // Short content: 5xl (mobile) → 8xl (desktop)
-          fontSize: isLongContent 
-            ? 'clamp(2.25rem, 6vw, 4.5rem)' 
-            : 'clamp(3rem, 7vw, 6rem)',
+          // Fixed sizes, adapt only if needed
+          fontSize: needsAdaptiveSize
+            ? (isLongContent ? 'clamp(2.25rem, 6vw, 4.5rem)' : 'clamp(3rem, 7vw, 6rem)')
+            : (isLongContent ? '4.5rem' : '6rem'),
           fontWeight: WEIGHTS.semibold,
           letterSpacing: '0', // tracking-normal
           lineHeight: '1.15',
@@ -156,11 +158,10 @@ export function getAdvancedTypographyStyles(
         return {
           ...defaults,
           fontFamily: FONTS.display, // Bebas Neue
-          // Long content: 3xl (mobile) → 6xl (desktop)
-          // Short content: 4xl (mobile) → 7xl (desktop)
-          fontSize: isLongContent 
-            ? 'clamp(1.875rem, 5vw, 3.75rem)' 
-            : 'clamp(2.25rem, 6vw, 4.5rem)',
+          // Fixed sizes, adapt only if needed
+          fontSize: needsAdaptiveSize
+            ? (isLongContent ? 'clamp(1.875rem, 5vw, 3.75rem)' : 'clamp(2.25rem, 6vw, 4.5rem)')
+            : (isLongContent ? '3.75rem' : '4.5rem'),
           fontWeight: WEIGHTS.medium,
           letterSpacing: '0.025em', // tracking-wide
           lineHeight: '1.2',
@@ -175,8 +176,8 @@ export function getAdvancedTypographyStyles(
         return {
           ...defaults,
           fontFamily: FONTS.display, // Bebas Neue
-          // Fixed scale: 2xl (mobile) → 5xl (desktop)
-          fontSize: 'clamp(1.5rem, 4vw, 3rem)',
+          // Fixed size, adapt only if needed
+          fontSize: needsAdaptiveSize ? 'clamp(1.5rem, 4vw, 3rem)' : '3rem',
           fontWeight: WEIGHTS.regular,
           letterSpacing: '0.025em', // tracking-wide
           lineHeight: '1.3',
@@ -191,8 +192,8 @@ export function getAdvancedTypographyStyles(
         return {
           ...defaults,
           fontFamily: FONTS.display, // Bebas Neue
-          // Fixed scale: xl (mobile) → 4xl (desktop)
-          fontSize: 'clamp(1.25rem, 3vw, 2.25rem)',
+          // Fixed size, adapt only if needed
+          fontSize: needsAdaptiveSize ? 'clamp(1.25rem, 3vw, 2.25rem)' : '2.25rem',
           fontWeight: WEIGHTS.regular,
           letterSpacing: 'normal',
           lineHeight: '1.4',
@@ -208,7 +209,7 @@ export function getAdvancedTypographyStyles(
       return {
         ...defaults,
         fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: 'clamp(1.5rem, 4vw, 2.5rem)',
+        fontSize: needsAdaptiveSize ? 'clamp(1.5rem, 4vw, 2.5rem)' : '2.5rem',
         fontWeight: WEIGHTS.semibold,
         lineHeight: '1.3',
       };
@@ -216,10 +217,15 @@ export function getAdvancedTypographyStyles(
     case SlideContentType.Body:
       // Scale down text if has media to share the slide
       const sizeAdjustment = hasMedia ? 0.85 : 1;
+      // For body text, we use a more aggressive threshold for adaptive sizing
+      const bodyNeedsAdaptive = textLength > 150;
+      
       return {
         ...defaults,
         fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: `calc(clamp(1.25rem, 3vw, 2.25rem) * ${sizeAdjustment})`,
+        fontSize: bodyNeedsAdaptive 
+          ? `calc(clamp(1.25rem, 3vw, 2.25rem) * ${sizeAdjustment})`
+          : `${2.25 * sizeAdjustment}rem`,
         fontWeight: WEIGHTS.regular,
         lineHeight: '1.5',
       };
@@ -228,7 +234,7 @@ export function getAdvancedTypographyStyles(
       return {
         ...defaults,
         fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: 'clamp(1.25rem, 3vw, 2rem)',
+        fontSize: needsAdaptiveSize ? 'clamp(1.25rem, 3vw, 2rem)' : '2rem',
         fontWeight: WEIGHTS.regular,
         lineHeight: '1.6',
         textAlign: 'left',
@@ -239,17 +245,20 @@ export function getAdvancedTypographyStyles(
       return {
         ...defaults,
         fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)', // text-2xl -> text-4xl
+        fontSize: needsAdaptiveSize ? 'clamp(1.5rem, 3.5vw, 2.25rem)' : '2.25rem',
         fontWeight: WEIGHTS.regular,
         lineHeight: '1.4',
         textAlign: 'left',
       };
 
     case SlideContentType.Code:
+      // Code blocks often need special handling
+      const codeNeedsAdaptive = textLength > 100; // Code has different threshold
+      
       return {
         ...defaults,
         fontFamily: 'monospace',
-        fontSize: 'clamp(1rem, 2.5vw, 1.75rem)',
+        fontSize: codeNeedsAdaptive ? 'clamp(1rem, 2.5vw, 1.75rem)' : '1.75rem',
         fontWeight: WEIGHTS.regular,
         lineHeight: '1.6',
         textAlign: 'left',
@@ -261,7 +270,7 @@ export function getAdvancedTypographyStyles(
       return {
         ...defaults,
         fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: 'clamp(1.25rem, 3vw, 2.25rem)',
+        fontSize: needsAdaptiveSize ? 'clamp(1.25rem, 3vw, 2.25rem)' : '2.25rem',
         fontWeight: WEIGHTS.light,
         fontStyle: 'italic',
         lineHeight: '1.6',
@@ -272,7 +281,7 @@ export function getAdvancedTypographyStyles(
       return {
         ...defaults,
         fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: 'clamp(0.875rem, 2vw, 1.5rem)',
+        fontSize: '1.5rem', // Captions should stay consistently sized
         fontWeight: WEIGHTS.light,
         lineHeight: '1.4',
         letterSpacing: '0.03em',
