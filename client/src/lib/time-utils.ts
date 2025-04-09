@@ -10,6 +10,7 @@ export interface PacingInfo {
   expectedSlideIndex: number;  // Estimated slide we should be on
   slideDifference: number;  // How many slides ahead/behind we are
   shouldShow: boolean;  // Whether we have enough info to show the indicator
+  expectedTimePosition: number; // Expected time progress between 0-1 used for gray dot
 }
 
 /**
@@ -339,7 +340,8 @@ export function calculatePacingInfo(
     percentComplete: 0,
     expectedSlideIndex: currentSlideIndex,
     slideDifference: 0,
-    shouldShow: false
+    shouldShow: false,
+    expectedTimePosition: 0.5 // Default to center
   };
   
   // Verify we have valid inputs
@@ -392,7 +394,8 @@ export function calculatePacingInfo(
         percentComplete: 0,
         expectedSlideIndex: currentSlideIndex,
         slideDifference: 0,
-        shouldShow: true // Show the indicator even without a next time marker
+        shouldShow: true, // Show the indicator even without a next time marker
+        expectedTimePosition: 0.5 // Default to center
       };
     }
   }
@@ -405,7 +408,8 @@ export function calculatePacingInfo(
       percentComplete: 0,
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: true // Show the indicator even without a previous time marker
+      shouldShow: true, // Show the indicator even without a previous time marker
+      expectedTimePosition: 0.5 // Default to center
     };
   }
   
@@ -455,6 +459,37 @@ export function calculatePacingInfo(
   // How many slides ahead/behind we are
   const slideDifference = currentSlideIndex - expectedSlideIndex;
   
+  // Calculate expected time position for visualization
+  // Get the current time from the system, or use a debug value
+  const now = new Date();
+  const hours = now.getHours().toString().padStart(2, '0');
+  const mins = now.getMinutes().toString().padStart(2, '0');
+  const currentTimeString = `${hours}:${mins}`;
+  const currentTimeMinutes = timeToMinutes(currentTimeString);
+  
+  // Calculate time progress (0-1) between previousTimeMinutes and nextTimeMinutes
+  let expectedTimePosition = 0.5; // Default to middle
+  
+  // Safety check - only calculate if we have valid time markers AND nextTimedNote exists
+  if (previousTimeMinutes > 0 && nextTimeMinutes > 0 && timeSegmentDuration > 0) {
+    try {
+      // Calculate what percentage through the time segment we are
+      let timeProgress = (currentTimeMinutes - previousTimeMinutes) / timeSegmentDuration;
+      
+      // Handle overnight transitions
+      if (timeProgress < 0) {
+        timeProgress += 1; // Add a full day cycle
+      }
+      
+      // Clamp to 0-1 range
+      expectedTimePosition = Math.max(0, Math.min(1, timeProgress));
+    } catch (err) {
+      // If any calculation error occurs, use default position
+      console.error('Error calculating time position:', err);
+      expectedTimePosition = 0.5;
+    }
+  }
+  
   // Prepare the result
   return {
     previousTimedNote: effectivePreviousNote,
@@ -462,6 +497,7 @@ export function calculatePacingInfo(
     percentComplete,
     expectedSlideIndex,
     slideDifference: Math.min(Math.max(slideDifference, -25), 25), // Limit to ±25 slides
-    shouldShow: true
+    shouldShow: true,
+    expectedTimePosition
   };
 }

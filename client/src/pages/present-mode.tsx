@@ -417,7 +417,8 @@ export default function PresentMode() {
     percentComplete: 0,
     expectedSlideIndex: 0,
     slideDifference: 0,
-    shouldShow: false
+    shouldShow: false,
+    expectedTimePosition: 0.5 // Default to center
   });
   
   // Initialize from the project's last viewed slide index or specified start note
@@ -937,15 +938,15 @@ export default function PresentMode() {
                       }}
                     >
                       {/* Grey dot (expected position based on timing) - only show when we have complete timing */}
-                      {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && (
+                      {/* Gray dot (expected position based on time) - Only show when we have both markers */}
+                      {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote && pacingInfo.shouldShow && (
                         <div 
                           className="absolute w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-all duration-300"
                           style={{
-                            transform: `translateX(${pacingInfo.slideDifference * 3}px) translateX(-50%)`,
-                            left: '50%',
-                            backgroundColor: pacingInfo.slideDifference > 0 ? 'rgba(74, 222, 128, 0.7)' : 
-                                           pacingInfo.slideDifference < 0 ? 'rgba(251, 146, 60, 0.7)' : 
-                                           'rgba(96, 165, 250, 0.7)'
+                            transform: `translateX(-50%)`,
+                            left: `${pacingInfo.expectedTimePosition * 100}%`, // Position based on time
+                            backgroundColor: 'rgba(150, 150, 150, 0.7)',
+                            boxShadow: '0 0 4px rgba(150,150,150,0.5)'
                           }}
                         />
                       )}
@@ -966,12 +967,17 @@ export default function PresentMode() {
                       <div>
                         <span className="opacity-80">Current:</span> {currentNote?.time ? `${currentNote.time}` : 'No time marker'} 
                       </div>
-                      {getNextTimedSlide() && (
-                        <div>
-                          <span className="opacity-80">Next time point:</span> {getNextTimedSlide()?.content.slice(0, 20)}
-                          {getNextTimedSlide()?.content.length! > 20 ? '...' : ''} @ {getNextTimedSlide()?.time}
-                        </div>
-                      )}
+                      {(() => {
+                        // Store the value to avoid multiple calls
+                        const nextSlide = getNextTimedSlide();
+                        return nextSlide ? (
+                          <div>
+                            <span className="opacity-80">Next time point:</span> {nextSlide.content?.slice(0, 20) || ''}
+                            {nextSlide.content && nextSlide.content.length > 20 ? '...' : ''} 
+                            {nextSlide.time ? `@ ${nextSlide.time}` : ''}
+                          </div>
+                        ) : null;
+                      })()}
                       
                       <div className="mt-1 text-[9px] sm:text-xs">
                         <span className="text-white/80">White dot:</span> Your current position<br/>
@@ -982,28 +988,37 @@ export default function PresentMode() {
                       </div>
                       
                       {/* Time allocation info */}
-                      {currentNote?.time && getNextTimedSlide()?.time && (
-                        <div className="mt-1 border-t border-gray-700 pt-1 text-[9px] sm:text-xs">
-                          {(() => {
-                            const timeInfo = calculateTimeInfo(
-                              flattenedNotes, 
-                              currentNote.id,
-                              flattenedNotes.map(note => note.id)
-                            );
-                            
-                            return timeInfo ? (
-                              <div className="grid grid-cols-2 gap-x-2 text-left">
-                                <span className="opacity-70">Slides:</span>
-                                <span>{timeInfo.slideCount}</span>
-                                <span className="opacity-70">Total time:</span>
-                                <span>{timeInfo.totalMinutes} min</span>
-                                <span className="opacity-70">Per slide:</span>
-                                <span>({timeInfo.formattedPerSlide} MM:SS per slide, {timeInfo.averageTimePerSlide})</span>
-                              </div>
-                            ) : null;
-                          })()}
-                        </div>
-                      )}
+                      {(() => {
+                        // Store the value to avoid multiple calls
+                        const nextSlide = getNextTimedSlide();
+                        return currentNote?.time && nextSlide?.time ? (
+                          <div className="mt-1 border-t border-gray-700 pt-1 text-[9px] sm:text-xs">
+                            {(() => {
+                              try {
+                                const timeInfo = calculateTimeInfo(
+                                  flattenedNotes, 
+                                  currentNote.id,
+                                  flattenedNotes.map(note => note.id)
+                                );
+                                
+                                return timeInfo ? (
+                                  <div className="grid grid-cols-2 gap-x-2 text-left">
+                                    <span className="opacity-70">Slides:</span>
+                                    <span>{timeInfo.slideCount}</span>
+                                    <span className="opacity-70">Total time:</span>
+                                    <span>{timeInfo.totalMinutes} min</span>
+                                    <span className="opacity-70">Per slide:</span>
+                                    <span>({timeInfo.formattedPerSlide} MM:SS per slide, {timeInfo.averageTimePerSlide})</span>
+                                  </div>
+                                ) : null;
+                              } catch (err) {
+                                console.error('Error calculating time info:', err);
+                                return null;
+                              }
+                            })()}
+                          </div>
+                        ) : null;
+                      })()}
                       
                       {/* Pacing information - only show if both timing markers are available */}
                       {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote ? (
