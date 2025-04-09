@@ -36,14 +36,36 @@ export interface FontSettings {
   size: string;
   letterSpacing?: string;
   lineHeight?: string;
-  textTransform?: 'uppercase' | 'lowercase' | 'capitalize' | 'none';
+  textTransform?: 'uppercase' | 'lowercase' | 'capitalize' | 'none' | string;
   textAlign?: 'left' | 'center' | 'right' | 'justify';
   maxWidth?: string;
+  
+  // Additional visual hierarchy properties
+  fontStyle?: 'normal' | 'italic' | 'oblique';
+  padding?: string;
+  paddingLeft?: string;
+  paddingRight?: string;
+  paddingTop?: string;
+  paddingBottom?: string;
+  border?: string;
+  borderLeft?: string;
+  borderRight?: string;
+  borderTop?: string;
+  borderBottom?: string;
+  borderRadius?: string;
+  background?: string;
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundSize?: string;
+  backgroundPosition?: string;
+  backgroundRepeat?: string;
+  opacity?: number;
+  boxShadow?: string;
 }
 
 /**
- * Get font settings based on content type, depth level, and content length
- * Automatically scales text based on content length and hierarchy
+ * Get font settings based on content type and depth level
+ * Uses consistent font sizing with visual design elements to differentiate hierarchy
  */
 export function getTypographyStyles(
   contentType: ContentType,
@@ -51,139 +73,217 @@ export function getTypographyStyles(
   contentLength: number = 0,
   hasMedia: boolean = false
 ): FontSettings {
-  // Content length classifications for better scaling
-  const isVeryShort = contentLength <= 15;  // Single word or short phrase
-  const isShort = contentLength <= 50;      // Short sentence
-  const isMedium = contentLength <= 120;    // Average paragraph
-  const isLong = contentLength > 120;       // Long form text
+  // Only categorize content length for extremes
+  const isVeryShort = contentLength <= 15;   // Single word or short phrase
+  const isLong = contentLength > 100;        // Long form text
+  const needsAdaptiveSize = contentLength > 300; // Only extreme length needs adaptive sizing
   
-  // Base settings shared across all types
+  // Base settings with consistent sizing across types
   const defaults: FontSettings = {
     family: FONTS.primary,
     weight: WEIGHTS.regular,
-    size: '1.5rem',
+    size: '2.2rem', // Larger consistent base size
     lineHeight: '1.5',
     letterSpacing: 'normal',
     textTransform: 'none',
-    textAlign: 'center',
-    maxWidth: '80%'
+    textAlign: 'left',
+    maxWidth: '90%'
   };
   
-  // Adjust font size based on hierarchy level (0 = largest, 5+ = smallest)
-  const levelScaleFactor = Math.max(0.5, 1 - (level * 0.1));
+  // Media presence only makes a slight adjustment
+  const mediaFactor = hasMedia ? 0.9 : 1;
   
-  // Adjust size further based on presence of media (images/videos)
-  const mediaScaleFactor = hasMedia ? 0.85 : 1;
-  
-  // Title slides (start, end, special)
+  // Title slides (start, end, special) - these are special cases that should stand out
   if (contentType === ContentType.Title) {
     return {
       family: FONTS.display,
       weight: WEIGHTS.bold,
-      size: calculateTitleSize(contentLength, level),
+      // Allow slightly larger size for titles only
+      size: needsAdaptiveSize ? 'clamp(3.5rem, 8vw, 6.5rem)' : '6.5rem',
       lineHeight: '1.1',
       letterSpacing: '0.02em',
-      textTransform: 'capitalize',
-      textAlign: 'center',
+      textTransform: 'capitalize' as 'capitalize', // Type assertion
+      textAlign: 'center' as 'center', // Type assertion
       maxWidth: '90%'
     };
   }
   
-  // Headings (main section headers)
+  // Headings with consistent sizing but different visual styles by level
   if (contentType === ContentType.Heading) {
-    return {
-      family: isVeryShort ? FONTS.display : FONTS.primary,
+    // Base heading styles
+    const headingBase: FontSettings = {
+      family: level <= 1 ? FONTS.display : FONTS.primary,
       weight: WEIGHTS.bold,
-      size: calculateHeadingSize(contentLength, level),
+      size: '3.2rem',
       lineHeight: '1.2',
-      letterSpacing: '0.01em',
-      textTransform: isVeryShort ? 'capitalize' : 'none',
-      textAlign: 'center',
-      maxWidth: '85%'
+      letterSpacing: level <= 1 ? '0.02em' : '0.01em',
+      textTransform: level <= 1 ? 'capitalize' as 'capitalize' : 'none',
+      textAlign: level <= 2 ? 'center' as 'center' : 'left' as 'left',
+      maxWidth: '90%'
     };
+    
+    // Apply level-specific modifications while keeping font size consistent
+    switch (level) {
+      // Level 0-1: Most prominent, centered, display font
+      case 0:
+      case 1:
+        return {
+          ...headingBase,
+          // If needed, only extremely long headings get adaptive sizing
+          size: needsAdaptiveSize ? 'clamp(2.5rem, 6vw, 3.2rem)' : '3.2rem'
+        };
+        
+      // Level 2: Regular centered heading
+      case 2:
+        return {
+          ...headingBase,
+          weight: WEIGHTS.semibold
+        };
+        
+      // Level 3: Left-aligned with decorative left border
+      case 3:
+        return {
+          ...headingBase,
+          textAlign: 'left',
+          family: FONTS.primary,
+          // Add decorative left border instead of size reduction
+          borderLeft: '4px solid rgba(255,255,255,0.5)',
+          paddingLeft: '1rem'
+        };
+        
+      // Level 4: Left-aligned with underline
+      case 4:
+        return {
+          ...headingBase,
+          textAlign: 'left',
+          weight: WEIGHTS.medium,
+          // Add decorative underline to distinguish level
+          borderBottom: '2px solid rgba(255,255,255,0.3)',
+          paddingBottom: '0.4rem'
+        };
+        
+      // Level 5+: Left-aligned with background for distinction
+      default:
+        return {
+          ...headingBase,
+          textAlign: 'left',
+          weight: WEIGHTS.regular,
+          fontStyle: 'italic',
+          // Add background to distinguish deepest levels
+          background: 'rgba(255,255,255,0.08)',
+          padding: '0.5rem 1rem',
+          borderRadius: '4px'
+        };
+    }
   }
   
-  // Subheadings
+  // Subheadings with consistent sizing
   if (contentType === ContentType.Subheading) {
     return {
       family: FONTS.primary,
       weight: WEIGHTS.semibold,
-      size: calculateSubheadingSize(contentLength, level),
+      size: '2.4rem', // Consistent size
       lineHeight: '1.3',
       letterSpacing: '0.01em',
       textTransform: 'none',
-      textAlign: 'center',
-      maxWidth: '80%'
+      textAlign: level <= 2 ? 'center' : 'left',
+      maxWidth: '85%',
+      // Add subtle indentation based on level
+      paddingLeft: level > 2 ? `${level * 0.4}rem` : '0',
+      // Add decorative elements based on level
+      borderBottom: level > 2 ? '1px dotted rgba(255,255,255,0.2)' : 'none'
     };
   }
   
-  // Regular content
+  // Regular content with consistent sizing
   if (contentType === ContentType.Body) {
     return {
       family: FONTS.primary,
-      weight: WEIGHTS.regular,
-      size: calculateBodySize(contentLength, level, hasMedia),
+      // Alternate font weights by level for visual distinction
+      weight: level % 2 === 0 ? WEIGHTS.regular : WEIGHTS.light,
+      size: `${2.2 * mediaFactor}rem`, // Consistent size with slight media adjustment
       lineHeight: '1.5',
       letterSpacing: 'normal',
       textTransform: 'none',
       textAlign: isLong ? 'left' : 'center',
-      maxWidth: isLong ? '75%' : '80%'
+      maxWidth: isLong ? '80%' : '85%',
+      // Add visual distinction for deeper levels
+      fontStyle: level > 3 ? 'italic' : 'normal',
+      // Add indentation and decorative elements for deeper levels
+      paddingLeft: level > 2 ? `${level * 0.5}rem` : '0',
+      borderLeft: level > 3 ? `${Math.min(level-3, 2)}px solid rgba(255,255,255,0.15)` : 'none',
     };
   }
   
-  // List items
+  // List items with consistent sizing
   if (contentType === ContentType.List) {
     return {
       family: FONTS.primary,
       weight: WEIGHTS.regular,
-      size: calculateListSize(contentLength, level),
+      size: '2.2rem', // Consistent size
       lineHeight: '1.4',
       letterSpacing: 'normal',
       textTransform: 'none',
       textAlign: 'left',
-      maxWidth: '80%'
+      maxWidth: '85%',
+      // Add indentation based on level for visual distinction
+      paddingLeft: level > 1 ? `${level * 0.4}rem` : '0'
     };
   }
   
-  // Code blocks
+  // Code blocks with special styling
   if (contentType === ContentType.Code) {
     return {
       family: FONTS.monospace,
       weight: WEIGHTS.regular,
-      size: calculateCodeSize(contentLength),
-      lineHeight: '1.4',
+      // Slightly smaller but still consistent for code readability
+      size: '1.8rem',
+      lineHeight: '1.5',
       letterSpacing: '-0.01em',
       textTransform: 'none',
       textAlign: 'left',
-      maxWidth: '100%'
+      maxWidth: '100%',
+      // Add distinctive styling for code blocks
+      background: 'rgba(0,0,0,0.2)',
+      padding: '0.8rem',
+      borderRadius: '4px',
+      border: '1px solid rgba(255,255,255,0.1)'
     };
   }
   
-  // Quotes
+  // Quotes with consistent styling and distinction
   if (contentType === ContentType.Quote) {
     return {
       family: FONTS.primary,
       weight: WEIGHTS.medium,
-      size: calculateQuoteSize(contentLength, level),
+      size: '2.2rem', // Consistent size
       lineHeight: '1.4',
       letterSpacing: '0.01em',
       textTransform: 'none',
-      textAlign: 'center',
-      maxWidth: '80%'
+      textAlign: 'left',
+      maxWidth: '85%',
+      // Distinctive styles for quotes
+      fontStyle: 'italic',
+      borderLeft: '4px solid rgba(255,255,255,0.4)',
+      paddingLeft: '1.5rem'
     };
   }
   
-  // Captions
+  // Captions with distinctive styling
   if (contentType === ContentType.Caption) {
     return {
       family: FONTS.primary,
       weight: WEIGHTS.light,
-      size: '1rem',
+      // Slightly smaller for captions but still readable
+      size: '1.6rem',
       lineHeight: '1.3',
       letterSpacing: '0.01em',
       textTransform: 'none',
       textAlign: 'center',
-      maxWidth: '70%'
+      maxWidth: '75%',
+      // Distinct caption styling
+      fontStyle: 'italic',
+      opacity: 0.8
     };
   }
   
@@ -410,12 +510,34 @@ export function generateTypographyStyles(settings: FontSettings): React.CSSPrope
     fontFamily: settings.family,
     fontWeight: settings.weight,
     fontSize: settings.size,
+    fontStyle: settings.fontStyle,
     lineHeight: settings.lineHeight,
     letterSpacing: settings.letterSpacing,
-    textTransform: settings.textTransform,
+    textTransform: settings.textTransform as any,
     textAlign: settings.textAlign,
     maxWidth: settings.maxWidth,
     margin: settings.textAlign === 'center' ? '0 auto' : undefined,
+    
+    // Additional visual style properties
+    padding: settings.padding,
+    paddingLeft: settings.paddingLeft,
+    paddingRight: settings.paddingRight,
+    paddingTop: settings.paddingTop,
+    paddingBottom: settings.paddingBottom,
+    border: settings.border,
+    borderLeft: settings.borderLeft,
+    borderRight: settings.borderRight,
+    borderTop: settings.borderTop,
+    borderBottom: settings.borderBottom,
+    borderRadius: settings.borderRadius,
+    background: settings.background,
+    backgroundColor: settings.backgroundColor,
+    backgroundImage: settings.backgroundImage,
+    backgroundSize: settings.backgroundSize,
+    backgroundPosition: settings.backgroundPosition,
+    backgroundRepeat: settings.backgroundRepeat,
+    opacity: settings.opacity,
+    boxShadow: settings.boxShadow,
   };
 }
 

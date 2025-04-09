@@ -47,11 +47,31 @@ export interface TypographyStyles {
   transition?: string;
   maxWidth?: string;
   margin?: string;
+  // Additional style properties for enhanced visual hierarchy
+  padding?: string;
+  paddingLeft?: string;
+  paddingRight?: string;
+  paddingTop?: string;
+  paddingBottom?: string;
+  border?: string;
+  borderLeft?: string;
+  borderRight?: string;
+  borderTop?: string;
+  borderBottom?: string;
+  borderRadius?: string;
+  background?: string;
+  backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundSize?: string;
+  backgroundPosition?: string;
+  backgroundRepeat?: string;
+  opacity?: number;
+  boxShadow?: string;
 }
 
 /**
  * Get typography styles based on content type, hierarchical level, and content length
- * Uses fixed sizes by default and only adapts when necessary
+ * Uses consistent sizing with visual design elements to differentiate hierarchy
  */
 export function getAdvancedTypographyStyles(
   contentType: SlideContentType,
@@ -59,10 +79,10 @@ export function getAdvancedTypographyStyles(
   textLength: number = 0,
   hasMedia: boolean = false
 ): TypographyStyles {
-  // Universal defaults based on our specs
+  // Set high contrast universal defaults for professional appearance
   const defaults: TypographyStyles = {
     fontFamily: FONTS.body,
-    fontSize: '1.5rem',
+    fontSize: '2.2rem', // Larger consistent base font size
     fontWeight: WEIGHTS.regular,
     letterSpacing: 'normal',
     lineHeight: '1.5',
@@ -72,30 +92,29 @@ export function getAdvancedTypographyStyles(
     wordBreak: 'break-word',
     overflowWrap: 'break-word',
     whiteSpace: 'pre-line', // Preserves line breaks from source content
-    textShadow: '-1.5px 1.5px 1.5px rgba(0,0,0,0.4)', // Universal depth effect
-    transition: 'all 250ms ease-in-out' // Smooth transitions but shorter for better UX
+    textShadow: '-1px 1px 1px rgba(0,0,0,0.25)', // Subtle depth effect
+    transition: 'all 250ms ease-in-out', // Smooth transitions
+    margin: '0',
+    maxWidth: '100%'
   };
 
-  // Check if content is extremely long - only these would need adaptive sizing
-  const needsAdaptiveSize = textLength > 200;
-  // Determine if content is "long" based on character count (>50 chars)
-  const isLongContent = textLength > 50;
-  // Check if content is very short
-  const isVeryShortContent = textLength <= 15;
+  // Only extremely long content needs adaptive sizing
+  const needsAdaptiveSize = textLength > 300;
+  const isLongContent = textLength > 100;
 
-  // Start/End Slides - Use Bebas Neue at massive scales with uppercase treatment
+  // Start/End Slides - Special case that should stand out
   if (contentType === SlideContentType.StartEndSlide) {
     return {
       ...defaults,
       fontFamily: FONTS.display, // Bebas Neue
-      // Use fixed size by default, but use adaptive sizing for very long content
-      fontSize: needsAdaptiveSize ? 'clamp(3rem, 8vw, 8rem)' : '8rem',
+      fontSize: needsAdaptiveSize ? 'clamp(3.5rem, 8vw, 7rem)' : '7rem',
       fontWeight: WEIGHTS.regular, // Bebas Neue is already bold by design
-      letterSpacing: '-0.025em', // tracking-tight
-      lineHeight: '1', // Default line height
+      letterSpacing: '-0.025em',
+      lineHeight: '1.1',
       textTransform: 'uppercase',
       textAlign: 'center',
-      maxWidth: '80%',
+      textShadow: '-2px 2px 4px rgba(0,0,0,0.3)',
+      maxWidth: '90%',
       margin: '0 auto',
     };
   }
@@ -105,186 +124,255 @@ export function getAdvancedTypographyStyles(
     return {
       ...defaults,
       fontFamily: FONTS.body, // IBM Plex Sans
-      fontSize: '1.5rem', // fixed size
+      fontSize: '2rem',
       fontWeight: WEIGHTS.regular,
-      lineHeight: '1.625', // leading-relaxed
+      lineHeight: '1.625',
       textAlign: 'left'
     };
   }
 
-  // Apply styles based on hierarchical level for headlines
-  switch (level) {
-    // Root / Level 1 Slides
-    case 0:
-    case 1:
-      if (contentType === SlideContentType.Headline) {
+  // Headlines with consistent sizing but different visual treatments by level
+  if (contentType === SlideContentType.Headline) {
+    // Base style for all headlines
+    const headlineBase = {
+      ...defaults,
+      fontSize: needsAdaptiveSize ? 'clamp(2.5rem, 6vw, 3.5rem)' : '3.5rem',
+      fontWeight: WEIGHTS.bold,
+      lineHeight: '1.1',
+      letterSpacing: '-0.01em',
+      maxWidth: '90%',
+      transition: 'all 300ms ease-in-out'
+    };
+
+    // Apply level-specific visual treatments while keeping size consistent
+    switch (level) {
+      // Level 0-1: Most prominent, centered, display font with gradient background
+      case 0:
+      case 1:
         return {
-          ...defaults,
-          fontFamily: FONTS.display, // Bebas Neue
-          // Use fixed size by default, adapt only if needed
-          fontSize: needsAdaptiveSize 
-            ? (isLongContent ? 'clamp(3rem, 7vw, 6rem)' : 'clamp(3.75rem, 9vw, 8rem)')
-            : (isLongContent ? '6rem' : '8rem'),
-          fontWeight: WEIGHTS.bold,
-          letterSpacing: '-0.025em', // tracking-tight
-          lineHeight: '1.1',
+          ...headlineBase,
+          fontFamily: FONTS.display,
           textAlign: 'center',
-          margin: '0 0 1.5rem 0',
+          textTransform: 'uppercase',
+          textShadow: '-2px 2px 3px rgba(0,0,0,0.4)',
+          margin: '0 auto 1.5rem auto',
+          letterSpacing: '0.01em',
+          padding: '0.5rem 1.5rem',
+          backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)',
+          borderRadius: '8px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
         };
-      }
-      break;
 
-    // Level 2 Slides
-    case 2:
-      if (contentType === SlideContentType.Headline) {
+      // Level 2: Still centered but with body font and subtle gradient
+      case 2:
         return {
-          ...defaults,
-          fontFamily: FONTS.display, // Bebas Neue
-          // Fixed sizes, adapt only if needed
-          fontSize: needsAdaptiveSize
-            ? (isLongContent ? 'clamp(2.25rem, 6vw, 4.5rem)' : 'clamp(3rem, 7vw, 6rem)')
-            : (isLongContent ? '4.5rem' : '6rem'),
+          ...headlineBase,
+          textAlign: 'center',
+          fontFamily: FONTS.body,
+          textShadow: '-1.5px 1.5px 2px rgba(0,0,0,0.35)',
+          margin: '0 auto 1rem auto',
+          padding: '0.3rem 1rem',
+          backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0) 100%)',
+          borderRadius: '4px',
+        };
+
+      // Level 3: Left-aligned with decorative left border and background
+      case 3:
+        return {
+          ...headlineBase,
+          textAlign: 'left',
+          fontFamily: FONTS.body,
           fontWeight: WEIGHTS.semibold,
-          letterSpacing: '0', // tracking-normal
-          lineHeight: '1.15',
-          textAlign: 'center'
+          // Add decorative left border to distinguish level
+          margin: '0 0 1rem 0',
+          padding: '0.4rem 0.8rem 0.4rem 1rem',
+          borderLeft: '4px solid rgba(255,255,255,0.6)',
+          backgroundColor: 'rgba(255,255,255,0.04)',
+          borderRadius: '0 4px 4px 0',
+          boxShadow: '2px 2px 8px rgba(0,0,0,0.15)',
         };
-      }
-      break;
 
-    // Level 3 Slides
-    case 3:
-      if (contentType === SlideContentType.Headline) {
+      // Level 4: Left-aligned with underline and subtle background
+      case 4:
         return {
-          ...defaults,
-          fontFamily: FONTS.display, // Bebas Neue
-          // Fixed sizes, adapt only if needed
-          fontSize: needsAdaptiveSize
-            ? (isLongContent ? 'clamp(1.875rem, 5vw, 3.75rem)' : 'clamp(2.25rem, 6vw, 4.5rem)')
-            : (isLongContent ? '3.75rem' : '4.5rem'),
+          ...headlineBase,
+          textAlign: 'left',
+          fontSize: needsAdaptiveSize ? 'clamp(2.2rem, 5vw, 3.2rem)' : '3.2rem',
           fontWeight: WEIGHTS.medium,
-          letterSpacing: '0.025em', // tracking-wide
-          lineHeight: '1.2',
-          textAlign: 'left'
+          fontStyle: 'italic',
+          // Add decorative underline to distinguish level
+          borderBottom: '2px solid rgba(255,255,255,0.4)',
+          paddingBottom: '0.5rem',
+          padding: '0.3rem 0.8rem 0.5rem 0.8rem',
+          margin: '0 0 1rem 0',
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          borderRadius: '4px 4px 0 0',
         };
-      }
-      break;
 
-    // Level 4 Slides
-    case 4:
-      if (contentType === SlideContentType.Headline) {
+      // Level 5+: Left-aligned with distinct visual treatment
+      default:
         return {
-          ...defaults,
-          fontFamily: FONTS.display, // Bebas Neue
-          // Fixed size, adapt only if needed
-          fontSize: needsAdaptiveSize ? 'clamp(1.5rem, 4vw, 3rem)' : '3rem',
+          ...headlineBase,
+          textAlign: 'left',
+          fontSize: needsAdaptiveSize ? 'clamp(2rem, 4vw, 3rem)' : '3rem',
           fontWeight: WEIGHTS.regular,
-          letterSpacing: '0.025em', // tracking-wide
-          lineHeight: '1.3',
-          textAlign: 'left'
+          letterSpacing: '0.02em',
+          fontStyle: 'italic',
+          // Add decorative box to distinguish deeper levels
+          padding: '0.5rem 1rem',
+          background: 'rgba(255,255,255,0.08)',
+          backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.05) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.05) 75%, transparent 75%, transparent)',
+          backgroundSize: '4px 4px',
+          borderRadius: '4px',
+          boxShadow: 'inset 0 0 8px rgba(0,0,0,0.15)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          margin: '0 0 1rem 0'
         };
-      }
-      break;
-
-    // Deeper Levels (5+)
-    default:
-      if (contentType === SlideContentType.Headline) {
-        return {
-          ...defaults,
-          fontFamily: FONTS.display, // Bebas Neue
-          // Fixed size, adapt only if needed
-          fontSize: needsAdaptiveSize ? 'clamp(1.25rem, 3vw, 2.25rem)' : '2.25rem',
-          fontWeight: WEIGHTS.regular,
-          letterSpacing: 'normal',
-          lineHeight: '1.4',
-          textAlign: 'left'
-        };
-      }
-      break;
+    }
   }
 
-  // For non-headline content types
+  // For non-headline content types, keep size consistent but vary other properties
   switch (contentType) {
     case SlideContentType.Subheading:
       return {
         ...defaults,
-        fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: needsAdaptiveSize ? 'clamp(1.5rem, 4vw, 2.5rem)' : '2.5rem',
+        fontFamily: FONTS.body,
+        fontSize: '2.4rem', // Consistent size
         fontWeight: WEIGHTS.semibold,
         lineHeight: '1.3',
+        // Enhanced styling with subtle gradient and indent
+        paddingLeft: level > 2 ? `${level * 0.5}rem` : '0.5rem',
+        padding: '0.3rem 0.7rem',
+        margin: '0 0 1rem 0',
+        borderBottom: level > 2 ? '1px dotted rgba(255,255,255,0.3)' : 'none',
+        // Add subtle background for visual distinction
+        backgroundImage: level > 1 ? 
+            'linear-gradient(to right, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)' : 
+            'none',
+        borderRadius: '2px',
       };
 
     case SlideContentType.Body:
-      // Scale down text if has media to share the slide
-      const sizeAdjustment = hasMedia ? 0.85 : 1;
-      // For body text, we use a more aggressive threshold for adaptive sizing
-      const bodyNeedsAdaptive = textLength > 150;
+      // Body text with consistent size but enhanced styling by level
+      const sizeAdjustment = hasMedia ? 0.9 : 1; // Slight reduction for media slides
       
       return {
         ...defaults,
-        fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: bodyNeedsAdaptive 
-          ? `calc(clamp(1.25rem, 3vw, 2.25rem) * ${sizeAdjustment})`
-          : `${2.25 * sizeAdjustment}rem`,
-        fontWeight: WEIGHTS.regular,
+        fontFamily: FONTS.body,
+        fontSize: `${2.2 * sizeAdjustment}rem`, // Fixed size with slight media adjustment
+        fontWeight: level % 2 === 0 ? WEIGHTS.regular : WEIGHTS.light, // Alternate weights by level
         lineHeight: '1.5',
+        fontStyle: level > 3 ? 'italic' : 'normal', // Italic for deeper levels
+        // Add visual cues based on level
+        paddingLeft: level > 1 ? `${level * 0.5}rem` : '0',
+        padding: level > 2 ? '0.3rem 0.6rem' : '0',
+        margin: '0 0 1rem 0',
+        // Enhanced border and background effects
+        borderLeft: level > 2 ? `${Math.min(level-2, 3)}px solid rgba(255,255,255,${0.1 * level})` : 'none',
+        // Apply subtle gradient based on level
+        backgroundImage: level > 3 ? 
+            `linear-gradient(to right, rgba(255,255,255,${0.02 * level}) 0%, transparent 100%)` : 
+            'none',
+        backgroundColor: level > 4 ? 'rgba(255,255,255,0.03)' : 'transparent',
+        borderRadius: level > 3 ? '4px' : '0',
+        boxShadow: level > 4 ? 'inset 0 0 5px rgba(0,0,0,0.1)' : 'none'
       };
 
     case SlideContentType.List:
       return {
         ...defaults,
-        fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: needsAdaptiveSize ? 'clamp(1.25rem, 3vw, 2rem)' : '2rem',
+        fontFamily: FONTS.body,
+        fontSize: '2.2rem', // Fixed consistent size
         fontWeight: WEIGHTS.regular,
         lineHeight: '1.6',
         textAlign: 'left',
+        // Enhanced list styling with background effects
+        paddingLeft: level > 1 ? `${level * 0.5}rem` : '0',
+        padding: level > 1 ? '0.3rem 0.6rem' : '0',
+        margin: '0 0 1rem 0',
+        // Add visual distinction for deeper level lists
+        backgroundColor: level > 2 ? 'rgba(255,255,255,0.02)' : 'transparent',
+        borderRadius: level > 2 ? '4px' : '0',
+        // Add subtle left border for list items at deeper levels
+        borderLeft: level > 2 ? `2px solid rgba(255,255,255,${0.05 * level})` : 'none',
       };
 
     case SlideContentType.Overview:
-      // Overview slide bullets
       return {
         ...defaults,
-        fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: needsAdaptiveSize ? 'clamp(1.5rem, 3.5vw, 2.25rem)' : '2.25rem',
+        fontFamily: FONTS.body,
+        fontSize: '2.2rem', // Fixed consistent size
         fontWeight: WEIGHTS.regular,
         lineHeight: '1.4',
         textAlign: 'left',
+        // Enhanced styling for overview items
+        textShadow: '-1px 1px 2px rgba(0,0,0,0.3)',
+        margin: '0 0 1rem 0',
+        padding: '0.3rem 0.8rem',
+        // Add subtle background and border effects for overview items
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        borderRadius: '4px',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+        border: '1px solid rgba(255,255,255,0.05)',
       };
 
     case SlideContentType.Code:
-      // Code blocks often need special handling
-      const codeNeedsAdaptive = textLength > 100; // Code has different threshold
-      
       return {
         ...defaults,
         fontFamily: 'monospace',
-        fontSize: codeNeedsAdaptive ? 'clamp(1rem, 2.5vw, 1.75rem)' : '1.75rem',
+        fontSize: '1.8rem', // Fixed size that's slightly smaller for code
         fontWeight: WEIGHTS.regular,
         lineHeight: '1.6',
         textAlign: 'left',
         letterSpacing: '-0.02em',
         whiteSpace: 'pre', // Preserves all whitespace for code
+        // Enhanced code block styling with gradient background
+        background: 'rgba(0,0,0,0.2)',
+        backgroundImage: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.25) 100%)',
+        padding: '1.2rem',
+        borderRadius: '6px',
+        border: '1px solid rgba(255,255,255,0.1)',
+        margin: '0.5rem 0 1.5rem 0',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.1)',
       };
 
     case SlideContentType.Quote:
       return {
         ...defaults,
-        fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: needsAdaptiveSize ? 'clamp(1.25rem, 3vw, 2.25rem)' : '2.25rem',
+        fontFamily: FONTS.body,
+        fontSize: '2.2rem', // Fixed consistent size
         fontWeight: WEIGHTS.light,
         fontStyle: 'italic',
         lineHeight: '1.6',
         letterSpacing: '0.01em',
+        // Enhanced quote styling with subtle background
+        borderLeft: '4px solid rgba(255,255,255,0.4)',
+        paddingLeft: '1.5rem',
+        padding: '0.5rem 1rem 0.5rem 1.5rem',
+        margin: '1.2rem 0',
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        borderRadius: '0 4px 4px 0',
+        boxShadow: '2px 2px 5px rgba(0,0,0,0.1)',
       };
 
     case SlideContentType.Caption:
       return {
         ...defaults,
-        fontFamily: FONTS.body, // IBM Plex Sans
-        fontSize: '1.5rem', // Captions should stay consistently sized
+        fontFamily: FONTS.body,
+        fontSize: '1.6rem', // Slightly smaller for captions
         fontWeight: WEIGHTS.light,
+        fontStyle: 'italic',
         lineHeight: '1.4',
         letterSpacing: '0.03em',
+        // Enhanced caption styling
+        opacity: 0.8,
+        margin: '0.8rem 0',
+        padding: '0.2rem 0.5rem',
+        textAlign: 'center',
+        maxWidth: '80%',
+        // Add subtle visual treatment
+        borderTop: '1px solid rgba(255,255,255,0.1)',
+        backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.05), transparent)',
       };
 
     default:
@@ -326,6 +414,26 @@ export function generateAdvancedStyles(settings: TypographyStyles): React.CSSPro
     transition: settings.transition,
     maxWidth: settings.maxWidth,
     margin: settings.margin,
+    // Additional style properties
+    padding: settings.padding,
+    paddingLeft: settings.paddingLeft,
+    paddingRight: settings.paddingRight,
+    paddingTop: settings.paddingTop,
+    paddingBottom: settings.paddingBottom,
+    border: settings.border,
+    borderLeft: settings.borderLeft,
+    borderRight: settings.borderRight,
+    borderTop: settings.borderTop,
+    borderBottom: settings.borderBottom,
+    borderRadius: settings.borderRadius,
+    background: settings.background,
+    backgroundColor: settings.backgroundColor,
+    backgroundImage: settings.backgroundImage,
+    backgroundSize: settings.backgroundSize,
+    backgroundPosition: settings.backgroundPosition,
+    backgroundRepeat: settings.backgroundRepeat,
+    opacity: settings.opacity,
+    boxShadow: settings.boxShadow,
   };
 }
 
