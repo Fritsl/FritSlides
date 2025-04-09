@@ -316,6 +316,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update the last viewed slide index for a project
+  app.put("/api/projects/:id/lastViewedSlideIndex", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { slideIndex } = req.body;
+      
+      if (slideIndex === undefined || isNaN(parseInt(slideIndex))) {
+        return res.status(400).json({ message: "Invalid slide index" });
+      }
+      
+      // Check if project exists and belongs to user
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      if (project.userId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to access this project" });
+      }
+      
+      const success = await storage.updateLastViewedSlideIndex(projectId, parseInt(slideIndex));
+      if (success) {
+        res.status(200).json({ message: "Last viewed slide index updated successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to update last viewed slide index" });
+      }
+    } catch (err) {
+      console.error("Error updating last viewed slide index:", err);
+      res.status(500).json({ message: "Failed to update last viewed slide index" });
+    }
+  });
+
   app.delete("/api/projects/:id", isAuthenticated, async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);

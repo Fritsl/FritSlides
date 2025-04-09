@@ -807,18 +807,38 @@ export default function NoteItem({
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="p-1 h-auto text-purple-200 hover:bg-purple-900/40 hover:text-purple-100"
-                    onClick={() => {
-                      // Navigate to presentation mode with this note as starting point
-                      setLocation(`/present/${projectId}?startNoteId=${note.id}`);
-                    }}
-                    title="Start slideshow from this note"
-                  >
-                    <Presentation className="h-4 w-4" />
-                  </Button>
+                  <div className="relative group/present">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="p-1 h-auto text-purple-200 hover:bg-purple-900/40 hover:text-purple-100"
+                      title="Present slideshow"
+                    >
+                      <Presentation className="h-4 w-4" />
+                    </Button>
+                    <div className="absolute left-0 mt-1 w-32 bg-background border border-border rounded-md shadow-lg z-50 hidden group-hover/present:block">
+                      <div className="py-1">
+                        <button
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                          onClick={() => {
+                            // Navigate to presentation mode from start
+                            setLocation(`/present/${projectId}?startNoteId=${note.id}`);
+                          }}
+                        >
+                          From start
+                        </button>
+                        <button
+                          className="w-full px-4 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                          onClick={() => {
+                            // Navigate to presentation mode and continue from last position
+                            setLocation(`/present/${projectId}?startNoteId=${note.id}&continue=true`);
+                          }}
+                        >
+                          Continue
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                   <Button
                     size="sm"
                     variant="ghost"

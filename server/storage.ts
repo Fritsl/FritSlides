@@ -27,6 +27,7 @@ export interface IStorage {
   getProject(id: number): Promise<Project | undefined>;
   createProject(project: InsertProject): Promise<Project>;
   updateProject(id: number, data: UpdateProject): Promise<Project | undefined>;
+  updateLastViewedSlideIndex(projectId: number, slideIndex: number): Promise<boolean>;
   deleteProject(id: number): Promise<boolean>;
   
   // Note operations
@@ -122,7 +123,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProject(insertProject: InsertProject): Promise<Project> {
-    const [project] = await db.insert(projects).values(insertProject).returning();
+    // Add default lastViewedSlideIndex if not provided
+    const projectData = {
+      ...insertProject,
+      lastViewedSlideIndex: insertProject.lastViewedSlideIndex ?? 0
+    };
+    const [project] = await db.insert(projects).values(projectData).returning();
     return project;
   }
 
@@ -133,6 +139,20 @@ export class DatabaseStorage implements IStorage {
       .where(eq(projects.id, id))
       .returning();
     return updatedProject;
+  }
+  
+  async updateLastViewedSlideIndex(projectId: number, slideIndex: number): Promise<boolean> {
+    try {
+      const [updatedProject] = await db
+        .update(projects)
+        .set({ lastViewedSlideIndex: slideIndex })
+        .where(eq(projects.id, projectId))
+        .returning();
+      return !!updatedProject;
+    } catch (error) {
+      console.error("Error updating last viewed slide index:", error);
+      return false;
+    }
   }
 
   async deleteProject(id: number): Promise<boolean> {
@@ -597,7 +617,8 @@ export class MemStorage implements IStorage {
     const id = this.currentProjectId++;
     const project: Project = { 
       ...insertProject, 
-      id, 
+      id,
+      lastViewedSlideIndex: 0,
       createdAt: new Date() 
     };
     this.projects.set(id, project);
@@ -611,6 +632,20 @@ export class MemStorage implements IStorage {
     const updatedProject = { ...project, ...data };
     this.projects.set(id, updatedProject);
     return updatedProject;
+  }
+  
+  async updateLastViewedSlideIndex(projectId: number, slideIndex: number): Promise<boolean> {
+    try {
+      const project = this.projects.get(projectId);
+      if (!project) return false;
+      
+      const updatedProject = { ...project, lastViewedSlideIndex: slideIndex };
+      this.projects.set(projectId, updatedProject);
+      return true;
+    } catch (error) {
+      console.error("Error updating last viewed slide index:", error);
+      return false;
+    }
   }
 
   async deleteProject(id: number): Promise<boolean> {

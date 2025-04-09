@@ -84,12 +84,19 @@ export default function PresentMode() {
   const { projectId: projectIdParam } = useParams<{ projectId: string }>();
   const projectId = projectIdParam ? parseInt(projectIdParam, 10) : null;
   
+  // Parse URL parameters
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const startNoteId = searchParams ? parseInt(searchParams.get('startNoteId') || '0', 10) : 0;
+  const continuePresentationParam = searchParams ? searchParams.get('continue') : null;
+  const shouldContinue = continuePresentationParam === 'true';
+
   // Get projects and notes data
   const { projects, isLoading: projectsLoading } = useProjects();
   const { notes, isLoading: notesLoading } = useNotes(projectId);
   
   // States for presentation
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [initializedFromStored, setInitializedFromStored] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [timeDotsVisible, setTimeDotsVisible] = useState(true);
   
@@ -116,6 +123,23 @@ export default function PresentMode() {
     return map;
   }, [notes]);
   
+  // Helper function to save the last viewed slide index
+  const saveLastViewedSlideIndex = async (index: number) => {
+    if (!projectId) return;
+    
+    try {
+      await fetch(`/api/projects/${projectId}/lastViewedSlideIndex`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ slideIndex: index }),
+      });
+    } catch (error) {
+      console.error('Failed to save last viewed slide index:', error);
+    }
+  };
+
   // Process notes into presentation format
   const flattenedNotes = useMemo(() => {
     if (!notes || notes.length === 0) return [];
@@ -400,6 +424,57 @@ export default function PresentMode() {
     slideDifference: 0,
     shouldShow: false
   });
+  
+  // Initialize from the project's last viewed slide index or specified start note
+  useEffect(() => {
+    if (!flattenedNotes.length || !currentProject || initializedFromStored) return;
+    
+    // Find the starting position based on requested startNoteId if provided
+    if (startNoteId > 0) {
+      // Find index of the specified note in flattenedNotes
+      const noteIndex = flattenedNotes.findIndex(note => note.id === startNoteId);
+      if (noteIndex >= 0) {
+        // Found the requested note
+        // If continue=true or shouldContinue=true, use the stored position
+        // Otherwise, start from the requested note
+        if (shouldContinue && currentProject.lastViewedSlideIndex !== null && currentProject.lastViewedSlideIndex >= 0) {
+          const validIndex = Math.min(currentProject.lastViewedSlideIndex, flattenedNotes.length - 1);
+          console.log(`Continuing from last viewed slide index: ${validIndex}`);
+          setCurrentSlideIndex(validIndex);
+        } else {
+          console.log(`Starting from specified note at index: ${noteIndex}`);
+          setCurrentSlideIndex(noteIndex);
+        }
+      } else {
+        // Requested note not found, start from beginning
+        console.log(`Specified note ${startNoteId} not found, starting from beginning`);
+        setCurrentSlideIndex(0);
+      }
+    } else {
+      // No specific note requested, check if we should continue from last position
+      if (shouldContinue && currentProject.lastViewedSlideIndex !== null && currentProject.lastViewedSlideIndex >= 0) {
+        const validIndex = Math.min(currentProject.lastViewedSlideIndex, flattenedNotes.length - 1);
+        console.log(`Continuing from last viewed slide index: ${validIndex}`);
+        setCurrentSlideIndex(validIndex);
+      } else {
+        // Start from beginning
+        console.log("Starting presentation from beginning");
+        setCurrentSlideIndex(0);
+      }
+    }
+    
+    // Mark as initialized
+    setInitializedFromStored(true);
+  }, [flattenedNotes, currentProject, initializedFromStored, startNoteId, shouldContinue]);
+  
+  // Save the current slide index when it changes
+  useEffect(() => {
+    // Don't save during initial load or if no notes yet
+    if (!initializedFromStored || !flattenedNotes.length) return;
+    
+    // Save the current slide index
+    saveLastViewedSlideIndex(currentSlideIndex);
+  }, [currentSlideIndex, initializedFromStored, flattenedNotes]);
   
   // Update pacing info every second
   useEffect(() => {

@@ -17,6 +17,7 @@ export const projects = pgTable("projects", {
   startSlogan: text("startSlogan"),
   endSlogan: text("endSlogan"),
   author: text("author"),
+  lastViewedSlideIndex: integer("lastViewedSlideIndex").default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
