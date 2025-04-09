@@ -11,6 +11,7 @@ import { ConfirmationDialog } from "./confirmation-dialog";
 import { MoveNoteDialog } from "./move-note-dialog";
 import { FullscreenToggle } from "./fullscreen-toggle";
 import { TimeDisplay } from "./time-display";
+import { formatTimeString } from "@/lib/time-utils";
 import { useNotes, useNoteEditing } from "@/hooks/use-notes";
 import { getLevelColor } from "@/lib/colors";
 import {
@@ -103,11 +104,24 @@ export default function NoteItem({
     images: note.images || [],
   });
   
+  // Import formatTimeString from time-utils
+  const formatTimeInput = (input: string): string => {
+    // Use the shared util function to ensure consistent formatting
+    return formatTimeString(input);
+  };
+
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    // Removed excessive logging
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Special handling for time field to ensure HH:MM format
+    if (name === 'time') {
+      const formattedTime = formatTimeInput(value);
+      setFormData(prev => ({ ...prev, [name]: formattedTime }));
+    } else {
+      // Regular handling for other fields
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
   
   // Handle form submission

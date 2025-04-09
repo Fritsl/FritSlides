@@ -1,10 +1,41 @@
 import { Note } from "@shared/schema";
 
 /**
+ * Ensures time is in HH:MM format with colon
+ */
+export function formatTimeString(time: string): string {
+  if (!time || time.trim() === '') return '';
+  
+  // Remove any non-digit characters
+  const digitsOnly = time.replace(/[^\d]/g, '');
+  
+  if (digitsOnly.length <= 2) {
+    // Just minutes, format as MM
+    return digitsOnly.padStart(2, '0');
+  } else if (digitsOnly.length <= 4) {
+    // Format as HH:MM
+    const minutes = digitsOnly.slice(-2).padStart(2, '0');
+    const hours = digitsOnly.slice(0, digitsOnly.length - 2).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  } else {
+    // More than 4 digits, truncate and format
+    const minutes = digitsOnly.slice(-2).padStart(2, '0');
+    const hours = digitsOnly.slice(-4, -2).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+}
+
+/**
  * Convert HH:MM time format to minutes
  */
 export function timeToMinutes(time: string): number {
   if (!time || time.trim() === '') return 0;
+  
+  // If time doesn't have a colon, format it
+  if (!time.includes(':')) {
+    time = formatTimeString(time);
+  }
+  
   const parts = time.split(':').map(part => parseInt(part.trim(), 10));
   if (parts.length === 1) return parts[0]; // Just minutes
   if (parts.length === 2) return parts[0] * 60 + parts[1]; // Hours and minutes
@@ -28,11 +59,12 @@ export function calculateTimePerSlide(totalTimeInMinutes: number, slideCount: nu
   return totalTimeInMinutes / slideCount;
 }
 
-interface TimeInfo {
+export interface TimeInfo {
   slideCount: number;
   totalMinutes: number;
   minutesPerSlide: number;
   formattedPerSlide: string;
+  averageTimePerSlide: string;  // Human-readable average time per slide
   startTime: string | null;
   endTime: string | null;
 }
@@ -250,11 +282,19 @@ export function calculateTimeInfo(
   const minutesPerSlide = calculateTimePerSlide(totalMinutes, slideCount);
   const formattedPerSlide = minutesToTime(minutesPerSlide);
   
+  // Create a human-readable average time format
+  const minutes = Math.floor(minutesPerSlide);
+  const seconds = Math.round((minutesPerSlide - minutes) * 60);
+  const averageTimePerSlide = minutes > 0 
+    ? `${minutes} min${minutes > 1 ? 's' : ''} ${seconds > 0 ? seconds + ' sec' : ''}` 
+    : `${seconds} seconds`;
+  
   return {
     slideCount,
     totalMinutes,
     minutesPerSlide,
     formattedPerSlide,
+    averageTimePerSlide,
     startTime: currentNote.time || '',
     endTime: nextTimedNote.time || ''
   };

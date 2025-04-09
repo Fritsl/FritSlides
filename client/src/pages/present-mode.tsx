@@ -841,7 +841,7 @@ export default function PresentMode() {
                                 <span className="opacity-70">Total time:</span>
                                 <span>{timeInfo.totalMinutes} min</span>
                                 <span className="opacity-70">Per slide:</span>
-                                <span>{timeInfo.formattedPerSlide}</span>
+                                <span>{timeInfo.averageTimePerSlide}</span>
                               </div>
                             ) : null;
                           })()}

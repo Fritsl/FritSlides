@@ -47,7 +47,7 @@ export function TimeDisplay({ note, notes, className = '', compact = false }: Ti
               <span className="text-yellow-200 text-xs flex items-center">
                 {timeInfo.slideCount} slides, {timeInfo.totalMinutes} min
                 <span className="mx-1">·</span>
-                <span className="whitespace-nowrap">{timeInfo.formattedPerSlide} per slide</span>
+                <span className="whitespace-nowrap">{timeInfo.averageTimePerSlide} per slide</span>
               </span>
             )}
           </div>
@@ -64,9 +64,9 @@ export function TimeDisplay({ note, notes, className = '', compact = false }: Ti
               <span className="text-slate-300">Total time:</span>
               <span>{timeInfo.totalMinutes} minutes</span>
               <span className="text-slate-300">Per slide:</span>
-              <span>{Math.round(timeInfo.minutesPerSlide * 10) / 10} minutes</span>
+              <span>{timeInfo.averageTimePerSlide}</span>
               <span className="text-slate-300">Time format:</span>
-              <span>{timeInfo.formattedPerSlide} per slide</span>
+              <span>{timeInfo.formattedPerSlide}</span>
             </div>
           </div>
         </TooltipContent>
