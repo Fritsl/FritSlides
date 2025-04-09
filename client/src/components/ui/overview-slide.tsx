@@ -88,18 +88,16 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
     const lines = parentNote.content.split('\\n');
     const titleText = lines[0];
     
-    // Use responsive classes instead of dynamic typography
+    // Use the same typography system as the presentation for consistency
     return (
       <h1 
-        className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl mb-4 sm:mb-6 font-bold text-white"
         style={{
-          fontFamily: '"Roboto", sans-serif',
-          lineHeight: 1.2,
-          letterSpacing: '0.02em',
+          ...generateTypographyStyles(getTypographyStyles(ContentType.Title, 0)),
+          // No scaling based on content length - ensure consistent size
+          margin: '0 0 1.5rem 0',
           overflowWrap: 'break-word',
           hyphens: 'auto',
           maxWidth: '100%',
-          textShadow: '0 1px 2px rgba(0,0,0,0.2)'
         }}
       >
         {titleText}
@@ -204,11 +202,9 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
                   <div className="flex-1 p-1 transition-all duration-300">
                     {/* Child note content */}
                     <p 
-                      className="text-sm sm:text-base md:text-lg lg:text-xl font-medium"
                       style={{
-                        fontFamily: '"Roboto", sans-serif',
-                        lineHeight: 1.4,
-                        letterSpacing: '0.01em',
+                        ...generateTypographyStyles(getTypographyStyles(ContentType.List, 1)),
+                        // No scaling based on content length - ensure consistent size
                         textShadow: '0 1px 2px rgba(0,0,0,0.2)'
                       }}
                     >
@@ -299,11 +295,9 @@ export function OverviewSlide({ parentNote, childNotes, theme }: OverviewSlidePr
               <div className="flex-1 p-1 transition-all duration-300">
                 {/* Child note content */}
                 <p 
-                  className="text-base sm:text-lg md:text-xl lg:text-2xl font-medium"
                   style={{
-                    fontFamily: '"Roboto", sans-serif',
-                    lineHeight: 1.4,
-                    letterSpacing: '0.01em',
+                    ...generateTypographyStyles(getTypographyStyles(ContentType.List, 1)),
+                    // No scaling based on content length - ensure consistent size
                     textShadow: '0 1px 2px rgba(0,0,0,0.2)'
                   }}
                 >

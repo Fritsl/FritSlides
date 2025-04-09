@@ -68,7 +68,7 @@ function determineContentType(content: string): ContentType {
   return ContentType.Regular;
 }
 
-export default function PresentModeFixed() {
+export default function PresentMode() {
   const [, setLocation] = useLocation();
   const { projectId: projectIdParam } = useParams<{ projectId: string }>();
   const projectId = projectIdParam ? parseInt(projectIdParam, 10) : null;
@@ -683,6 +683,7 @@ export default function PresentModeFixed() {
                                   level,
                                   currentNote.content.length
                                 )),
+                                // No longer scaling font size to ensure consistency between slides
                                 margin: determineContentType(currentNote.content) === ContentType.List 
                                   ? '0 auto 0 15%' 
                                   : '0 auto',
