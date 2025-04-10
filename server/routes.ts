@@ -640,11 +640,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (fs.existsSync(filepath)) {
         return res.sendFile(filepath);
       } else {
-        return res.status(404).json({ message: "Image not found" });
+        console.log(`Image not found: ${filename}`);
+        
+        // Send not-found image data instead of JSON error
+        // This allows images to gracefully degrade in the browser
+        // instead of triggering error events
+        
+        // Set appropriate headers for a transparent 1x1 PNG
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+        res.setHeader('X-Image-Missing', 'true'); // Custom header to flag missing images
+        
+        // Send a transparent 1x1 PNG (minimal base64 encoded)
+        const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+        return res.send(transparentPixel);
       }
     } catch (err) {
       console.error("Error serving image:", err);
-      return res.status(500).json({ message: "Failed to serve image" });
+      
+      // Same fallback for errors
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('X-Image-Error', 'true');
+      
+      const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+      return res.send(transparentPixel);
     }
   });
 
