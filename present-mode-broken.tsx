@@ -26,8 +26,8 @@ import {
   calculatePacingInfo,
   timeToMinutes, 
   minutesToTime,
-  formatTimeDifferenceHuman,
-  PacingInfo
+  PacingInfo,
+  formatTimeDifferenceHuman
 } from "@/lib/time-utils";
 import { OverviewSlide } from "@/components/ui/overview-slide";
 import { FullscreenToggle } from "@/components/ui/fullscreen-toggle";
@@ -1622,8 +1622,7 @@ export default function PresentMode() {
                         // No timed slides available
                         return <div>Add time markers to track presentation pacing</div>;
                       })()}
-                    </div>
-                    <div>{(() => {
+                    </div>{(() => {
                             if (currentNote?.time) {
                               const nextTimedSlide = getNextTimedSlide();
                               if (nextTimedSlide?.time) {
@@ -1813,6 +1812,8 @@ export default function PresentMode() {
                             // No timed slides available for calculation
                             return 'Time data unavailable';
                           })()}</div>
+                        </div>
+                      </div>
 
                       {/* Pacing information - only show if both timing markers are available */}
                       {pacingInfo.previousTimedNote || pacingInfo.nextTimedNote ? (
