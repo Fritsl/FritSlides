@@ -1356,8 +1356,9 @@ export default function PresentMode() {
                         }}
                       />
                       
-                      {/* Black dot (time adherence) - position shows ahead/behind schedule - 35% opacity */}
-                      {pacingInfo.shouldShow && !isOverviewSlide && (
+                      {/* Black dot (time adherence) - position shows ahead/behind schedule - 35% opacity 
+                          Must always show on slides with time markers (especially on first slides) */}
+                      {!isOverviewSlide && (
                         <div 
                           className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-black/35 transition-all duration-300"
                           style={{
@@ -1367,23 +1368,39 @@ export default function PresentMode() {
                             // 60% = maximum behind (1 hour behind)
                             left: (() => {
                               try {
-                                // Get the current time (same calculation as in the debug overlay)
+                                // Get values directly from the "Result is" field in the debug overlay
+                                // This is the most reliable calculation
+                                
+                                // Get the current time
                                 const now = new Date();
-                                const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
+                                const currentHour = now.getHours();
+                                const currentMinute = now.getMinutes();
+                                const currentSeconds = now.getSeconds();
                                 
-                                let diffMinutes = 0;
+                                // Calculate current time in minutes
+                                const currentTimeInMinutes = currentHour * 60 + currentMinute + (currentSeconds / 60);
                                 
-                                // If we're on a timed slide, use that calculation
+                                // If we're on a timed slide (Current Note of these: 1)
                                 if (currentNote?.time) {
+                                  // For timed slides, the result is the difference between current time and the slide's time
                                   const slideTimeInMinutes = timeToMinutes(currentNote.time);
-                                  diffMinutes = currentTimeInMinutes - slideTimeInMinutes;
+                                  
+                                  // Calculate difference
+                                  let diffMinutes = currentTimeInMinutes - slideTimeInMinutes;
                                   
                                   // Handle crossing midnight
                                   if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
                                   else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
-                                } 
-                                // Between two timed notes, use interpolation calculation from debug overlay
-                                else if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
+                                  
+                                  // Cap diffMinutes to -60..60 range
+                                  const timePosition = Math.max(-60, Math.min(60, diffMinutes));
+                                  // Map from -60..60 to 40%..60% (with 0 = 50%)
+                                  const percentPosition = 50 + ((timePosition / 60) * 10);
+                                  return `${percentPosition}%`;
+                                }
+                                
+                                // Between two timed notes (exactly same calculation from the debug "Result is" field)
+                                if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
                                   const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
                                   const nextTimeInMinutes = timeToMinutes(pacingInfo.nextTimedNote.time);
                                   
@@ -1408,18 +1425,21 @@ export default function PresentMode() {
                                   const expectedTimeInMinutes = prevTimeInMinutes + (totalTimeSpan * slideProgress);
                                   
                                   // Calculate difference between current time and expected time
-                                  diffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
+                                  let diffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
                                   
                                   // Handle crossing midnight
                                   if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
                                   else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                                  
+                                  // Cap diffMinutes to -60..60 range
+                                  const timePosition = Math.max(-60, Math.min(60, diffMinutes));
+                                  // Map from -60..60 to 40%..60% (with 0 = 50%)
+                                  const percentPosition = 50 + ((timePosition / 60) * 10);
+                                  return `${percentPosition}%`;
                                 }
                                 
-                                // Cap diffMinutes to -60..60 range
-                                const timePosition = Math.max(-60, Math.min(60, diffMinutes));
-                                // Map from -60..60 to 40%..60% (with 0 = 50%)
-                                const percentPosition = 50 + ((timePosition / 60) * 10);
-                                return `${percentPosition}%`;
+                                // Default: If we can't calculate, use center position
+                                return "50%";
                               } catch (err) {
                                 console.error("Error calculating dot position:", err);
                                 return "50%"; // Default to center in case of error
@@ -1485,6 +1505,7 @@ export default function PresentMode() {
                         <br />
                         <span className="text-gray-700">Black dot:</span> Schedule status - 
                         {(() => {
+                          // Always calculate a status even if not on a timed slide
                           try {
                             // Get the current time (same calculation as in the debug overlay)
                             const now = new Date();
