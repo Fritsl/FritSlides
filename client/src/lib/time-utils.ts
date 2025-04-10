@@ -396,6 +396,14 @@ export function calculatePacingInfo(
   else if (previousTimedNote && nextTimedNote) {
     shouldShow = true;
   }
+  // CASE 3: We're after at least one timed note
+  else if (previousTimedNote) {
+    shouldShow = true;
+  }
+  // CASE 4: We're before at least one timed note
+  else if (nextTimedNote) {
+    shouldShow = true;
+  }
   // Otherwise, don't show indicators
   
   // If we shouldn't show indicators, return early

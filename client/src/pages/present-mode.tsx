@@ -479,13 +479,40 @@ export default function PresentMode() {
     // Create a flat list of note IDs for the pacing calculation
     const noteIds = flattenedNotes.map(note => note.id);
     
+    // Debug all timed notes in the presentation
+    const timedNotes = flattenedNotes.filter(note => note.time && note.time.trim() !== '');
+    console.log(`Found ${timedNotes.length} timed notes in presentation:`, 
+      timedNotes.map(note => ({ 
+        id: note.id, 
+        time: note.time, 
+        content: note.content?.substring(0, 15) + '...',
+        index: flattenedNotes.indexOf(note)
+      }))
+    );
+    
     // Function to update pacing
     const updatePacing = () => {
       const currentTime = new Date();
       console.log(`Updating pacing info at ${currentTime.toISOString()}`);
       
+      // Ensure we're working with the complete set of notes
       const info = calculatePacingInfo(
-        notes || [],
+        // Convert presentation notes back to regular note format
+        flattenedNotes.map(n => ({
+          id: n.id,
+          projectId: n.projectId,
+          parentId: n.parentId,
+          content: n.content || '',
+          createdAt: n.createdAt,
+          updatedAt: n.updatedAt,
+          order: n.order || '',
+          time: n.time || null,
+          url: n.url || null,
+          linkText: n.linkText || null,
+          youtubeLink: n.youtubeLink || null,
+          isDiscussion: n.isDiscussion,
+          images: n.images
+        })),
         noteIds,
         currentSlideIndex
       );
