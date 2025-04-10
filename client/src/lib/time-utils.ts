@@ -81,6 +81,10 @@ export function timeToMinutes(time: string): number {
  * For per-slide time display
  */
 export function minutesToTime(minutes: number): string {
+  if (isNaN(minutes) || minutes < 0) {
+    return "0:00"; // Return a valid default for invalid inputs
+  }
+  
   // Extract whole minutes and decimal part
   const totalSeconds = Math.round(minutes * 60);
   
@@ -276,16 +280,34 @@ export function calculateTimeInfo(
     totalMinutes += 24 * 60; // Add a full day
   }
   
-  // Calculate time per slide
-  const minutesPerSlide = calculateTimePerSlide(totalMinutes, slideCount);
+  // Ensure we have a minimum time difference (at least 1 minute) to avoid division by zero issues
+  if (totalMinutes < 1) {
+    totalMinutes = 1;
+  }
+  
+  // Calculate time per slide - ensure at least 1 second per slide
+  let minutesPerSlide = calculateTimePerSlide(totalMinutes, slideCount);
+  if (minutesPerSlide < 1/60) {
+    minutesPerSlide = 1/60; // Minimum of 1 second per slide
+  }
+  
   const formattedPerSlide = minutesToTime(minutesPerSlide);
   
   // Create a human-readable average time format
   const minutes = Math.floor(minutesPerSlide);
   const seconds = Math.round((minutesPerSlide - minutes) * 60);
-  const averageTimePerSlide = minutes > 0 
-    ? `${minutes} min${minutes > 1 ? 's' : ''} ${seconds > 0 ? seconds + ' sec' : ''}` 
-    : `${seconds} second${seconds !== 1 ? 's' : ''}`;
+  
+  // Handle case where seconds round up to 60
+  let displayMinutes = minutes;
+  let displaySeconds = seconds;
+  if (seconds === 60) {
+    displayMinutes += 1;
+    displaySeconds = 0;
+  }
+  
+  const averageTimePerSlide = displayMinutes > 0 
+    ? `${displayMinutes} min${displayMinutes > 1 ? 's' : ''} ${displaySeconds > 0 ? displaySeconds + ' sec' : ''}` 
+    : `${displaySeconds} second${displaySeconds !== 1 ? 's' : ''}`;
   
   // Ensure both times are properly formatted with colons
   const formattedStartTime = formatTimeString(currentNote.time || '');
