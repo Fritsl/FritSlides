@@ -85,6 +85,11 @@ export function minutesToTime(minutes: number): string {
     return "0:00"; // Return a valid default for invalid inputs
   }
   
+  // If the value is very large (more than 60 minutes), let's display it differently
+  if (minutes > 60) {
+    return Math.round(minutes) + " min"; // Just show minutes for very large values
+  }
+  
   // Extract whole minutes and decimal part
   const totalSeconds = Math.round(minutes * 60);
   
