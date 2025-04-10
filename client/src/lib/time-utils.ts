@@ -10,6 +10,7 @@ export interface PacingInfo {
   expectedSlideIndex: number;  // Estimated slide we should be on
   slideDifference: number;  // How many slides ahead/behind we are
   shouldShow: boolean;  // Whether we have enough info to show the indicator
+  timePositionInMinutes: number; // Minutes ahead/behind schedule (-ve = ahead, +ve = behind)
 }
 
 /**
@@ -394,7 +395,8 @@ export function calculatePacingInfo(
     percentComplete: 0,
     expectedSlideIndex: currentSlideIndex,
     slideDifference: 0,
-    shouldShow: false
+    shouldShow: false,
+    timePositionInMinutes: 0 // Default is on schedule (0 minutes difference)
   };
   
   // Safety check for invalid inputs
@@ -458,7 +460,8 @@ export function calculatePacingInfo(
   if (!shouldShow) {
     return {
       ...defaultResult,
-      shouldShow: false
+      shouldShow: false,
+      timePositionInMinutes: 0
     };
   }
   
@@ -475,7 +478,8 @@ export function calculatePacingInfo(
       percentComplete: 0,
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: false // Never show for the last timed slide
+      shouldShow: false, // Never show for the last timed slide
+      timePositionInMinutes: 0
     };
   }
   
@@ -487,7 +491,8 @@ export function calculatePacingInfo(
       percentComplete: 0,
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: false // Never show for the first timed slide
+      shouldShow: false, // Never show for the first timed slide
+      timePositionInMinutes: 0
     };
   }
   
@@ -499,7 +504,8 @@ export function calculatePacingInfo(
       percentComplete: 1, // We've completed all timed notes
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: false // Never show for the last timed slide
+      shouldShow: false, // Never show for the last timed slide
+      timePositionInMinutes: 0
     };
   }
   
@@ -524,6 +530,38 @@ export function calculatePacingInfo(
   // Progress goes from 0 to 1 as we move through slides between timed markers
   const timePosition = progress;
   
+  // Calculate time difference in minutes for the grey dot
+  // Get current wall-clock time
+  const currentTime = new Date();
+  const currentHours = currentTime.getHours();
+  const currentMinutes = currentTime.getMinutes();
+  const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+  
+  // Get the time markers from the previous and next timed notes
+  const prevTimeInMinutes = previousTimedNote && previousTimedNote.time ? 
+                           timeToMinutes(previousTimedNote.time) : 0;
+  const nextTimeInMinutes = nextTimedNote && nextTimedNote.time ? 
+                           timeToMinutes(nextTimedNote.time) : 0;
+  
+  // Calculate the expected time based on progress between time markers
+  const totalTimeSpan = nextTimeInMinutes - prevTimeInMinutes;
+  const expectedTimeInMinutes = prevTimeInMinutes + (progress * totalTimeSpan);
+  
+  // Calculate how many minutes ahead/behind schedule (negative = ahead, positive = behind)
+  let timePositionInMinutes = currentTimeInMinutes - expectedTimeInMinutes;
+  
+  // Handle day boundary (if current time is after midnight but expected is before)
+  if (currentTimeInMinutes < prevTimeInMinutes && timePositionInMinutes < -12 * 60) {
+    timePositionInMinutes += 24 * 60; // Add a day
+  }
+  // Handle reverse day boundary (if expected time is after midnight but current is before)
+  else if (currentTimeInMinutes > nextTimeInMinutes && timePositionInMinutes > 12 * 60) {
+    timePositionInMinutes -= 24 * 60; // Subtract a day
+  }
+  
+  // Cap the minutes to a maximum of 1 hour (60 minutes) in either direction
+  timePositionInMinutes = Math.max(-60, Math.min(60, timePositionInMinutes));
+  
   // Determine our position information for the UI
   return {
     previousTimedNote,
@@ -531,6 +569,7 @@ export function calculatePacingInfo(
     percentComplete: progress,
     expectedSlideIndex: currentSlideIndex, // We're exactly where we should be
     slideDifference: 0, // No slide difference since we're not comparing to wall clock
-    shouldShow: true
+    shouldShow: true,
+    timePositionInMinutes
   };
 }
