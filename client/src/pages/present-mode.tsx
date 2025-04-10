@@ -42,6 +42,7 @@ interface PresentationNote extends Note {
   isEndSlide?: boolean; // Flag for project end slide
   author?: string | null; // Author for end slides
   debugInfo?: string; // Debug information for development
+  timeBorrowed?: boolean; // Flag to indicate time data was borrowed from another slide
 }
 
 // Define the TimeSegment interface for tracking time
@@ -383,7 +384,47 @@ export default function PresentMode() {
     if (!flattenedNotes.length || currentSlideIndex >= flattenedNotes.length) {
       return null;
     }
-    return flattenedNotes[currentSlideIndex];
+    
+    // Get the base note
+    const note = flattenedNotes[currentSlideIndex];
+    
+    // If it's a start slide, try to "borrow" time data from the first real timed note
+    if (note.isStartSlide) {
+      // Find the first real note with time data
+      const firstTimedNote = flattenedNotes.find(n => 
+        !n.isStartSlide && !n.isEndSlide && !n.isOverviewSlide && n.time && n.time.trim() !== ''
+      );
+      
+      if (firstTimedNote) {
+        // Create a new object with the first timed note's time data
+        return {
+          ...note,
+          time: firstTimedNote.time,
+          // Mark it as borrowed data
+          timeBorrowed: true
+        };
+      }
+    }
+    
+    // If it's an end slide, try to "borrow" time data from the last real timed note
+    if (note.isEndSlide) {
+      // Find the last real note with time data (search in reverse)
+      const lastTimedNote = [...flattenedNotes].reverse().find(n => 
+        !n.isStartSlide && !n.isEndSlide && !n.isOverviewSlide && n.time && n.time.trim() !== ''
+      );
+      
+      if (lastTimedNote) {
+        // Create a new object with the last timed note's time data
+        return {
+          ...note,
+          time: lastTimedNote.time,
+          // Mark it as borrowed data
+          timeBorrowed: true
+        };
+      }
+    }
+    
+    return note;
   }, [flattenedNotes, currentSlideIndex]);
   
   // Extract type flags
@@ -1453,7 +1494,15 @@ export default function PresentMode() {
                   <TooltipContent side="top" className="bg-black/90 text-white text-[10px] sm:text-xs p-2 sm:p-3">
                     <div className="text-center">
                       <div>
-                        <span className="opacity-80">Current:</span> {currentNote?.time ? `${currentNote.time}` : 'No time marker'} 
+                        <span className="opacity-80">Current:</span> {currentNote?.time ? 
+                          <>
+                            {currentNote.time}
+                            {currentNote.timeBorrowed && 
+                              <span className="ml-1 text-[9px] italic text-amber-400">(borrowed from {isStartSlide ? 'first' : 'last'} note)</span>
+                            }
+                          </> 
+                          : 'No time marker'
+                        } 
                       </div>
                       {(() => {
                         // Store the value to avoid multiple calls
@@ -1607,7 +1656,10 @@ export default function PresentMode() {
                       <div className="mt-2 pt-1 border-t border-gray-700 bg-gray-800 p-1 rounded text-[9px] sm:text-xs">
                         <div className="grid grid-cols-2 gap-x-1 font-mono text-white">
                           <div className="text-green-400 font-semibold whitespace-nowrap">Start Time:</div>
-                          <div>{currentNote?.time || '—'}</div>
+                          <div>
+                            {currentNote?.time || '—'}
+                            {currentNote?.timeBorrowed && <span className="ml-1 text-yellow-400">(borrowed)</span>}
+                          </div>
                           
                           <div className="text-green-400 font-semibold whitespace-nowrap">End Time:</div>
                           <div>{getNextTimedSlide()?.time || '—'}</div>
