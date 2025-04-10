@@ -1357,23 +1357,7 @@ export default function PresentMode() {
                         }}
                       />
                       
-                      {/* Black dot with transparency (expected position based on time offset from center) */}
-                      {(pacingInfo.shouldShow || currentNote?.time) && 
-                       pacingInfo.expectedTimePosition !== undefined && 
-                       pacingInfo.expectedTimePosition !== null && 
-                       !isNaN(pacingInfo.expectedTimePosition) && (
-                        <div 
-                          className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300 z-10"
-                          style={{
-                            transform: `translateX(-50%)`,
-                            // Adjust position to ensure gray dot doesn't overlap white dots at 0 or 1
-                            // We limit to range 0.05-0.95 to keep it visible but away from white dots
-                            left: `calc(50% + ${(Math.max(0.05, Math.min(0.95, pacingInfo.expectedTimePosition)) - 0.5) * 250}px)`,
-                            backgroundColor: 'rgba(0, 0, 0, 0.75)', // Made more visible
-                            boxShadow: '0 0 4px rgba(0, 0, 0, 0.5)'
-                          }}
-                        />
-                      )}
+                      {/* Black dot display has been removed */}
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="bg-black/90 text-white text-[10px] sm:text-xs p-2 sm:p-3">
@@ -1425,10 +1409,7 @@ export default function PresentMode() {
                       </div>
                       
                       <div className="mt-1 text-[9px] sm:text-xs">
-                        <span className="text-white/80">White dot:</span> Your current position<br/>
-                        <span className="text-gray-400">
-                          Black dot:
-                        </span> Where you should be based on time
+                        <span className="text-white/80">White dot:</span> Your current position
                       </div>
                       
                       {/* Time allocation info */}
