@@ -388,23 +388,29 @@ export function calculatePacingInfo(
   // Determine whether to show the time indicator dots
   let shouldShow = false;
   
-  // CASE 1: Current note has a time (we're at a timed slide)
-  if (currentNote && currentNote.time && currentNote.time.trim() !== '') {
+  // We should only show time indicators:
+  // 1. When we're between timed slides (in progress between start/end time points)
+  // 2. When we're on a slide that has a time marker (except for the first and last slides)
+  
+  // CASE 1: We're between two timed notes - ALWAYS show
+  if (previousTimedNote && nextTimedNote) {
     shouldShow = true;
   }
-  // CASE 2: We're between two timed notes
-  else if (previousTimedNote && nextTimedNote) {
-    shouldShow = true;
+  // CASE 2: Current slide has time and it's not the first or last timed slide
+  else if (currentNote && currentNote.time && currentNote.time.trim() !== '') {
+    // Count how many timed notes we have in total
+    const timedNotes = notes.filter(n => n.time && n.time.trim() !== '');
+    // Don't show dots on the first or last timed slide
+    if (timedNotes.length >= 3) {
+      // Find this note's position in the timed notes sequence
+      const position = timedNotes.findIndex(n => n.id === currentNote.id);
+      // Only show if it's not the first or last position
+      if (position > 0 && position < timedNotes.length - 1) {
+        shouldShow = true;
+      }
+    }
   }
-  // CASE 3: We're after at least one timed note
-  else if (previousTimedNote) {
-    shouldShow = true;
-  }
-  // CASE 4: We're before at least one timed note
-  else if (nextTimedNote) {
-    shouldShow = true;
-  }
-  // Otherwise, don't show indicators
+  // All other slides (non-timed slides not between timed points) - don't show indicators
   
   // If we shouldn't show indicators, return early
   if (!shouldShow) {
@@ -414,16 +420,21 @@ export function calculatePacingInfo(
     };
   }
   
+  // CASE: We're on a timed note (dot should never appear exactly on the timed slide)
+  // Only handle special cases if we should show dots - otherwise we already returned early
+  
   // CASE: Single Timed Note - Current note has time but no next timed note
   if (currentNote && currentNote.time && currentNote.time.trim() !== '' && !nextTimedNote) {
+    // We shouldn't be showing dots for this case based on our criteria above,
+    // but just in case this logic changes in the future, we'll still handle it
     return {
       previousTimedNote: currentNote,
       nextTimedNote: null,
       percentComplete: 0,
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: true,
-      expectedTimePosition: 0.5 // Centered
+      shouldShow: false, // Never show for the last timed slide
+      expectedTimePosition: 0.5 // Centered (but not used since shouldShow is false)
     };
   }
   
@@ -435,8 +446,8 @@ export function calculatePacingInfo(
       percentComplete: 0,
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: true,
-      expectedTimePosition: 0.35 // Slightly to the left of center
+      shouldShow: false, // Never show for the first timed slide
+      expectedTimePosition: 0.35 // Slightly to the left of center (but not used)
     };
   }
   
@@ -448,8 +459,8 @@ export function calculatePacingInfo(
       percentComplete: 1, // We've completed all timed notes
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: true,
-      expectedTimePosition: 0.65 // Slightly to the right of center
+      shouldShow: false, // Never show for the last timed slide
+      expectedTimePosition: 0.65 // Slightly to the right of center (but not used)
     };
   }
   
@@ -470,8 +481,24 @@ export function calculatePacingInfo(
   // Calculate how far along we are between the timed notes (0-1)
   const progress = (currentSlideIndex - prevIndex) / slidesBetween;
   
-  // Calculate the expected time position on the indicator
-  const timePosition = 0.35 + (progress * 0.3);
+  // Calculate the expected time position with a wider range (0.3 to 0.7)
+  // This ensures that the black dot is never at the center (0.5) where the white dot is
+  const timePosition = 0.3 + (progress * 0.4);
+  
+  // If we're exactly at 0.5, shift slightly to avoid the white dot
+  if (Math.abs(timePosition - 0.5) < 0.01) {
+    // If we're slightly less than 0.5, go more to the left
+    // If we're slightly more than 0.5, go more to the right
+    return {
+      previousTimedNote,
+      nextTimedNote,
+      percentComplete: progress,
+      expectedSlideIndex: currentSlideIndex,
+      slideDifference: 0,
+      shouldShow: true,
+      expectedTimePosition: timePosition < 0.5 ? 0.45 : 0.55 // Avoid the center
+    };
+  }
   
   // Determine our position information for the UI
   return {
