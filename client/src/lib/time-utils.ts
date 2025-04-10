@@ -522,11 +522,7 @@ export function calculatePacingInfo(
   
   // Simple, straightforward approach: position is directly proportional to progress
   // Progress goes from 0 to 1 as we move through slides between timed markers
-  // So the gray dot will start right after the white dot on the left (at position > 0),
-  // then move steadily toward the right as we progress through slides.
   const timePosition = progress;
-  
-  // No special cases - the gray dot just moves steadily from left (0) to right (1)
   
   // Determine our position information for the UI
   return {

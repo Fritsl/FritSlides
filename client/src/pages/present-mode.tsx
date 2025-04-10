@@ -515,8 +515,7 @@ export default function PresentMode() {
     percentComplete: 0,
     expectedSlideIndex: 0,
     slideDifference: 0,
-    shouldShow: false,
-    expectedTimePosition: 0.5 // Default to center
+    shouldShow: false
   });
   
   // Initialize from the project's last viewed slide index or specified start note
@@ -617,7 +616,6 @@ export default function PresentMode() {
       
       console.log('New pacing info:', {
         shouldShow: info.shouldShow,
-        expectedTimePosition: info.expectedTimePosition,
         slideDifference: info.slideDifference,
         previousTimedNote: info.previousTimedNote?.id,
         nextTimedNote: info.nextTimedNote?.id,
@@ -1680,7 +1678,7 @@ export default function PresentMode() {
                             {pacingInfo.previousTimedNote ? 
                               'Add time to upcoming slides to track pacing' : 
                               pacingInfo.nextTimedNote ?
-                              'Both white and black dots will appear when you\'re between two timed slides' :
+                              'The progress indicator shows your position between timed slides' :
                               'Add time markers to track presentation pacing'}
                           </div>
                           
