@@ -481,13 +481,29 @@ export default function PresentMode() {
     
     // Function to update pacing
     const updatePacing = () => {
+      const currentTime = new Date();
+      console.log(`Updating pacing info at ${currentTime.toISOString()}`);
+      
       const info = calculatePacingInfo(
         notes || [],
         noteIds,
         currentSlideIndex
       );
+      
+      console.log('New pacing info:', {
+        shouldShow: info.shouldShow,
+        expectedTimePosition: info.expectedTimePosition,
+        slideDifference: info.slideDifference,
+        previousTimedNote: info.previousTimedNote?.id,
+        nextTimedNote: info.nextTimedNote?.id,
+        percentComplete: info.percentComplete,
+        currenSlideIndex: currentSlideIndex
+      });
+      
       setPacingInfo(info);
     };
+    
+    console.log('Setting up pacing interval timer');
     
     // Initial calculation
     updatePacing();
@@ -496,7 +512,10 @@ export default function PresentMode() {
     const intervalId = setInterval(updatePacing, 1000);
     
     // Clean up interval on unmount
-    return () => clearInterval(intervalId);
+    return () => {
+      console.log('Cleaning up pacing interval timer');
+      clearInterval(intervalId);
+    };
   }, [notes, flattenedNotes, currentSlideIndex]);
   
   // Legacy time tracking function (keeping for compatibility)
