@@ -140,8 +140,24 @@ export function useNotes(projectId: number | null) {
     mutationFn: async (note: Partial<InsertNote>) => {
       if (!projectId && !note.projectId) throw new Error("Project ID is required");
       const targetProjectId = projectId || note.projectId;
-      const res = await apiRequest("POST", `/api/projects/${targetProjectId}/notes`, note);
-      return res.json();
+      
+      // Add a 'fastCreate' flag to signal server we want a rapid creation without normalization
+      const noteWithFlag = { ...note, fastCreate: true };
+      
+      // Use AbortController to add a timeout for the request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        const res = await apiRequest("POST", `/api/projects/${targetProjectId}/notes`, noteWithFlag, {
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return res.json();
+      } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+      }
     },
     onMutate: async (newNote: Partial<InsertNote>) => {
       console.log(`[CREATE MUTATE] Starting optimistic update for new note`, newNote);
@@ -182,6 +198,10 @@ export function useNotes(projectId: number | null) {
     onSuccess: (data, variables, context) => {
       console.log(`[CREATE SUCCESS] Server created note with ID: ${data.id}`, data);
       
+      // Set edit mode flags immediately to reduce perceived lag
+      localStorage.setItem('newNoteCreated', 'true');
+      localStorage.setItem('lastCreatedNoteId', data.id.toString());
+      
       // No need to invalidate manually since we'll update the cache with the server response
       if (projectId) {
         // Get the current notes
@@ -193,12 +213,7 @@ export function useNotes(projectId: number | null) {
           // Replace the optimistic note with the real one
           const updatedNotes = currentNotes.map(note => {
             if (note.id === context.optimisticNote.id) {
-              // IMPORTANT CHANGE: Now that server has confirmed the note creation, 
-              // we set the flags to trigger edit mode
               console.log(`[CREATE SUCCESS] Setting up edit mode for new note ${data.id}`);
-              localStorage.setItem('newNoteCreated', 'true');
-              localStorage.setItem('lastCreatedNoteId', data.id.toString());
-              
               return data;
             }
             return note;
@@ -217,7 +232,6 @@ export function useNotes(projectId: number | null) {
           queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
         }
       }
-      // No toast notification for note creation to avoid disrupting workflow
     },
     onError: (error, variables, context) => {
       // If the mutation fails, roll back to the previous notes
@@ -232,10 +246,8 @@ export function useNotes(projectId: number | null) {
       });
     },
     onSettled: () => {
-      // Always refetch to make sure we're in sync with the server
-      if (projectId) {
-        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
-      }
+      // Don't invalidate immediately after settling to avoid extra server round trips
+      // This helps with performance and reduces server load
     }
   });
 

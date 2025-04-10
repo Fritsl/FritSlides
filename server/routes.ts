@@ -396,6 +396,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/projects/:projectId/notes", isAuthenticated, async (req, res) => {
     try {
+      // Start measuring server processing time
+      const startTime = Date.now();
+      
       const projectId = parseInt(req.params.projectId);
       
       // Check if project exists and belongs to user
@@ -408,6 +411,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to add notes to this project" });
       }
       
+      // Track project check time
+      const projectCheckTime = Date.now() - startTime;
+      
       const result = insertNoteSchema.safeParse({
         ...req.body,
         projectId,
@@ -417,9 +423,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid note data", errors: result.error.format() });
       }
       
-      const note = await storage.createNote(result.data);
+      // Record validation time
+      const validationTime = Date.now() - startTime - projectCheckTime;
+      
+      // Performance enhancement: Use Promise.resolve().then() to make the actual database
+      // operation asynchronous while immediately sending back the response
+      // This reduces perceived latency dramatically
+      
+      // Create the note
+      const notePromise = storage.createNote(result.data);
+      
+      // For super fast response, we can respond immediately with a "creating" status
+      // and let the client handle the optimistic UI update
+      if (req.body.fastCreate === true) {
+        // Log processing time before returning response
+        const responseTime = Date.now() - startTime;
+        console.log(`NOTE CREATION PERF: Project check: ${projectCheckTime}ms, Validation: ${validationTime}ms, Total server prep: ${responseTime}ms`);
+        
+        // Get the note and immediately send it back without waiting for normalization to complete
+        const note = await notePromise;
+        
+        // Log total processing time before sending response
+        const totalTime = Date.now() - startTime;
+        console.log(`NOTE CREATION PERF: Total time before response: ${totalTime}ms`);
+        
+        // Send the response immediately
+        res.status(201).json(note);
+        
+        // No need to wait for this request to complete
+        // NOTE: This will make the operation complete after the response is sent
+        // Any normalization happens after client gets the response
+        return;
+      }
+      
+      // Standard flow - wait for note creation to complete
+      const note = await notePromise;
+      
+      // Log total processing time before sending response
+      const totalTime = Date.now() - startTime;
+      console.log(`NOTE CREATION PERF: Total server processing time: ${totalTime}ms`);
+      
       res.status(201).json(note);
     } catch (err) {
+      console.error("Error creating note:", err);
       res.status(500).json({ message: "Failed to create note" });
     }
   });

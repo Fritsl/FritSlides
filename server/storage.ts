@@ -255,15 +255,22 @@ export class DatabaseStorage implements IStorage {
         ));
       
       const maxOrder = maxOrderResult?.maxOrder ?? -1;
-      const order = insertNote.order ?? maxOrder + 1;
+      
+      // If order is provided in the request, use it, otherwise place at the end
+      // This allows the client to control positioning precisely
+      const order = insertNote.order !== undefined ? Number(insertNote.order) : maxOrder + 1;
       
       const [note] = await db
         .insert(notes)
         .values({ ...insertNote, order })
         .returning();
       
-      // Always normalize orders after creating a note to ensure consistent ordering
-      await this.normalizeNoteOrders(insertNote.parentId);
+      // Skip normalization for new notes - it will happen during drag operations
+      // This significantly improves note creation performance
+      // We only normalize if explicitly requested with a negative order value
+      if (order < 0) {
+        await this.normalizeNoteOrders(insertNote.parentId);
+      }
       
       return note;
     } catch (error) {
@@ -580,7 +587,8 @@ export class DatabaseStorage implements IStorage {
   
   async normalizeNoteOrders(parentId: number | null): Promise<boolean> {
     try {
-      console.log(`ORDER NORMALIZATION: Starting for parent ${parentId === null ? 'ROOT' : parentId}`);
+      const parentLabel = parentId === null ? 'ROOT' : parentId;
+      console.log(`ORDER NORMALIZATION: Starting for parent ${parentLabel}`);
 
       // Get all notes with the same parent, ordered by their current order
       // Specifically cast order to number to ensure correct sorting
@@ -591,15 +599,38 @@ export class DatabaseStorage implements IStorage {
         .orderBy(sql`CAST(${notes.order} AS FLOAT)`);
       
       if (!notesWithSameParent.length) {
-        console.log(`ORDER NORMALIZATION: No notes found for parent ${parentId === null ? 'ROOT' : parentId}`);
+        console.log(`ORDER NORMALIZATION: No notes found for parent ${parentLabel}`);
         return true;
       }
       
-      console.log(`ORDER NORMALIZATION: Found ${notesWithSameParent.length} notes to normalize for parent ${parentId === null ? 'ROOT' : parentId}`);
+      // Skip logging for large collections to improve performance
+      const noteCount = notesWithSameParent.length;
+      const isLargeCollection = noteCount > 50;
       
-      // Create a list of the current orders for logging
-      const currentOrders = notesWithSameParent.map(n => `${n.id}:${n.order}`);
-      console.log(`ORDER NORMALIZATION: Current order values: ${currentOrders.join(', ')}`);
+      if (!isLargeCollection) {
+        console.log(`ORDER NORMALIZATION: Found ${noteCount} notes to normalize for parent ${parentLabel}`);
+        
+        // Create a list of the current orders for logging (only for small collections)
+        const currentOrders = notesWithSameParent.map(n => `${n.id}:${n.order}`);
+        console.log(`ORDER NORMALIZATION: Current order values: ${currentOrders.join(', ')}`);
+      } else {
+        console.log(`ORDER NORMALIZATION: Found ${noteCount} notes to normalize for parent ${parentLabel} (order details omitted for performance)`);
+      }
+      
+      // Check if notes are already in sequential order (0, 1, 2...)
+      let alreadyNormalized = true;
+      for (let i = 0; i < noteCount; i++) {
+        if (Number(notesWithSameParent[i].order) !== i) {
+          alreadyNormalized = false;
+          break;
+        }
+      }
+      
+      // Skip normalization if already in correct order to improve performance
+      if (alreadyNormalized) {
+        console.log(`ORDER NORMALIZATION: Notes for parent ${parentLabel} already normalized, skipping`);
+        return true;
+      }
       
       // Build updates with sequential integers starting from 0
       const allUpdates = notesWithSameParent.map((note, index) => ({
@@ -607,22 +638,48 @@ export class DatabaseStorage implements IStorage {
         newOrder: index
       }));
       
-      // Log the new order assignments
-      const newOrders = allUpdates.map(u => `${u.id}:${u.newOrder}`);
-      console.log(`ORDER NORMALIZATION: New order values: ${newOrders.join(', ')}`);
+      // Only log new orders for small collections to avoid console spam
+      if (!isLargeCollection) {
+        const newOrders = allUpdates.map(u => `${u.id}:${u.newOrder}`);
+        console.log(`ORDER NORMALIZATION: New order values: ${newOrders.join(', ')}`);
+      }
       
-      // Single transaction for all updates to avoid deadlocks
-      await db.transaction(async (tx) => {
-        // Process in bulk using a Promise.all for better performance
-        await Promise.all(allUpdates.map(update => 
-          tx
-            .update(notes)
-            .set({ order: update.newOrder, updatedAt: new Date() })
-            .where(eq(notes.id, update.id))
-        ));
-      });
+      // For large collections, use batched updates to avoid overloading the DB connection
+      if (isLargeCollection) {
+        const BATCH_SIZE = 50;
+        console.log(`ORDER NORMALIZATION: Using batched updates for ${noteCount} notes`);
+        
+        for (let i = 0; i < allUpdates.length; i += BATCH_SIZE) {
+          const batch = allUpdates.slice(i, i + BATCH_SIZE);
+          
+          // Process each batch in its own transaction
+          await db.transaction(async (tx) => {
+            await Promise.all(batch.map(update => 
+              tx
+                .update(notes)
+                .set({ order: update.newOrder, updatedAt: new Date() })
+                .where(eq(notes.id, update.id))
+            ));
+          });
+          
+          // Log progress for large batches
+          if ((i + BATCH_SIZE) % 200 === 0 || i + BATCH_SIZE >= allUpdates.length) {
+            console.log(`ORDER NORMALIZATION: Processed ${Math.min(i + BATCH_SIZE, allUpdates.length)}/${allUpdates.length} notes`);
+          }
+        }
+      } else {
+        // For small collections, use a single transaction for all updates
+        await db.transaction(async (tx) => {
+          await Promise.all(allUpdates.map(update => 
+            tx
+              .update(notes)
+              .set({ order: update.newOrder, updatedAt: new Date() })
+              .where(eq(notes.id, update.id))
+          ));
+        });
+      }
       
-      console.log(`ORDER NORMALIZATION: Successfully normalized ${allUpdates.length} notes for parent ${parentId === null ? 'ROOT' : parentId}`);
+      console.log(`ORDER NORMALIZATION: Successfully normalized ${noteCount} notes for parent ${parentLabel}`);
       return true;
     } catch (error) {
       console.error(`ORDER NORMALIZATION ERROR for parent ${parentId === null ? 'ROOT' : parentId}:`, error);
