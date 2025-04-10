@@ -332,7 +332,7 @@ export function findPreviousTimedNote(
 }
 
 /**
- * Calculate the slide pacing information based on current time and position
+ * Calculate the slide pacing information based on position between timed notes
  * 
  * @param notes All available notes
  * @param presentationOrder Array of note IDs in presentation order
@@ -344,105 +344,7 @@ export function calculatePacingInfo(
   presentationOrder: number[],
   currentSlideIndex: number
 ): PacingInfo {
-  // Special case for the Start slide (index 0)
-  // Show the time indicator on the Start slide as if it was the first note with time
-  if (currentSlideIndex === 0 && presentationOrder.length > 1) {
-    // Look for the first note with time
-    let firstTimedNote: Note | null = null;
-    for (let i = 1; i < presentationOrder.length; i++) {
-      const noteId = presentationOrder[i];
-      const note = notes.find(n => n.id === noteId);
-      
-      if (note && note.time && note.time.trim() !== '') {
-        firstTimedNote = note;
-        break;
-      }
-    }
-    
-    // If we found a timed note, use its time for the Start slide
-    if (firstTimedNote) {
-      const now = new Date();
-      const hours = now.getHours().toString().padStart(2, '0');
-      const mins = now.getMinutes().toString().padStart(2, '0');
-      const currentTimeString = `${hours}:${mins}`;
-      const currentTimeMinutes = timeToMinutes(currentTimeString);
-      const noteTimeMinutes = timeToMinutes(firstTimedNote.time || '');
-      
-      // Calculate offset based on real-time comparison
-      const isBehindSchedule = currentTimeMinutes > noteTimeMinutes;
-      
-      if (isBehindSchedule) {
-        // Calculate how far behind we are (in minutes)
-        const minutesBehind = currentTimeMinutes - noteTimeMinutes;
-        // For presentation, still calculate the slide difference
-        const slidesBehind = minutesBehind / 5;
-        const cappedSlidesBehind = Math.min(25, slidesBehind * 5);
-        
-        // NEW: Calculate position based directly on minutes offset
-        // Maximum offset is 30 minutes (from center) for visual representation
-        const MAX_MINUTES_OFFSET = 30;
-        const offsetRatio = Math.min(1, minutesBehind / MAX_MINUTES_OFFSET);
-        // Apply exponential dampening for better visual (sqrt gives more movement for small values)
-        const dampedOffset = Math.sqrt(offsetRatio) * 0.2; // Maximum 0.2 (20%) offset from center
-        const timePosition = 0.5 + dampedOffset; // Right of center (behind schedule)
-        
-        console.log('START SLIDE: Using time from first timed note:', {
-          currentTime: currentTimeString,
-          noteTime: firstTimedNote.time,
-          minutesBehind,
-          slidesBehind,
-          cappedSlidesBehind,
-          expectedTimePosition: timePosition
-        });
-        
-        // Return result showing we're behind schedule
-        return {
-          previousTimedNote: null,
-          nextTimedNote: firstTimedNote,
-          percentComplete: 0,
-          expectedSlideIndex: currentSlideIndex,
-          slideDifference: -cappedSlidesBehind, // Negative means behind (keep for UI)
-          shouldShow: true,
-          expectedTimePosition: timePosition
-        };
-      } else {
-        // We're ahead of schedule
-        const minutesAhead = noteTimeMinutes - currentTimeMinutes;
-        // For presentation, still calculate the slide difference 
-        const slidesAhead = minutesAhead / 5;
-        const cappedSlidesAhead = Math.min(25, slidesAhead * 5);
-        
-        // NEW: Calculate position based directly on minutes offset
-        // Maximum offset is 30 minutes (from center) for visual representation
-        const MAX_MINUTES_OFFSET = 30;
-        const offsetRatio = Math.min(1, minutesAhead / MAX_MINUTES_OFFSET);
-        // Apply exponential dampening for better visual (sqrt gives more movement for small values)
-        const dampedOffset = Math.sqrt(offsetRatio) * 0.2; // Maximum 0.2 (20%) offset from center
-        const timePosition = 0.5 - dampedOffset; // Left of center (ahead of schedule)
-        
-        console.log('START SLIDE: Using time from first timed note (ahead):', {
-          currentTime: currentTimeString,
-          noteTime: firstTimedNote.time,
-          minutesAhead,
-          slidesAhead,
-          cappedSlidesAhead,
-          expectedTimePosition: timePosition
-        });
-        
-        // Return result showing we're ahead of schedule
-        return {
-          previousTimedNote: null,
-          nextTimedNote: firstTimedNote,
-          percentComplete: 0,
-          expectedSlideIndex: currentSlideIndex,
-          slideDifference: cappedSlidesAhead, // Positive means ahead (keep for UI)
-          shouldShow: true,
-          expectedTimePosition: timePosition
-        };
-      }
-    }
-  }
-  // Initialize default result
+  // Initialize default result - no indicators shown
   const defaultResult: PacingInfo = {
     previousTimedNote: null,
     nextTimedNote: null,
@@ -453,38 +355,23 @@ export function calculatePacingInfo(
     expectedTimePosition: 0.5 // Default to center
   };
   
-  // Safety check for invalid inputs to prevent crashes
+  // Safety check for invalid inputs
   if (!notes || !Array.isArray(notes) || notes.length === 0 || 
       !presentationOrder || !Array.isArray(presentationOrder) || presentationOrder.length === 0 ||
       typeof currentSlideIndex !== 'number' || currentSlideIndex < 0 || 
       currentSlideIndex >= presentationOrder.length) {
-    
-    console.warn('Pacing info calculation skipped due to invalid inputs:', {
-      notesLength: notes?.length || 0,
-      orderLength: presentationOrder?.length || 0,
-      currentSlideIndex,
-      validRange: currentSlideIndex >= 0 && currentSlideIndex < (presentationOrder?.length || 0)
-    });
-    
+    console.warn('Pacing info calculation skipped due to invalid inputs');
     return defaultResult;
   }
   
-  // We no longer use the real-time clock for pacing
-  // Instead, we calculate progress based on current slide position between time markers
-  
-  // Find the previous and next timed slides
-  const previousTimedNote = findPreviousTimedNote(notes, presentationOrder, currentSlideIndex);
+  // Get the current note
   const currentNoteId = presentationOrder[currentSlideIndex];
   const currentNote = notes.find(n => n.id === currentNoteId);
   
-  // If current note has a time, use it as previous
-  const effectivePreviousNote = 
-    (currentNote && currentNote.time && currentNote.time.trim() !== '') 
-      ? currentNote 
-      : previousTimedNote;
-
-  // Find next timed note
-  let nextTimedNoteId: number | null = null;
+  // Find the previous timed note (note with time before current slide)
+  const previousTimedNote = findPreviousTimedNote(notes, presentationOrder, currentSlideIndex);
+  
+  // Find the next timed note (note with time after current slide)
   let nextTimedNote: Note | null = null;
   
   // Look forward in the presentation order to find a note with a time marker
@@ -493,343 +380,99 @@ export function calculatePacingInfo(
     const note = notes.find(n => n.id === noteId);
     
     if (note && note.time && note.time.trim() !== '') {
-      nextTimedNoteId = noteId;
       nextTimedNote = note;
       break;
     }
   }
   
-  // Show time indicators if:
-  // 1. The current slide has a time marker
-  // 2. OR there's a next slide with a time marker
+  // Determine whether to show the time indicator dots
+  let shouldShow = false;
   
-  // If current note has a time marker but there's no next timed note,
-  // we should still show the indicator with the centered dots
+  // CASE 1: Current note has a time (we're at a timed slide)
+  if (currentNote && currentNote.time && currentNote.time.trim() !== '') {
+    shouldShow = true;
+  }
+  // CASE 2: We're between two timed notes
+  else if (previousTimedNote && nextTimedNote) {
+    shouldShow = true;
+  }
+  // Otherwise, don't show indicators
+  
+  // If we shouldn't show indicators, return early
+  if (!shouldShow) {
+    return {
+      ...defaultResult,
+      shouldShow: false
+    };
+  }
+  
+  // CASE: Single Timed Note - Current note has time but no next timed note
   if (currentNote && currentNote.time && currentNote.time.trim() !== '' && !nextTimedNote) {
-    // Get the current time for comparison
-    const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const mins = now.getMinutes().toString().padStart(2, '0');
-    const currentTimeString = `${hours}:${mins}`;
-    const currentTimeMinutes = timeToMinutes(currentTimeString);
-    const noteTimeMinutes = timeToMinutes(currentNote.time);
-    
-    // Determine if we're ahead/behind schedule to show a slight offset
-    let timeOffset = 0.5; // Default centered
-    let slideDiff = 0;
-    
-    // If it's before the scheduled time, we're ahead
-    if (currentTimeMinutes < noteTimeMinutes) {
-      const minutesAhead = noteTimeMinutes - currentTimeMinutes;
-      // Keep the slide difference calculation for UI purposes
-      const slidesAhead = Math.min(5, Math.max(0, minutesAhead / 5));
-      slideDiff = slidesAhead;
-      
-      // NEW: Calculate position based directly on minutes difference
-      // Max visual offset at 30 minutes ahead/behind
-      const MAX_MINUTES_OFFSET = 30;
-      const offsetRatio = Math.min(1, minutesAhead / MAX_MINUTES_OFFSET);
-      // Apply square root for better visual effect (more perceptible for small values)
-      const dampedOffset = Math.sqrt(offsetRatio) * 0.15; // Maximum 0.15 (15%) offset from center
-      // Left of center (ahead of schedule)
-      timeOffset = 0.5 - dampedOffset;
-    } 
-    // If it's after the scheduled time, we're behind
-    else if (currentTimeMinutes > noteTimeMinutes) {
-      const minutesBehind = currentTimeMinutes - noteTimeMinutes;
-      // Keep the slide difference calculation for UI purposes
-      const slidesBehind = Math.min(5, Math.max(0, minutesBehind / 5));
-      slideDiff = -slidesBehind;
-      
-      // NEW: Calculate position based directly on minutes difference
-      // Max visual offset at 30 minutes ahead/behind
-      const MAX_MINUTES_OFFSET = 30;
-      const offsetRatio = Math.min(1, minutesBehind / MAX_MINUTES_OFFSET);
-      // Apply square root for better visual effect (more perceptible for small values)
-      const dampedOffset = Math.sqrt(offsetRatio) * 0.15; // Maximum 0.15 (15%) offset from center
-      // Right of center (behind schedule)
-      timeOffset = 0.5 + dampedOffset;
-    }
-    
     return {
       previousTimedNote: currentNote,
       nextTimedNote: null,
       percentComplete: 0,
       expectedSlideIndex: currentSlideIndex,
-      slideDifference: slideDiff,
-      shouldShow: true, // Show the indicator on the last timed note
-      expectedTimePosition: timeOffset
+      slideDifference: 0,
+      shouldShow: true,
+      expectedTimePosition: 0.5 // Centered
     };
   }
   
-  // If there's a next note with time marker but no previous/current marker, show basic indicator
-  if (!effectivePreviousNote && nextTimedNote) {
+  // CASE: Only have a next timed note but no previous one
+  if (!previousTimedNote && nextTimedNote) {
     return {
       previousTimedNote: null,
-      nextTimedNote: nextTimedNote,
+      nextTimedNote,
       percentComplete: 0,
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: true, // Show the indicator even without a previous time marker
-      expectedTimePosition: 0.5 // Default to center
+      shouldShow: true,
+      expectedTimePosition: 0.35 // Slightly to the left of center
     };
   }
   
-  // If we don't have either a current/previous timed slide OR a next timed slide, don't show indicators
-  // Also check for any null references to prevent crashes later
-  if (!effectivePreviousNote || !nextTimedNote) {
-    // If current note has a time but there's no next timed note, we want to show the indicator
-    if (currentNote && currentNote.time && currentNote.time.trim() !== '' && !nextTimedNote) {
-      // This case is already handled earlier in the function
-      // But we should never get here - this is just a safety check
-      return {
-        ...defaultResult,
-        previousTimedNote: currentNote,
-        shouldShow: true
-      };
-    }
-    
+  // CASE: Only have a previous timed note but no next one
+  if (previousTimedNote && !nextTimedNote) {
     return {
-      ...defaultResult,
-      previousTimedNote: effectivePreviousNote || null,
-      nextTimedNote: nextTimedNote || null,
-      shouldShow: !!(currentNote?.time)
+      previousTimedNote,
+      nextTimedNote: null,
+      percentComplete: 1, // We've completed all timed notes
+      expectedSlideIndex: currentSlideIndex,
+      slideDifference: 0,
+      shouldShow: true,
+      expectedTimePosition: 0.65 // Slightly to the right of center
     };
   }
   
-  // Convert time strings to minutes
-  const previousTimeMinutes = timeToMinutes(effectivePreviousNote.time || '');
-  const nextTimeMinutes = timeToMinutes(nextTimedNote.time || '');
+  // MAIN CASE: We're between two timed notes - calculate position using linear interpolation
   
-  // Handle time crossing midnight (e.g., prev=23:00, next=01:00)
-  let timeSegmentDuration = nextTimeMinutes - previousTimeMinutes;
-  if (timeSegmentDuration < 0) {
-    timeSegmentDuration += 24 * 60; // Add a full day
+  // Find the previous and next note indices in the presentation order
+  const prevIndex = presentationOrder.indexOf(previousTimedNote!.id);
+  const nextIndex = presentationOrder.indexOf(nextTimedNote!.id);
+  
+  // Calculate how many slides are between the timed notes
+  const slidesBetween = nextIndex - prevIndex;
+  
+  if (slidesBetween <= 0) {
+    // Invalid sequence - shouldn't happen but defend against it
+    return defaultResult;
   }
   
-  // Add safety check for effectivePreviousNote to prevent crashes
-  if (!effectivePreviousNote || typeof effectivePreviousNote.id !== 'number') {
-    console.warn('Safety check: effectivePreviousNote is null or id is not a number');
-    return {
-      ...defaultResult,
-      nextTimedNote: nextTimedNote,
-      shouldShow: currentNote?.time ? true : false
-    };
-  }
+  // Calculate how far along we are between the timed notes (0-1)
+  const progress = (currentSlideIndex - prevIndex) / slidesBetween;
   
-  // Find the previous note index in the presentation order
-  const previousNoteIndex = effectivePreviousNote.id === currentNoteId 
-    ? currentSlideIndex 
-    : presentationOrder.indexOf(effectivePreviousNote.id);
-    
-  // Calculate the number of slides between previous and next timed notes
-  // Add null check for nextTimedNoteId to prevent crashes
-  if (nextTimedNoteId === null || typeof nextTimedNoteId !== 'number') {
-    console.warn('Safety check: nextTimedNoteId is null or not a number');
-    return {
-      ...defaultResult,
-      previousTimedNote: effectivePreviousNote,
-      shouldShow: currentNote?.time ? true : false
-    };
-  }
+  // Calculate the expected time position on the indicator
+  const timePosition = 0.35 + (progress * 0.3);
   
-  const nextNoteIndex = presentationOrder.indexOf(nextTimedNoteId);
-  
-  // Verify that the index is valid before continuing
-  if (nextNoteIndex === -1) {
-    console.warn('Safety check: nextTimedNoteId not found in presentation order');
-    return {
-      ...defaultResult,
-      previousTimedNote: effectivePreviousNote,
-      shouldShow: currentNote?.time ? true : false
-    };
-  }
-  
-  const slidesBetweenTimedNotes = nextNoteIndex - previousNoteIndex;
-  
-  if (slidesBetweenTimedNotes <= 0) {
-    return defaultResult; // Invalid slide sequence
-  }
-  
-  // Instead of using real-time clock, calculate progress based on current slide position
-  // between the two time-marked slides
-  
-  // Calculate percentage of slides completed between the time markers (0-1)
-  // If we're at the previous timed note, we're at 0%
-  // If we're at the next timed note, we're at 100%
-  // If we're somewhere in between, calculate based on position
-  const slidesProgress = currentSlideIndex - previousNoteIndex;
-  const percentComplete = Math.min(1, Math.max(0, slidesProgress / slidesBetweenTimedNotes));
-  
-  // Calculate which slide we should be on based on timing
-  const slideProgress = slidesBetweenTimedNotes * percentComplete;
-  const expectedSlideIndex = Math.round(previousNoteIndex + slideProgress);
-  
-  // How many slides ahead/behind we are
-  const slideDifference = currentSlideIndex - expectedSlideIndex;
-  
-  // Calculate expected time position for visualization
-  // Get the current time from the system
-  const now = new Date();
-  const hours = now.getHours().toString().padStart(2, '0');
-  const mins = now.getMinutes().toString().padStart(2, '0');
-  const currentTimeString = `${hours}:${mins}`;
-  const currentTimeMinutes = timeToMinutes(currentTimeString);
-  
-  // This case is already handled earlier in the function
-  
-  // Handle the edge case where we're on the first slide with a time marker
-  // If current time is after the note's time, we're behind schedule
-  if (!previousTimedNote && currentNote && currentNote.time) {
-    const noteTimeMinutes = timeToMinutes(currentNote.time);
-    const isBehindSchedule = currentTimeMinutes > noteTimeMinutes;
-    
-    console.log('First slide edge case check:', {
-      currentTime: currentTimeString,
-      noteTime: currentNote.time,
-      isBehindSchedule,
-      currentTimeMinutes,
-      noteTimeMinutes,
-      minutesBehind: currentTimeMinutes - noteTimeMinutes
-    });
-    
-    if (isBehindSchedule) {
-      // Calculate how far behind we are (in minutes)
-      const minutesBehind = currentTimeMinutes - noteTimeMinutes;
-      // Keep slide calculation for UI purposes
-      const slidesBehind = minutesBehind / 5;
-      const cappedSlidesBehind = Math.min(25, slidesBehind * 5);
-      
-      // NEW: Calculate position based directly on minutes difference
-      // Maximum offset should be at 30 minutes behind (more gradual scale)
-      const MAX_MINUTES_OFFSET = 30;
-      const offsetRatio = Math.min(1, minutesBehind / MAX_MINUTES_OFFSET);
-      // Apply square root for better visual effect but with reduced amplitude
-      const dampedOffset = Math.sqrt(offsetRatio) * 0.15;
-      // Right of center (behind schedule)
-      const timePosition = 0.5 + dampedOffset;
-      
-      console.log('Using FIRST SLIDE behind schedule special case:', {
-        minutesBehind,
-        slidesBehind,
-        cappedSlidesBehind,
-        offsetRatio,
-        dampedOffset,
-        expectedTimePosition: timePosition
-      });
-      
-      // Return result for this special case
-      return {
-        previousTimedNote: null,
-        nextTimedNote: null,
-        percentComplete: 0, // We're at the beginning
-        expectedSlideIndex: currentSlideIndex,
-        slideDifference: -cappedSlidesBehind, // Negative means behind (for UI)
-        shouldShow: true,
-        expectedTimePosition: timePosition // Now based on minutes offset
-      };
-    }
-  }
-  
-  // 1. Time Segment Identification
-  // We already have previousTimeMinutes and nextTimeMinutes
-  // Start slide is the slide with the previous time marker
-  const startSlide = previousNoteIndex;
-  // End slide is the slide with the next time marker
-  const endSlide = nextNoteIndex;
-  
-  // Default position is middle (0.5)
-  let expectedTimePosition = 0.5;
-  
-  // Additional safety checks to prevent any possible NaN or division by zero
-  // Also check for undefined values and negative durations
-  if (previousTimeMinutes === undefined || nextTimeMinutes === undefined || 
-      isNaN(previousTimeMinutes) || isNaN(nextTimeMinutes) ||
-      isNaN(timeSegmentDuration) || timeSegmentDuration <= 0 ||
-      isNaN(slidesBetweenTimedNotes) || slidesBetweenTimedNotes <= 0) {
-    // If any critical values are missing, invalid or zero, use default center position
-    return {
-      ...defaultResult,
-      shouldShow: true,  // Still show indicators but with default positioning
-      previousTimedNote: effectivePreviousNote,
-      nextTimedNote: nextTimedNote
-    };
-  }
-  
-  // Safety check - only calculate if we have valid time markers AND a valid segment
-  if (previousTimeMinutes > 0 && nextTimeMinutes > 0 && timeSegmentDuration > 0 && slidesBetweenTimedNotes > 0) {
-    try {
-      // 2. Progress Calculation - Calculate what percentage through the time segment we are
-      let timeProgress = (currentTimeMinutes - previousTimeMinutes) / timeSegmentDuration;
-      
-      // Handle overnight transitions (e.g., if segment goes from 23:30 to 00:30)
-      if (timeProgress < 0) {
-        timeProgress += 1; // Add a full day cycle
-      }
-      
-      // Clamp to 0-1 range
-      timeProgress = Math.max(0, Math.min(1, timeProgress));
-      
-      // 3. Expected Position - Calculate which slide we should be on based on time progress
-      const expectedSlidePosition = startSlide + (timeProgress * slidesBetweenTimedNotes);
-      
-      // 4. Offset Calculation - Compare expected slide with actual slide
-      // Calculate how many slides ahead/behind we are (keep for UI purposes)
-      const slideDifference = currentSlideIndex - expectedSlidePosition;
-      
-      // NEW: Calculate expected time position based on minutes difference rather than slides
-      // First, calculate the expected time at the current slide position based on linear interpolation
-      const expectedTimeAtCurrentSlide = previousTimeMinutes + 
-          ((currentSlideIndex - previousNoteIndex) / slidesBetweenTimedNotes) * timeSegmentDuration;
-      
-      // Calculate minutes ahead/behind
-      const minutesDifference = currentTimeMinutes - expectedTimeAtCurrentSlide;
-      
-      // Define a maximum offset in minutes that will produce the maximum visual displacement
-      const MAX_MINUTES_OFFSET = 30; // 30 minutes off schedule = maximum visual displacement
-      
-      // Calculate offset ratio (0-1 scale, capped at MAX_MINUTES_OFFSET)
-      const offsetRatio = Math.min(1, Math.abs(minutesDifference) / MAX_MINUTES_OFFSET);
-      
-      // Apply square root for better visual effect (more perceptible for small values)
-      const dampedOffset = Math.sqrt(offsetRatio) * 0.15; // Maximum 0.15 (15%) offset from center
-      
-      // Set position: behind schedule (positive minutes difference) = move right, ahead = move left
-      expectedTimePosition = minutesDifference > 0 
-          ? 0.5 + dampedOffset  // Behind schedule - dot moves right
-          : 0.5 - dampedOffset; // Ahead of schedule - dot moves left
-      
-      // Debug log to track the calculation
-      console.log('Time position calculation:', {
-        currentSlideIndex,
-        expectedSlidePosition,
-        slideDifference,
-        currentTimeMinutes,
-        expectedTimeAtCurrentSlide,
-        minutesDifference,
-        offsetRatio,
-        dampedOffset,
-        finalPosition: expectedTimePosition
-      });
-      
-    } catch (err) {
-      // If any calculation error occurs, use default position (centered)
-      console.error('Error calculating time position:', err);
-      expectedTimePosition = 0.5;
-    }
-  }
-  
-  // Prepare the result
-  // Set shouldShow based on whether we have at least one time marker
-  const shouldShow = !!(previousTimeMinutes > 0 || currentNote?.time);
-  
+  // Determine our position information for the UI
   return {
-    previousTimedNote: effectivePreviousNote,
-    nextTimedNote: nextTimedNote,
-    percentComplete,
-    expectedSlideIndex,
-    slideDifference: Math.min(Math.max(slideDifference, -25), 25), // Limit to ±25 slides
-    shouldShow,
-    expectedTimePosition
+    previousTimedNote,
+    nextTimedNote,
+    percentComplete: progress,
+    expectedSlideIndex: currentSlideIndex, // We're exactly where we should be
+    slideDifference: 0, // No slide difference since we're not comparing to wall clock
+    shouldShow: true,
+    expectedTimePosition: timePosition
   };
 }
