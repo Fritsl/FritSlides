@@ -914,10 +914,10 @@ export default function NoteItem({
                       
                       // Find the maximum order value among existing child notes
                       let maxOrder = -1;
-                      if (notes && notes.length > 0) {
-                        const childNotes = notes.filter(n => n.parentId === note.id);
+                      if (allNotes && allNotes.length > 0) {
+                        const childNotes = allNotes.filter((n: Note) => n.parentId === note.id);
                         if (childNotes.length > 0) {
-                          childNotes.forEach(childNote => {
+                          childNotes.forEach((childNote: Note) => {
                             const orderValue = parseFloat(childNote.order.toString());
                             if (!isNaN(orderValue) && orderValue > maxOrder) {
                               maxOrder = orderValue;
