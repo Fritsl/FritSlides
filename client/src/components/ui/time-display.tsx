@@ -40,14 +40,14 @@ export function TimeDisplay({ note, notes, className = '', compact = false }: Ti
             {compact ? (
               // Compact view (just time and slide count)
               <span className="text-yellow-200 text-xs flex items-center">
-                {timeInfo.startTime} · {timeInfo.slideCount} {timeInfo.slideCount === 1 ? 'slide' : 'slides'} · {timeInfo.formattedPerSlide}/slide
+                {timeInfo.startTime} · {timeInfo.slideCount} {timeInfo.slideCount === 1 ? 'slide' : 'slides'} · {timeInfo.formattedPerSlide} per slide
               </span>
             ) : (
               // Full view
               <span className="text-yellow-200 text-xs flex items-center">
                 {timeInfo.slideCount} {timeInfo.slideCount === 1 ? 'slide' : 'slides'}, {timeInfo.totalMinutes} min
                 <span className="mx-1">·</span>
-                <span className="whitespace-nowrap">{timeInfo.formattedPerSlide}/slide</span>
+                <span className="whitespace-nowrap">{timeInfo.formattedPerSlide} per slide</span>
               </span>
             )}
           </div>

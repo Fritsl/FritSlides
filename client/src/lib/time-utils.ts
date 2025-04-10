@@ -77,15 +77,15 @@ export function timeToMinutes(time: string): number {
 }
 
 /**
- * Convert minutes to MM:SS format with seconds precision
+ * Convert minutes to a human-readable format with appropriate units
  * For per-slide time display
  */
 export function minutesToTime(minutes: number): string {
   if (isNaN(minutes) || minutes < 0) {
-    return "0:00"; // Return a valid default for invalid inputs
+    return "0 min"; // Return a valid default for invalid inputs
   }
   
-  // If the value is very large (more than 60 minutes), let's display it differently
+  // If the value is very large (more than 60 minutes), display just minutes
   if (minutes > 60) {
     return Math.round(minutes) + " min"; // Just show minutes for very large values
   }
@@ -93,12 +93,18 @@ export function minutesToTime(minutes: number): string {
   // Extract whole minutes and decimal part
   const totalSeconds = Math.round(minutes * 60);
   
-  // Format as MM:SS
+  // Format with explicit units
   const mins = Math.floor(totalSeconds / 60);
   const secs = totalSeconds % 60;
   
-  // Return as MM:SS format - always include both minutes and seconds
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  // Return with explicit units to avoid confusion (MM:SS could be misinterpreted as hours:minutes)
+  if (mins > 0 && secs > 0) {
+    return `${mins}m ${secs}s`; // Example: "22m 30s"
+  } else if (mins > 0) {
+    return `${mins} min`; // Example: "22 min"
+  } else {
+    return `${secs} sec`; // Example: "45 sec"
+  }
 }
 
 /**
