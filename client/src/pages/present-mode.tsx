@@ -139,40 +139,66 @@ export default function PresentMode() {
     }
   };
 
-  // Format time difference as a human-readable string (e.g., "2 minutes ahead" or "1 hour behind")
-  const formatTimeDifferenceHuman = (diffMinutes: number): string => {
+  // Format time in HH:MM format
+  const formatTimeHHMM = (minutes: number): string => {
+    // Normalize to 24 hour format
+    const normalizedMinutes = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60);
+    
+    const hours = Math.floor(normalizedMinutes / 60);
+    const mins = Math.floor(normalizedMinutes % 60);
+    
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  };
+  
+  // Format time difference as a human-readable string with additional information
+  const formatTimeDifferenceHuman = (
+    diffMinutes: number, 
+    currentTimeInMinutes: number, 
+    expectedTimeInMinutes?: number
+  ): string => {
+    // Format current system time
+    const currentTimeFormatted = formatTimeHHMM(currentTimeInMinutes);
+    
+    // Format expected time for this slide (if provided)
+    const expectedTimeFormatted = expectedTimeInMinutes !== undefined ? 
+      formatTimeHHMM(expectedTimeInMinutes) : 'N/A';
+    
     // If very close to zero (within 30 seconds), consider it "on time"
+    let statusText;
     if (Math.abs(diffMinutes) < 0.5) {
-      return 'Right on time';
-    }
-    
-    // Remember: positive value means the user is behind schedule (current time > expected time)
-    // Negative value means the user is ahead of schedule (current time < expected time)
-    const isAhead = diffMinutes < 0;
-    const absDiff = Math.abs(diffMinutes);
-    
-    // Format the time components
-    const hours = Math.floor(absDiff / 60);
-    const mins = Math.floor(absDiff % 60);
-    const secs = Math.round((absDiff % 1) * 60);
-    
-    let timeText = '';
-    
-    if (hours > 0) {
-      timeText += `${hours} hour${hours !== 1 ? 's' : ''}`;
-      if (mins > 0) {
-        timeText += ` ${mins} minute${mins !== 1 ? 's' : ''}`;
-      }
-    } else if (mins > 0) {
-      timeText += `${mins} minute${mins !== 1 ? 's' : ''}`;
-      if (secs > 0 && mins < 2) {  // Only add seconds for precision when under 2 minutes
-        timeText += ` ${secs} second${secs !== 1 ? 's' : ''}`;
-      }
+      statusText = 'Right on time';
     } else {
-      timeText += `${secs} second${secs !== 1 ? 's' : ''}`;
+      // Remember: positive value means the user is behind schedule (current time > expected time)
+      // Negative value means the user is ahead of schedule (current time < expected time)
+      const isAhead = diffMinutes < 0;
+      const absDiff = Math.abs(diffMinutes);
+      
+      // Format the time components
+      const hours = Math.floor(absDiff / 60);
+      const mins = Math.floor(absDiff % 60);
+      const secs = Math.round((absDiff % 1) * 60);
+      
+      let timeText = '';
+      
+      if (hours > 0) {
+        timeText += `${hours} hour${hours !== 1 ? 's' : ''}`;
+        if (mins > 0) {
+          timeText += ` ${mins} minute${mins !== 1 ? 's' : ''}`;
+        }
+      } else if (mins > 0) {
+        timeText += `${mins} minute${mins !== 1 ? 's' : ''}`;
+        if (secs > 0 && mins < 2) {  // Only add seconds for precision when under 2 minutes
+          timeText += ` ${secs} second${secs !== 1 ? 's' : ''}`;
+        }
+      } else {
+        timeText += `${secs} second${secs !== 1 ? 's' : ''}`;
+      }
+      
+      statusText = `${timeText} ${isAhead ? 'ahead' : 'behind'}`;
     }
     
-    return `${timeText} ${isAhead ? 'ahead' : 'behind'}`;
+    // Combine all information
+    return `${statusText} (Current: ${currentTimeFormatted}, Should view at: ${expectedTimeFormatted})`;
   };
   
   // Process notes into presentation format
