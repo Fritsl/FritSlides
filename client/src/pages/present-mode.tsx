@@ -1333,8 +1333,8 @@ export default function PresentMode() {
             </div>
           </div>
           
-          {/* Time tracking dots - Always show on all non-overview slides */}
-          {!isOverviewSlide && (
+          {/* Time tracking dots - Always show on all slides except overview slides */}
+          {(!isOverviewSlide || currentNote?.time) && (
             <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10">
               <TooltipProvider>
                 <Tooltip>
