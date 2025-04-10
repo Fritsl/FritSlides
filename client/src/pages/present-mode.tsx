@@ -51,7 +51,7 @@ interface TimeSegment {
   lastPassedSlideIndex: number; // Index of the slide with the last passed time marker
   nextUpcomingSlideIndex: number | null; // Index of the slide with the next upcoming time marker
   lastPassedTime: string; // The time marker of the last passed slide
-  nextUpcomingTime: string | null; // The time marker of the next upcoming time marker
+  nextUpcomingTime: string | null; // The time marker of the next upcoming slide
   currentProgress: number; // Progress between 0-1 indicating position between time points
 }
 
@@ -437,439 +437,942 @@ export default function PresentMode() {
   const theme = useMemo(() => {
     if (!currentNote) return getPresentationTheme(0, 0);
     
-    // Check for special slides first
-    if (isStartSlide || isEndSlide) {
+    // Use special theme for start and end slides
+    if (currentNote.isStartSlide || currentNote.isEndSlide) {
       return START_END_THEME;
     }
     
-    // Use root index for theming
-    const rootIdx = currentNote.rootIndex || 0;
-    const themeIndex = rootIdx % 5; // Cycle through 5 distinct themes
-    
-    // Root note overview slides (chapter slides) get a neutral variant of their theme
-    // All other slides get the full theme
-    return getPresentationTheme(themeIndex, isOverviewSlide ? 0 : 1);
-  }, [currentNote, isStartSlide, isEndSlide, isOverviewSlide]);
-  
-  // Collect all time info for current progress calculation
-  const pacingInfo = useMemo(() => {
-    // Default empty state
-    const defaultPacing: PacingInfo = {
-      previousTimedNote: null,
-      nextTimedNote: null, 
-      percentComplete: 0,
-      slideDifference: 0
-    };
-    
-    // Calculate pacing only if we have notes
-    if (!flattenedNotes.length) return defaultPacing;
-    
-    // Get pacing information for the current position
-    return calculatePacingInfo(
-      flattenedNotes, 
-      currentSlideIndex
+    // Use regular theme for other slides based on rootIndex
+    return getPresentationTheme(
+      currentNote.level || 0,
+      currentNote.rootIndex !== undefined ? currentNote.rootIndex : 0
     );
-  }, [flattenedNotes, currentSlideIndex]);
+  }, [currentNote]);
   
-  // Get the next timed slide for display in tooltip
-  const getNextTimedSlide = () => {
-    if (!currentNote || currentSlideIndex >= flattenedNotes.length - 1) {
-      return null;
-    }
-    
-    // First see if pacingInfo already has the next timed note
-    if (pacingInfo.nextTimedNote) {
-      return pacingInfo.nextTimedNote;
-    }
-    
-    // Otherwise look for the next slide with time data starting from current+1
-    for (let i = currentSlideIndex + 1; i < flattenedNotes.length; i++) {
-      const nextNote = flattenedNotes[i];
-      if (nextNote.time) {
-        return nextNote;
-      }
-    }
-    
-    return null;
-  };
+  // Get the level for styling
+  const level = currentNote?.level || 0;
   
-  // Function to find the major slide that contains this one
-  const isMajorSlide = (note: PresentationNote): boolean => 
-    note.level === 0 || note.isOverviewSlide || note.isStartSlide || note.isEndSlide;
+  // Generate background style based on theme
+  const themeStyles = useMemo(() => {
+    if (!theme) return {};
+    return getThemeBackgroundStyle(theme);
+  }, [theme]);
   
-  // Find parent's path for navigation
-  const findAncestorPath = (note: PresentationNote, notesMap: Map<number, PresentationNote>): React.ReactNode => {
-    if (!note.parentId) {
-      return null;
-    }
-    
-    // Get the direct parent
-    const parent = notesMap.get(note.parentId);
-    if (!parent) {
-      return null;
-    }
-    
-    // If parent content is longer than 15 chars, truncate it
-    const displayText = parent.content && parent.content.length > 15 ? 
-      parent.content.substring(0, 12) + '...' : 
-      parent.content;
-    
-    // Recurse for grandparent path
-    const parentPath = findAncestorPath(parent, notesMap);
-    
-    return (
-      <>
-        {parentPath}
-        {parentPath && <span className="opacity-60 mx-1">›</span>}
-        <span>{displayText}</span>
-      </>
-    );
-  };
-  
-  // Find root index for a slide - used for theming
-  const findRootIndex = (note: PresentationNote): number => {
-    if (note.rootIndex !== undefined) {
-      return note.rootIndex;
-    }
-    
-    if (!note.parentId) {
-      return 0; // Root note default
-    }
-    
-    // Look up the parent
-    const parent = notesMap.get(note.parentId);
-    if (!parent) {
-      return 0;
-    }
-    
-    // Recursively get rootIndex from parent
-    return findRootIndex(parent);
-  };
-  
-  // Effect to initialize with default starting slide or last viewed slide
-  useEffect(() => {
-    if (isLoading || initializedFromStored || !flattenedNotes.length) {
-      return;
-    }
-    
-    // Find the starting slide based on parameters or last viewed slide
-    if (startNoteId > 0) {
-      // Find the slide index for the specific note ID
-      const index = flattenedNotes.findIndex(note => note.id === startNoteId);
-      if (index >= 0) {
-        setCurrentSlideIndex(index);
-        setInitializedFromStored(true);
-        return;
-      }
-    }
-    
-    // If no specific note ID was provided, use the stored lastViewedSlideIndex
-    // from the project data, but only if we're continuing the presentation
-    if (shouldContinue && currentProject?.lastViewedSlideIndex !== null && 
-        currentProject?.lastViewedSlideIndex !== undefined && 
-        currentProject.lastViewedSlideIndex < flattenedNotes.length) {
-      setCurrentSlideIndex(currentProject.lastViewedSlideIndex);
-    }
-    
-    setInitializedFromStored(true);
-  }, [isLoading, flattenedNotes, initializedFromStored, currentProject, startNoteId, shouldContinue]);
-  
-  // Save position when slide changes
-  useEffect(() => {
-    if (currentSlideIndex >= 0 && !isLoading && flattenedNotes.length) {
-      saveLastViewedSlideIndex(currentSlideIndex);
-    }
-  }, [currentSlideIndex, isLoading, flattenedNotes]);
-  
-  // Handle keyboard navigation
-  useEffect(() => {
-    // Skip if we're still loading
-    if (isLoading) return;
-    
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        // Go to next slide if not at the end
-        if (currentSlideIndex < flattenedNotes.length - 1) {
-          setCurrentSlideIndex(currentSlideIndex + 1);
-        }
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'Backspace') {
-        e.preventDefault();
-        // Go to previous slide if not at the beginning
-        if (currentSlideIndex > 0) {
-          setCurrentSlideIndex(currentSlideIndex - 1);
-        }
-      } else if (e.key === 'Home') {
-        e.preventDefault();
-        // Go to first slide
-        setCurrentSlideIndex(0);
-      } else if (e.key === 'End') {
-        e.preventDefault();
-        // Go to last slide
-        setCurrentSlideIndex(flattenedNotes.length - 1);
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        // Exit presentation mode
-        handleExitPresentation();
-      } else if (e.key === 'f' || e.key === 'F') {
-        e.preventDefault();
-        // Toggle fullscreen
-        toggleFullscreen();
-      }
-    };
-    
-    // Add keyboard event listener
-    window.addEventListener('keydown', handleKeyDown);
-    
-    // Clean up
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [currentSlideIndex, flattenedNotes, isLoading]);
-  
-  // Handle fullscreen toggling
-  const toggleFullscreen = () => {
-    if (screenfull.isEnabled) {
-      if (screenfull.isFullscreen) {
-        screenfull.exit();
-        setIsFullscreen(false);
-      } else {
-        screenfull.request();
-        setIsFullscreen(true);
-      }
+  // Navigation functions
+  const goToNextSlide = () => {
+    if (currentSlideIndex < flattenedNotes.length - 1) {
+      setCurrentSlideIndex(prev => prev + 1);
     }
   };
   
-  // Listen for fullscreen change from browser controls
-  useEffect(() => {
-    if (screenfull.isEnabled) {
-      const onFullscreenChange = () => {
-        setIsFullscreen(screenfull.isFullscreen);
-      };
+  const goToPrevSlide = () => {
+    if (currentSlideIndex > 0) {
+      setCurrentSlideIndex(prev => prev - 1);
+    }
+  };
+  
+  const exitPresentation = () => {
+    // If we're viewing a regular slide (not start/end/overview), navigate back to that specific note
+    if (currentNote && currentNote.id > 0) {
+      console.log(`Exiting presentation to noteId: ${currentNote.id}`);
       
-      screenfull.on('change', onFullscreenChange);
-      
-      return () => {
-        screenfull.off('change', onFullscreenChange);
-      };
-    }
-  }, []);
-  
-  // Handle exiting presentation mode
-  const handleExitPresentation = () => {
-    // Navigation back to the main note view for the project
-    if (projectId) {
-      setLocation(`/projects/${projectId}`);
+      // Navigate directly to the home page with both query parameters
+      // Need to force a hard navigation since the wouter router doesn't properly handle query params
+      // Add fromPresent=true to indicate we're coming from presentation mode (should not start editing)
+      window.location.href = `/?projectId=${projectId}&noteId=${currentNote.id}&fromPresent=true`;
     } else {
-      // If no project ID (shouldn't happen), just go home
+      // If it's a special slide or we can't determine the note, just go to home
+      console.log("Exiting presentation to home (no specific note)");
       setLocation('/');
     }
   };
   
-  // Render loading state
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-lg">Loading presentation...</p>
-        </div>
-      </div>
+  // Function to find the index of the next/previous root note or start/end slide
+  const findRootNoteIndex = (direction: 'next' | 'prev'): number => {
+    if (!flattenedNotes.length) return currentSlideIndex;
+    
+    // Define what we consider "major slides" - includes Start, End and Overview slides
+    const isMajorSlide = (note: PresentationNote): boolean => 
+      Boolean(note.isStartSlide || note.isEndSlide || note.isOverviewSlide);
+    
+    // Find all major slide indexes
+    const majorSlideIndexes = flattenedNotes
+      .map((note, index) => ({ note, index }))
+      .filter(({ note }) => isMajorSlide(note))
+      .map(({ index }) => index);
+    
+    // If no special slides found, return current index
+    if (majorSlideIndexes.length === 0) return currentSlideIndex;
+    
+    if (direction === 'next') {
+      // Find the next major slide after current position
+      const nextIndex = majorSlideIndexes.find(index => index > currentSlideIndex);
+      // If found, return it. Otherwise return the first major slide (loop around)
+      return nextIndex !== undefined ? nextIndex : majorSlideIndexes[0];
+    } else {
+      // Find the previous major slides before current position (in reverse order)
+      const prevIndexes = majorSlideIndexes.filter(index => index < currentSlideIndex).reverse();
+      // If found, return the first previous. Otherwise return the last major slide (loop around)
+      return prevIndexes.length > 0 ? prevIndexes[0] : majorSlideIndexes[majorSlideIndexes.length - 1];
+    }
+  };
+  
+  // Keyboard event listeners
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case "ArrowRight":
+        case " ":
+          goToNextSlide();
+          break;
+        case "ArrowLeft":
+          goToPrevSlide();
+          break;
+        case "ArrowUp":
+          // Jump to next root note or special slide
+          setCurrentSlideIndex(findRootNoteIndex('next'));
+          break;
+        case "ArrowDown":
+          // Jump to previous root note or special slide
+          setCurrentSlideIndex(findRootNoteIndex('prev'));
+          break;
+        case "Escape":
+          exitPresentation();
+          break;
+        default:
+          break;
+      }
+    };
+    
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [currentSlideIndex, flattenedNotes.length, projectId]);
+  
+  // State to hold calculated pacing info
+  const [pacingInfo, setPacingInfo] = useState<PacingInfo>({
+    previousTimedNote: null,
+    nextTimedNote: null,
+    percentComplete: 0,
+    expectedSlideIndex: 0,
+    slideDifference: 0,
+    shouldShow: false,
+    timePositionInMinutes: 0
+  });
+  
+  // Initialize from the project's last viewed slide index or specified start note
+  useEffect(() => {
+    if (!flattenedNotes.length || !currentProject || initializedFromStored) return;
+    
+    // Find the starting position based on requested startNoteId if provided
+    if (startNoteId > 0) {
+      // Find index of the specified note in flattenedNotes
+      const noteIndex = flattenedNotes.findIndex(note => note.id === startNoteId);
+      if (noteIndex >= 0) {
+        // Found the requested note
+        // If continue=true or shouldContinue=true, use the stored position
+        // Otherwise, start from the requested note
+        if (shouldContinue && currentProject.lastViewedSlideIndex !== null && currentProject.lastViewedSlideIndex >= 0) {
+          const validIndex = Math.min(currentProject.lastViewedSlideIndex, flattenedNotes.length - 1);
+          console.log(`Continuing from last viewed slide index: ${validIndex}`);
+          setCurrentSlideIndex(validIndex);
+        } else {
+          console.log(`Starting from specified note at index: ${noteIndex}`);
+          setCurrentSlideIndex(noteIndex);
+        }
+      } else {
+        // Requested note not found, start from beginning
+        console.log(`Specified note ${startNoteId} not found, starting from beginning`);
+        setCurrentSlideIndex(0);
+      }
+    } else {
+      // No specific note requested, check if we should continue from last position
+      if (shouldContinue && currentProject.lastViewedSlideIndex !== null && currentProject.lastViewedSlideIndex >= 0) {
+        const validIndex = Math.min(currentProject.lastViewedSlideIndex, flattenedNotes.length - 1);
+        console.log(`Continuing from last viewed slide index: ${validIndex}`);
+        setCurrentSlideIndex(validIndex);
+      } else {
+        // Start from beginning
+        console.log("Starting presentation from beginning");
+        setCurrentSlideIndex(0);
+      }
+    }
+    
+    // Mark as initialized
+    setInitializedFromStored(true);
+  }, [flattenedNotes, currentProject, initializedFromStored, startNoteId, shouldContinue]);
+  
+  // Save the current slide index when it changes
+  useEffect(() => {
+    // Don't save during initial load or if no notes yet
+    if (!initializedFromStored || !flattenedNotes.length) return;
+    
+    // Save the current slide index
+    saveLastViewedSlideIndex(currentSlideIndex);
+  }, [currentSlideIndex, initializedFromStored, flattenedNotes]);
+  
+  // Update pacing info every second
+  useEffect(() => {
+    if (!flattenedNotes.length) return;
+    
+    // Create a flat list of note IDs for the pacing calculation
+    const noteIds = flattenedNotes.map(note => note.id);
+    
+    // Debug all timed notes in the presentation
+    const timedNotes = flattenedNotes.filter(note => note.time && note.time.trim() !== '');
+    console.log(`Found ${timedNotes.length} timed notes in presentation:`, 
+      timedNotes.map(note => ({ 
+        id: note.id, 
+        time: note.time, 
+        content: note.content?.substring(0, 15) + '...',
+        index: flattenedNotes.indexOf(note)
+      }))
     );
-  }
+    
+    // Function to update pacing
+    const updatePacing = () => {
+      const currentTime = new Date();
+      console.log(`Updating pacing info at ${currentTime.toISOString()}`);
+      
+      // Ensure we're working with the complete set of notes
+      const info = calculatePacingInfo(
+        // Convert presentation notes back to regular note format
+        flattenedNotes.map(n => ({
+          id: n.id,
+          projectId: n.projectId,
+          parentId: n.parentId,
+          content: n.content || '',
+          createdAt: n.createdAt,
+          updatedAt: n.updatedAt,
+          order: n.order || '',
+          time: n.time || null,
+          url: n.url || null,
+          linkText: n.linkText || null,
+          youtubeLink: n.youtubeLink || null,
+          isDiscussion: n.isDiscussion,
+          images: n.images
+        })),
+        noteIds,
+        currentSlideIndex
+      );
+      
+      console.log('New pacing info:', {
+        shouldShow: info.shouldShow,
+        slideDifference: info.slideDifference,
+        previousTimedNote: info.previousTimedNote?.id,
+        nextTimedNote: info.nextTimedNote?.id,
+        percentComplete: info.percentComplete,
+        currenSlideIndex: currentSlideIndex
+      });
+      
+      setPacingInfo(info);
+    };
+    
+    console.log('Setting up pacing interval timer');
+    
+    // Initial calculation
+    updatePacing();
+    
+    // Set up interval to update every second
+    const intervalId = setInterval(updatePacing, 1000);
+    
+    // Clean up interval on unmount
+    return () => {
+      console.log('Cleaning up pacing interval timer');
+      clearInterval(intervalId);
+    };
+  }, [notes, flattenedNotes, currentSlideIndex]);
   
-  // If no slides are found, show an error
-  if (!flattenedNotes.length) {
+  // Legacy time tracking function (keeping for compatibility)
+  const getSlideDifference = () => {
+    // Now we get the slide difference from the pacing info
+    return pacingInfo.slideDifference;
+  };
+  
+  // Function to find ancestor path for breadcrumb navigation
+  const findAncestorPath = (note: PresentationNote, notesMap: Map<number, PresentationNote>): React.ReactNode => {
+    const ancestors: PresentationNote[] = [];
+    let currentParentId = note.parentId;
+    
+    // Find all ancestors by traversing up the hierarchy
+    while (currentParentId !== null) {
+      const parent = notesMap.get(currentParentId);
+      if (parent) {
+        ancestors.unshift(parent); // Add at the beginning to maintain hierarchy order
+        currentParentId = parent.parentId;
+      } else {
+        break;
+      }
+    }
+    
+    // Only show the most relevant parts of the hierarchy (last 2-3 levels)
+    const relevantAncestors = ancestors.length > 2 ? ancestors.slice(-2) : ancestors;
+    
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-800 text-white">
-        <div className="text-center max-w-md mx-auto p-6 bg-slate-900 rounded-lg shadow-xl">
-          <h2 className="text-xl font-bold mb-4">No slides available</h2>
-          <p className="mb-6">This project doesn't have any notes to present.</p>
-          <button 
-            onClick={handleExitPresentation}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
-          >
-            Return to Project
-          </button>
-        </div>
-      </div>
-    );
-  }
-  
-  // Get the background style for the current slide
-  const backgroundStyle = getThemeBackgroundStyle(theme);
-  
-  return (
-    <div 
-      className="min-h-screen w-full overflow-hidden text-white flex flex-col"
-      style={backgroundStyle}
-    >
-      {/* Presentation content */}
-      {currentNote && (
-        <>
-          {/* Header with title and breadcrumb navigation */}
-          <div className="flex justify-between items-center p-2 md:p-3 lg:p-4 text-xs md:text-sm">
-            <div className="flex-1 text-left truncate">
-              {findAncestorPath(currentNote, notesMap)}
-            </div>
-            <div className="flex-1 text-center font-medium tracking-wide">
-              {isStartSlide ? (
-                currentProject?.name || "Project"
-              ) : isEndSlide ? (
-                "End"
-              ) : isOverviewSlide ? (
-                "Overview"
-              ) : null}
-            </div>
-            <div className="flex-1 text-right">
-              <span className="opacity-70">{currentSlideIndex + 1}</span>
-              <span className="mx-1 opacity-40">/</span>
-              <span className="opacity-70">{flattenedNotes.length}</span>
-            </div>
+      <div className="flex items-center space-x-1">
+        {relevantAncestors.map((ancestor, index) => (
+          <div key={ancestor.id} className="flex items-center">
+            <span className="max-w-[240px] truncate">{ancestor.content.split('\n')[0]}</span>
+            {index < relevantAncestors.length - 1 && <span className="mx-1">›</span>}
           </div>
-          
-          {/* Main slide content */}
-          <div className="flex-1 flex items-center justify-center w-full overflow-hidden p-8 md:p-12 lg:p-16 relative">
-            {/* Render different slide types */}
-            {isStartSlide ? (
-              // Project start slide
-              <div className="max-w-4xl w-full text-center">
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-8">
-                  {currentNote.content}
-                </h1>
-                {rootNotes.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                    {rootNotes.map((rootNote, index) => (
-                      <div 
-                        key={rootNote.id}
-                        className="bg-white/10 p-4 rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
-                        onClick={() => {
-                          // Find the index of this root note's first slide or overview
-                          const targetIndex = flattenedNotes.findIndex(note => 
-                            note.id === rootNote.id || 
-                            (note.isOverviewSlide && note.content === rootNote.content)
-                          );
-                          if (targetIndex > 0) {
-                            setCurrentSlideIndex(targetIndex);
-                          }
-                        }}
-                      >
-                        <h3 className="font-medium mb-1 text-lg">{rootNote.content}</h3>
-                        {rootNote.childNotes && rootNote.childNotes.length > 0 && (
-                          <div className="text-sm opacity-70">
-                            {rootNote.childNotes.length} note{rootNote.childNotes.length !== 1 ? 's' : ''}
+        ))}
+        {ancestors.length > 2 && relevantAncestors.length < ancestors.length && (
+          <span className="mx-1">...</span>
+        )}
+      </div>
+    );
+  };
+  
+  // Find the next slide with a time marker
+  const getNextTimedSlide = () => {
+    if (!flattenedNotes.length || currentSlideIndex >= flattenedNotes.length) {
+      return null;
+    }
+    
+    // Find the next note with a time, starting from the current slide index
+    const nextTimed = flattenedNotes
+      .slice(currentSlideIndex + 1)
+      .find(note => note.time && note.time.trim() !== '');
+      
+    return nextTimed;
+  };
+  
+  // Find out which root a note belongs to (for theming consistency)
+  const findRootIndex = (note: PresentationNote): number => {
+    if (note.rootIndex !== undefined) return note.rootIndex;
+    if (!note.parentId) return 0; // Default to 0 for notes without parents
+    
+    // Search through the notes to find the root node
+    const parentNote = flattenedNotes.find(n => n.id === note.parentId);
+    if (parentNote) {
+      return findRootIndex(parentNote);
+    }
+    
+    return 0; // Default if we can't determine the root
+  };
+  
+  // Render the presentation
+  return (
+    <div className="fixed inset-0 w-screen h-screen flex flex-col bg-black overflow-hidden">
+      {isLoading || !flattenedNotes.length ? (
+        // Loading screen
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <div className="text-white text-center">
+            <div className="animate-spin h-12 w-12 border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-lg">Loading presentation...</p>
+          </div>
+        </div>
+      ) : (
+        // Main presentation content
+        <>
+          {/* Slide content area */}
+          <div 
+            className="flex-1 flex flex-col items-center justify-center w-full h-full cursor-pointer overflow-hidden"
+            onClick={(e) => {
+              // Check if the click was on an interactive element
+              const target = e.target as HTMLElement;
+              const isLink = target.tagName === 'A' || 
+                            target.closest('a') || 
+                            target.tagName === 'IFRAME' || 
+                            target.closest('iframe') || 
+                            target.tagName === 'IMG' || 
+                            target.closest('img');
+                            
+              // Only proceed to next slide if not clicking on interactive elements
+              if (!isLink) {
+                goToNextSlide();
+              }
+            }}
+            style={themeStyles}
+          >
+            {currentNote && (
+              <div className="flex flex-col h-full w-full">
+                {/* Breadcrumb Navigation - Show when level > 1 or not the first slide */}
+                {!isStartSlide && !isEndSlide && !isOverviewSlide && 
+                  (currentSlideIndex > 0 || (currentNote.level && currentNote.level > 1)) && (
+                  <div 
+                    className="absolute top-2 left-2 z-10 text-white/40 text-[10px] px-2 py-1 rounded"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {findAncestorPath(currentNote, notesMap)}
+                  </div>
+                )}
+                <div className="flex-grow flex items-center justify-center">
+                  {isOverviewSlide ? (
+                    // Overview slide with chapter markers
+                    <OverviewSlide 
+                      parentNote={currentNote} 
+                      childNotes={currentNote.childNotes || []}
+                      theme={theme}
+                    />
+                  ) : isStartSlide ? (
+                    // Start slide with project start slogan and root notes
+                    <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center">
+                      <div className="w-full text-white">
+                        {/* Title using advanced typography system */}
+                        <div className="slide-content flex flex-col items-center justify-center mb-12">
+                          <div 
+                            className="text-center"
+                            style={generateTypographyStyles(getAdvancedTypographyStyles(
+                              SlideContentType.StartEndSlide,
+                              0,
+                              0 // Fixed size for all slides regardless of content length
+                            ))}
+                          >
+                            {currentNote.content}
+                          </div>
+                        </div>
+                        
+                        {/* Root notes with bullets and numbers - same color for all bullets */}
+                        {rootNotes && rootNotes.length > 0 && (
+                          <div className="flex flex-col items-center mt-8 space-y-6">
+                            <div className="flex flex-col space-y-4 items-start">
+                              {rootNotes.map((rootNote, index) => {
+                                // Use a vibrant orange color from Sand theme to make bullets stand out more
+                                const accentColor = "#F97316"; // Orange 500 from Sand theme
+                                
+                                return (
+                                  <div key={rootNote.id} className="flex items-center group">
+                                    <div className="relative mr-4">
+                                      {/* Numbered bullet with theme color */}
+                                      <div 
+                                        className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+                                        style={{ 
+                                          backgroundColor: accentColor,
+                                          boxShadow: "0 0 10px rgba(255, 255, 255, 0.5)"
+                                        }}
+                                      >
+                                        <span className="text-white font-bold">{index + 1}</span>
+                                      </div>
+                                      {/* Pulse effect on hover */}
+                                      <div 
+                                        className="absolute top-0 left-0 w-10 h-10 rounded-full opacity-0 group-hover:opacity-40 animate-ping"
+                                        style={{ backgroundColor: accentColor }}
+                                      ></div>
+                                    </div>
+                                    
+                                    {/* Root note title */}
+                                    <div 
+                                      className="text-white text-xl md:text-2xl font-medium"
+                                      style={{
+                                        fontFamily: FONTS.body,
+                                        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                      }}
+                                    >
+                                      {rootNote.content.split('\n')[0]}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
-                    ))}
-                  </div>
-                )}
-                {currentProject?.author && (
-                  <div className="mt-12 flex items-center justify-center text-sm opacity-80">
-                    <Users className="h-4 w-4 mr-2" />
-                    <span>{currentProject.author}</span>
-                  </div>
-                )}
-              </div>
-            ) : isEndSlide ? (
-              // Project end slide
-              <div className="max-w-3xl text-center">
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-                  {currentNote.content}
-                </h1>
-                {currentNote.author && (
-                  <div className="mt-12 flex items-center justify-center text-sm opacity-80">
-                    <Users className="h-4 w-4 mr-2" />
-                    <span>{currentNote.author}</span>
-                  </div>
-                )}
-              </div>
-            ) : isOverviewSlide && currentNote.childNotes ? (
-              // Chapter overview slide
-              <OverviewSlide 
-                title={currentNote.content} 
-                notes={currentNote.childNotes}
-                theme={theme.colors}
-                onNoteClick={(noteId) => {
-                  // Find the note in the flattened array and navigate to it
-                  const targetIndex = flattenedNotes.findIndex(note => note.id === noteId);
-                  if (targetIndex >= 0) {
-                    setCurrentSlideIndex(targetIndex);
-                  }
-                }}
-              />
-            ) : (
-              // Regular content slide
-              <div className="w-full max-w-7xl">
-                {/* Determine content type and apply appropriate formatting */}
-                <div className={`slide-content relative ${currentNote.isDiscussion ? "discussion-marker" : ""}`}>
-                  {/* Main content */}
-                  {currentNote.content && (
-                    <div 
-                      className={`content-block ${currentNote.url || currentNote.youtubeLink ? 'mb-4' : ''}`}
-                      style={generateTypographyStyles(
-                        getTypographyStyles(
-                          determineContentType(currentNote.content), 
-                          currentNote.level || 0,
-                          currentNote.content.length
-                        )
-                      )}
-                    >
-                      {formatContent(currentNote.content)}
                     </div>
-                  )}
-                  
-                  {/* External URL link */}
-                  {currentNote.url && (
-                    <div className="mb-4">
-                      <a 
-                        href={currentNote.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-block text-blue-300 hover:text-blue-100 underline transition-colors"
-                      >
-                        {currentNote.linkText || currentNote.url}
-                      </a>
-                    </div>
-                  )}
-                  
-                  {/* YouTube embed */}
-                  {currentNote.youtubeLink && (
-                    <div className="w-full aspect-video max-w-3xl mx-auto mb-4">
-                      <iframe
-                        src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
-                        className="w-full h-full rounded-md"
-                        title="YouTube video player"
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      ></iframe>
-                    </div>
-                  )}
-                  
-                  {/* Images display */}
-                  {currentNote.images && currentNote.images.length > 0 && (
-                    <div className={`mt-4 grid grid-cols-1 ${
-                      currentNote.images.length === 1 ? 'md:grid-cols-1' :
-                      currentNote.images.length === 2 ? 'md:grid-cols-2' :
-                      currentNote.images.length === 3 ? 'md:grid-cols-3' :
-                      currentNote.images.length >= 4 ? 'md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : ''
-                    } gap-4`}>
-                      {currentNote.images.map((imgSrc, index) => (
-                        <div key={index} className="relative overflow-hidden rounded-lg">
-                          <ImageWithFallback
-                            src={imgSrc}
-                            alt={`Slide image ${index + 1}`}
-                            className="w-full h-auto max-h-[400px] object-contain bg-black/20 rounded-lg"
-                            onError={() => console.error(`Failed to load image: ${imgSrc}`)}
-                          />
+                  ) : isEndSlide ? (
+                    // End slide with project end slogan
+                    <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center">
+                      <div className="w-full text-white">
+                        {/* Title using advanced typography system - matching Start Slide style */}
+                        <div className="slide-content flex flex-col items-center justify-center">
+                          <div 
+                            className="text-center"
+                            style={generateTypographyStyles(getAdvancedTypographyStyles(
+                              SlideContentType.StartEndSlide,
+                              0,
+                              0 // Fixed size for all slides regardless of content length
+                            ))}
+                          >
+                            {currentNote.content}
+                          </div>
                         </div>
-                      ))}
+                        
+                        {/* Author attribution if available */}
+                        {currentNote.author && (
+                          <div 
+                            className="mt-12 text-center opacity-80"
+                            style={generateTypographyStyles(getAdvancedTypographyStyles(
+                              SlideContentType.Caption,
+                              0,
+                              0 // Fixed size for caption text
+                            ))}
+                          >
+                            {currentNote.author}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    // Regular slide with content - smart layout based on content type
+                    <div className="max-w-[90vw] md:max-w-[80vw] w-full h-full flex flex-col items-center justify-center relative">
+                      {/* Discussion icon overlay */}
+                      {currentNote.isDiscussion && (
+                        <div className="absolute top-4 right-4 text-white opacity-80 transition-opacity animate-pulse">
+                          <Users className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12" />
+                        </div>
+                      )}
+                      
+                      {/* Determine if slide has media */}
+                      {(currentNote.youtubeLink || (currentNote.images && currentNote.images.length > 0)) ? (
+                        // Slide with media - adapt layout based on content
+                        <div className="w-full h-full flex flex-col md:flex-row md:justify-between items-center text-white">
+                          {/* Content column - sized based on media presence */}
+                          <div className="w-full md:w-2/5 flex flex-col items-center justify-center md:pr-8 order-2 md:order-1">
+                            <div 
+                              className="slide-content w-full"
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: determineContentType(currentNote.content) === ContentType.List 
+                                  ? 'flex-start' 
+                                  : 'center',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  ...generateTypographyStyles(getTypographyStyles(
+                                    determineContentType(currentNote.content),
+                                    level,
+                                    0 // Fixed size for all content regardless of length
+                                  ))
+                                }}
+                              >
+                                {formatContent(currentNote.content)}
+                              </div>
+                              
+                              {/* URL link if present */}
+                              {currentNote.url && (
+                                <div className="mt-4 self-start">
+                                  <a
+                                    href={currentNote.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      ...generateTypographyStyles(getTypographyStyles(
+                                        ContentType.Regular,
+                                        level,
+                                        0 // Fixed size for links too
+                                      )),
+                                      color: 'rgba(255, 255, 255, 0.9)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      // Using text decoration instead of border to avoid conflicts
+                                      textDecoration: 'underline',
+                                      textDecorationColor: 'rgba(255, 255, 255, 0.3)',
+                                      textDecorationThickness: '1px',
+                                      paddingBottom: '0.5rem',
+                                      width: 'fit-content'
+                                    }}
+                                    className="hover:text-white transition-colors"
+                                  >
+                                    <span className="mr-2">🔗</span>
+                                    {currentNote.linkText || currentNote.url}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Media column */}
+                          <div className="w-full md:w-3/5 flex flex-col items-center justify-center md:pl-8 mb-6 md:mb-0 order-1 md:order-2">
+                            {/* YouTube embed if present */}
+                            {currentNote.youtubeLink && (
+                              <div className="rounded-lg overflow-hidden aspect-video bg-black/20 shadow-2xl w-full max-w-full max-h-[75vh]">
+                                <iframe
+                                  className="w-full h-full"
+                                  src={getYoutubeEmbedUrl(currentNote.youtubeLink, currentNote.time || '')}
+                                  title="YouTube video"
+                                  frameBorder="0"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                ></iframe>
+                              </div>
+                            )}
+                            
+                            {/* Images if present and no YouTube */}
+                            {!currentNote.youtubeLink && currentNote.images && currentNote.images.length > 0 && (
+                              <div className="w-full grid grid-cols-1 gap-4">
+                                {currentNote.images.slice(0, 2).map((image: string, idx: number) => (
+                                  <div key={idx} className={`rounded-lg overflow-hidden shadow-xl ${currentNote.images!.length === 1 ? 'aspect-[16/10] max-h-[75vh]' : 'aspect-[16/9] max-h-[40vh]'}`}>
+                                    <ImageWithFallback 
+                                      src={image} 
+                                      alt={`Slide image ${idx + 1}`} 
+                                      className="w-full h-full object-contain" 
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        // Slide with text only - center content
+                        <div className="w-full h-full flex flex-col items-center justify-center text-white">
+                          <div 
+                            className="slide-content w-full"
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: determineContentType(currentNote.content) === ContentType.List 
+                                ? 'flex-start' 
+                                : 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            {/* Auto-detect content type and apply appropriate styling */}
+                            <div
+                              className="text-content"
+                              style={{
+                                ...generateTypographyStyles(getTypographyStyles(
+                                  determineContentType(currentNote.content),
+                                  level,
+                                  0 // Fixed size for all content regardless of length
+                                )),
+                                // No longer scaling font size to ensure consistency between slides
+                                margin: determineContentType(currentNote.content) === ContentType.List 
+                                  ? '0 auto 0 15%' 
+                                  : '0 auto',
+                              }}
+                            >
+                              {formatContent(currentNote.content)}
+                            </div>
+                            
+                            {/* URL link if present */}
+                            {currentNote.url && (
+                              <div className="mt-6 self-center">
+                                <a
+                                  href={currentNote.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    ...generateTypographyStyles(getTypographyStyles(
+                                      ContentType.Regular,
+                                      level,
+                                      0 // Fixed size for links too
+                                    )),
+                                    color: 'rgba(255, 255, 255, 0.9)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    // Using text decoration instead of border to avoid conflicts
+                                    textDecoration: 'underline',
+                                    textDecorationColor: 'rgba(255, 255, 255, 0.3)',
+                                    textDecorationThickness: '1px',
+                                    paddingBottom: '0.5rem',
+                                  }}
+                                  className="hover:text-white transition-colors"
+                                >
+                                  <span className="mr-2">🔗</span>
+                                  {currentNote.linkText || currentNote.url}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Minimal footer with navigation hints */}
+          <div className="absolute bottom-0 left-0 right-0 text-center p-1 px-2 flex justify-between items-center bg-black/30 backdrop-blur-sm">
+            <div className="w-4 sm:w-8"></div>
+            <p className="text-white/40 text-[8px] sm:text-[10px] whitespace-nowrap overflow-hidden overflow-ellipsis">
+              <span className="hidden sm:inline">{currentProject?.startSlogan || currentProject?.name} • </span>
+              {currentSlideIndex + 1}/{flattenedNotes.length}
+              <span className="hidden xs:inline"> • {isStartSlide ? 'Start' : isEndSlide ? 'End' : isOverviewSlide ? 'Overview' : ''}</span> • 
+              <span className="hidden sm:inline">Click or → to advance • ← back • ↑↓ jump between sections • ESC to exit</span>
+              <span className="inline sm:hidden">Tap to advance • ↑↓ jump sections</span>
+            </p>
+            <div className="flex items-center">
+              {/* Author button - make it always visible */}
+              <button 
+                className="text-white/70 hover:text-white/30 opacity-100 hover:opacity-70 mr-2 text-[10px] cursor-pointer"
+                onClick={() => {
+                  console.log("AUTHOR BUTTON CLICKED");
+                  // Navigate back to note editor
+                  exitPresentation();
+                }}
+              >
+                {currentProject?.author || "AUTHOR"}
+              </button>
+              <FullscreenToggle 
+                buttonClassName="text-white/30 hover:text-white/70 opacity-70 hover:opacity-100"
+                iconClassName="w-4 h-4"
+                showTooltip={false}
+              />
+            </div>
+          </div>
+          
+          {/* Debug overlay - ALWAYS VISIBLE regardless of pacing state */}
+          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-black/95 p-2 rounded border border-gray-600 z-20 text-[9px] sm:text-[11px] font-mono w-[240px] sm:w-[300px]">
+            <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
+              <div className="text-green-400 font-semibold whitespace-nowrap">Start Time:</div>
+              <div className="text-white">{(() => {
+                // If we're on a timed note with a next timed note, this note is the start time
+                if (currentNote?.time && pacingInfo.nextTimedNote) {
+                  return currentNote.time;
+                }
+                // If we're on a timed note without a next timed note, we use previous timed note (if exists)
+                // or the current note's time
+                if (currentNote?.time && !pacingInfo.nextTimedNote) {
+                  return pacingInfo.previousTimedNote?.time || currentNote.time;
+                }
+                // If we're between timed notes
+                return pacingInfo.previousTimedNote?.time || '—';
+              })()}</div>
+              
+              <div className="text-green-400 font-semibold whitespace-nowrap">End Time:</div>
+              <div className="text-white">{(() => {
+                // If we're on a timed note, find the next timed note directly
+                if (currentNote?.time) {
+                  // Get the next timed slide directly regardless of what pacingInfo has
+                  const nextTimedSlide = getNextTimedSlide();
+                  if (nextTimedSlide) {
+                    return nextTimedSlide.time;
+                  }
+                  // If there's no next timed slide, use the current note's time
+                  return currentNote.time;
+                }
+                // If we're between timed notes
+                return pacingInfo.nextTimedNote?.time || '—';
+              })()}</div>
+              
+              <div className="text-green-400 font-semibold whitespace-nowrap">Total Time to spend:</div>
+              <div className="text-white">{(() => {
+                // If we're on a timed note, directly check for the next timed note
+                if (currentNote?.time) {
+                  // Get the next timed slide directly
+                  const nextTimedSlide = getNextTimedSlide();
+                  if (nextTimedSlide) {
+                    const startMin = timeToMinutes(currentNote.time || '');
+                    const endMin = timeToMinutes(nextTimedSlide.time || '');
+                    let totalMin = endMin - startMin;
+                    if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
+                    const hours = Math.floor(totalMin / 60);
+                    const mins = Math.floor(totalMin % 60);
+                    const secs = Math.round((totalMin % 1) * 60);
+                    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                  }
+                  
+                  // If there's no next timed slide, this is the last/only one
+                  return '00:00:00'; // No time to spend
+                }
+                  
+                // If we're between two timed notes (not on either one)
+                if (pacingInfo.previousTimedNote && pacingInfo.nextTimedNote) {
+                  const startMin = timeToMinutes(pacingInfo.previousTimedNote.time || '');
+                  const endMin = timeToMinutes(pacingInfo.nextTimedNote.time || '');
+                  let totalMin = endMin - startMin;
+                  if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
+                  const hours = Math.floor(totalMin / 60);
+                  const mins = Math.floor(totalMin % 60);
+                  const secs = Math.round((totalMin % 1) * 60);
+                  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                }
+                  
+                return '—';
+              })()}</div>
+              
+              <div className="text-green-400 font-semibold whitespace-nowrap">Notes to spend on time:</div>
+              <div className="text-white">{(() => {
+                // We're on a timed slide - use direct check for next timed slide
+                if (currentNote?.time) {
+                  // Get next timed slide directly
+                  const nextTimedSlide = getNextTimedSlide();
+                  if (nextTimedSlide) {
+                    const currentIndex = currentSlideIndex;
+                    const nextIndex = flattenedNotes.findIndex(n => n.id === nextTimedSlide.id);
+                    if (nextIndex < 0) return '—';
+                    return nextIndex - currentIndex;
+                  }
+                  return '1'; // This is the only timed slide, count it as 1
+                }
+                
+                // Between two timed slides
+                if (pacingInfo.previousTimedNote && pacingInfo.nextTimedNote) {
+                  const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                  const nextIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
+                  if (prevIndex < 0 || nextIndex < 0) return '—';
+                  return nextIndex - prevIndex;
+                }
+                
+                return '—';
+              })()}</div>
+              
+              <div className="text-green-400 font-semibold whitespace-nowrap">Current Note of these:</div>
+              <div className="text-white">{(() => {
+                // We're on a timed slide
+                if (currentNote?.time) {
+                  if (pacingInfo.nextTimedNote) {
+                    // We're on a timed note with a next timed note
+                    return '1'; // We're at the start (position 1, not 0)
+                  }
+                  // If we're on the last timed note with no next timed note
+                  return '1'; // Consider it the first/only note in the range (position 1, not 0)
+                }
+                
+                // Between two timed slides
+                if (pacingInfo.previousTimedNote) {
+                  const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                  const currIndex = currentSlideIndex;
+                  if (prevIndex < 0) return '—';
+                  // Add 1 to convert from 0-based to 1-based position
+                  return (currIndex - prevIndex + 1).toString();
+                }
+                
+                return '—';
+              })()}</div>
+              
+              <div className="text-green-400 font-semibold whitespace-nowrap">Result is:</div>
+              <div className="text-white">{(() => {
+                // Get the current time
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+                const currentSeconds = now.getSeconds();
+                
+                // Calculate current time in minutes
+                const currentTimeInMinutes = currentHour * 60 + currentMinute + (currentSeconds / 60);
+                
+                // If we're on a timed slide
+                if (currentNote?.time) {
+                  // For timed slides, the result is the difference between current time and the slide's time
+                  const slideTimeInMinutes = timeToMinutes(currentNote.time);
+                  
+                  // Calculate difference
+                  let diffMinutes = currentTimeInMinutes - slideTimeInMinutes;
+                  
+                  // Handle crossing midnight
+                  if (diffMinutes < -12 * 60) { // If negative and more than 12 hours, assume we crossed midnight
+                    diffMinutes += 24 * 60;
+                  } else if (diffMinutes > 12 * 60) { // If positive and more than 12 hours, assume we crossed midnight backwards
+                    diffMinutes -= 24 * 60;
+                  }
+                  
+                  // Format the time difference
+                  const sign = diffMinutes >= 0 ? '+' : '-';
+                  const absDiff = Math.abs(diffMinutes);
+                  const hours = Math.floor(absDiff / 60);
+                  const mins = Math.floor(absDiff % 60);
+                  const secs = Math.round((absDiff % 1) * 60);
+                  
+                  return `${sign}${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                }
+                
+                // Between two timed notes
+                if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
+                  const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
+                  const nextTimeInMinutes = timeToMinutes(pacingInfo.nextTimedNote.time);
+                  
+                  // Calculate total time span
+                  let totalTimeSpan = nextTimeInMinutes - prevTimeInMinutes;
+                  if (totalTimeSpan < 0) totalTimeSpan += 24 * 60; // Handle crossing midnight
+                  
+                  // Find slide positions
+                  const prevSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                  const nextSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
+                  
+                  if (prevSlideIndex < 0 || nextSlideIndex < 0) return '—';
+                  
+                  // Calculate total slides and our position
+                  const totalSlides = nextSlideIndex - prevSlideIndex;
+                  if (totalSlides <= 1) return '00:00:00'; // Avoid division by zero
+                  
+                  // Calculate our position (fraction) between the two timed slides
+                  const slideProgress = (currentSlideIndex - prevSlideIndex) / totalSlides;
+                  
+                  // Calculate the expected time at our position using linear interpolation
+                  const expectedTimeInMinutes = prevTimeInMinutes + (totalTimeSpan * slideProgress);
+                  
+                  // Calculate difference between current time and expected time
+                  let diffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
+                  
+                  // Handle crossing midnight
+                  if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                  else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                  
+                  // Format the time difference
+                  const sign = diffMinutes >= 0 ? '+' : '-';
+                  const absDiff = Math.abs(diffMinutes);
+                  const hours = Math.floor(absDiff / 60);
+                  const mins = Math.floor(absDiff % 60);
+                  const secs = Math.round((absDiff % 1) * 60);
+                  
+                  return `${sign}${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                }
+                
+                // No timed slides available for calculation
+                return '00:00:00';
+              })()}</div>
+
+              {/* Human-readable time display */}
+              <div className="text-green-400 font-semibold whitespace-nowrap mt-1">Status:</div>
+              <div className="text-white">{(() => {
+                // Get the current time
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+                const currentSeconds = now.getSeconds();
+                
+                // Calculate current time in minutes
+                const currentTimeInMinutes = currentHour * 60 + currentMinute + (currentSeconds / 60);
+                
+                // If we're on a timed slide
+                if (currentNote?.time) {
+                  // For timed slides, calculate difference between current time and slide's time
+                  const slideTimeInMinutes = timeToMinutes(currentNote.time);
+                  let diffMinutes = currentTimeInMinutes - slideTimeInMinutes;
+                  
+                  // Handle crossing midnight
+                  if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                  else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                  
+                  // Format as human-readable time difference
+                  return formatTimeDifferenceHuman(diffMinutes, currentTimeInMinutes, slideTimeInMinutes);
+                } else if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
+                  // If between timed slides, use linear interpolation
+                  const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
+                  const nextTimeInMinutes = timeToMinutes(pacingInfo.nextTimedNote.time);
+                  
+                  // Calculate total time span
+                  let totalTimeSpan = nextTimeInMinutes - prevTimeInMinutes;
+                  if (totalTimeSpan < 0) totalTimeSpan += 24 * 60; // Handle crossing midnight
+                  
+                  // Find slide positions
+                  const prevSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                  const nextSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
+                  
+                  if (prevSlideIndex < 0 || nextSlideIndex < 0) return 'Time data unavailable';
+                  
+                  // Calculate total slides and our position
+                  const totalSlides = nextSlideIndex - prevSlideIndex;
+                  if (totalSlides <= 1) return 'Right on time'; // Avoid division by zero
+                  
+                  // Calculate our position (fraction) between the two timed slides
+                  const slideProgress = (currentSlideIndex - prevSlideIndex) / totalSlides;
+                  
+                  // Calculate the expected time at our position using linear interpolation
+                  const expectedTimeInMinutes = prevTimeInMinutes + (totalTimeSpan * slideProgress);
+                  
+                  // Calculate difference between current time and expected time
+                  let diffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
+                  
+                  // Handle crossing midnight
+                  if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                  else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                  
+                  // Format as human-readable time difference
+                  return formatTimeDifferenceHuman(diffMinutes, currentTimeInMinutes, expectedTimeInMinutes);
+                }
+                
+                // No timed slides available for calculation
+                return 'Time data unavailable';
+              })()}</div>
+            </div>
           </div>
           
           {/* Time tracking dots - Always show on all slides except overview slides and end slide */}
@@ -895,131 +1398,99 @@ export default function PresentMode() {
                         }}
                       />
                       
-                      {/* Black dot (schedule position) - position based on timing */}
+                      {/* Black dot (time adherence) - position shows ahead/behind schedule - 35% opacity 
+                          Always shows on all slides, not just on timed slides */}
                       <div 
-                        className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-black transition-all duration-300"
+                        className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-black/35 transition-all duration-300"
                         style={{
+                          // Position the black dot on a smaller scale within the container
+                          // 40% = maximum ahead (1 hour ahead)
+                          // 50% = on time
+                          // 60% = maximum behind (1 hour behind)
                           left: (() => {
-                            try {
-                              // Get the current time
-                              const now = new Date();
-                              const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
-                              
-                              // Position depends on schedule status
-                              if (currentNote?.time) {
-                                // For slides with a direct time marker
-                                const timeDiffMinutes = currentTimeInMinutes - timeToMinutes(currentNote.time);
+                              try {
+                                // Get values directly from the "Result is" field in the debug overlay
+                                // This is the most reliable calculation
                                 
-                                // Handle crossing midnight
-                                let adjustedDiffMinutes = timeDiffMinutes;
-                                if (timeDiffMinutes < -12 * 60) adjustedDiffMinutes += 24 * 60;
-                                else if (timeDiffMinutes > 12 * 60) adjustedDiffMinutes -= 24 * 60;
+                                // Get the current time
+                                const now = new Date();
+                                const currentHour = now.getHours();
+                                const currentMinute = now.getMinutes();
+                                const currentSeconds = now.getSeconds();
                                 
-                                // Calculate left position
-                                // negative means ahead (dot to the left), positive means behind (dot to the right)
-                                // Cap at +/- 50px to keep within container bounds
-                                const maxOffset = 50; // Maximum pixels from center
+                                // Calculate current time in minutes
+                                const currentTimeInMinutes = currentHour * 60 + currentMinute + (currentSeconds / 60);
                                 
-                                // Non-linear scaling for better visual indication:
-                                // 5 minutes = 25px, 10 minutes = 40px, 15+ minutes = 50px
-                                let offsetPixels = 0;
-                                const absDiff = Math.abs(adjustedDiffMinutes);
-                                
-                                if (absDiff < 5) {
-                                  // Linear from 0-25px for first 5 minutes
-                                  offsetPixels = (absDiff / 5) * 25;
-                                } else if (absDiff < 10) {
-                                  // Linear from 25-40px for 5-10 minutes
-                                  offsetPixels = 25 + ((absDiff - 5) / 5) * 15;
-                                } else if (absDiff < 15) {
-                                  // Linear from 40-50px for 10-15 minutes
-                                  offsetPixels = 40 + ((absDiff - 10) / 5) * 10;
-                                } else {
-                                  // Maximum offset for 15+ minutes
-                                  offsetPixels = 50;
+                                // If we're on a timed slide (Current Note of these: 1)
+                                if (currentNote?.time) {
+                                  // For timed slides, the result is the difference between current time and the slide's time
+                                  const slideTimeInMinutes = timeToMinutes(currentNote.time);
+                                  
+                                  // Calculate difference
+                                  let diffMinutes = currentTimeInMinutes - slideTimeInMinutes;
+                                  
+                                  // Handle crossing midnight
+                                  if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                                  else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                                  
+                                  // Cap diffMinutes to -60..60 range
+                                  const timePosition = Math.max(-60, Math.min(60, diffMinutes));
+                                  // Map from -60..60 to 40%..60% (with 0 = 50%)
+                                  const percentPosition = 50 + ((timePosition / 60) * 10);
+                                  return `${percentPosition}%`;
                                 }
                                 
-                                // Apply sign based on whether ahead or behind
-                                offsetPixels = adjustedDiffMinutes >= 0 ? offsetPixels : -offsetPixels;
-                                
-                                // Calculate position: 50% (center) + offset
-                                return `calc(50% + ${offsetPixels}px)`;
-                              } else if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
-                                // For slides between two timed slides, calculate the expected time
-                                const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
-                                const nextTimeInMinutes = timeToMinutes(pacingInfo.nextTimedNote.time);
-                                
-                                // Calculate total time span, handling day boundaries
-                                let totalTimeSpan = nextTimeInMinutes - prevTimeInMinutes;
-                                if (totalTimeSpan < 0) totalTimeSpan += 24 * 60; // Handle crossing midnight
-                                
-                                // Find slide positions
-                                const prevSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
-                                const nextSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
-                                
-                                if (prevSlideIndex < 0 || nextSlideIndex < 0 || prevSlideIndex >= nextSlideIndex) {
-                                  return "50%"; // Center position as fallback
+                                // Between two timed notes (exactly same calculation from the debug "Result is" field)
+                                if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
+                                  const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
+                                  const nextTimeInMinutes = timeToMinutes(pacingInfo.nextTimedNote.time);
+                                  
+                                  // Calculate total time span
+                                  let totalTimeSpan = nextTimeInMinutes - prevTimeInMinutes;
+                                  if (totalTimeSpan < 0) totalTimeSpan += 24 * 60; // Handle crossing midnight
+                                  
+                                  // Find slide positions
+                                  const prevSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                                  const nextSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
+                                  
+                                  if (prevSlideIndex < 0 || nextSlideIndex < 0) return "50%";
+                                  
+                                  // Calculate total slides and our position
+                                  const totalSlides = nextSlideIndex - prevSlideIndex;
+                                  if (totalSlides <= 1) return "50%"; // Avoid division by zero
+                                  
+                                  // Calculate our position (fraction) between the two timed slides
+                                  const slideProgress = (currentSlideIndex - prevSlideIndex) / totalSlides;
+                                  
+                                  // Calculate the expected time at our position using linear interpolation
+                                  const expectedTimeInMinutes = prevTimeInMinutes + (totalTimeSpan * slideProgress);
+                                  
+                                  // Calculate difference between current time and expected time
+                                  let diffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
+                                  
+                                  // Handle crossing midnight
+                                  if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                                  else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                                  
+                                  // Cap diffMinutes to -60..60 range
+                                  const timePosition = Math.max(-60, Math.min(60, diffMinutes));
+                                  // Map from -60..60 to 40%..60% (with 0 = 50%)
+                                  const percentPosition = 50 + ((timePosition / 60) * 10);
+                                  return `${percentPosition}%`;
                                 }
                                 
-                                // Calculate slides between the time points
-                                const totalSlides = nextSlideIndex - prevSlideIndex;
-                                
-                                // Calculate our position (fraction) between the two timed slides
-                                const slideProgress = (currentSlideIndex - prevSlideIndex) / totalSlides;
-                                
-                                // Calculate the expected time at our position
-                                const expectedTimeInMinutes = prevTimeInMinutes + (totalTimeSpan * slideProgress);
-                                
-                                // Calculate time difference between current time and expected time
-                                let timeDiffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
-                                
-                                // Handle crossing midnight
-                                if (timeDiffMinutes < -12 * 60) timeDiffMinutes += 24 * 60;
-                                else if (timeDiffMinutes > 12 * 60) timeDiffMinutes -= 24 * 60;
-                                
-                                // Calculate left position
-                                // negative means ahead (dot to the left), positive means behind (dot to the right)
-                                // Cap at +/- 50px to keep within container bounds
-                                const maxOffset = 50; // Maximum pixels from center
-                                
-                                // Non-linear scaling for better visual indication:
-                                // 5 minutes = 25px, 10 minutes = 40px, 15+ minutes = 50px
-                                let offsetPixels = 0;
-                                const absDiff = Math.abs(timeDiffMinutes);
-                                
-                                if (absDiff < 5) {
-                                  // Linear from 0-25px for first 5 minutes
-                                  offsetPixels = (absDiff / 5) * 25;
-                                } else if (absDiff < 10) {
-                                  // Linear from 25-40px for 5-10 minutes
-                                  offsetPixels = 25 + ((absDiff - 5) / 5) * 15;
-                                } else if (absDiff < 15) {
-                                  // Linear from 40-50px for 10-15 minutes
-                                  offsetPixels = 40 + ((absDiff - 10) / 5) * 10;
-                                } else {
-                                  // Maximum offset for 15+ minutes
-                                  offsetPixels = 50;
-                                }
-                                
-                                // Apply sign based on whether ahead or behind
-                                offsetPixels = timeDiffMinutes >= 0 ? offsetPixels : -offsetPixels;
-                                
-                                // Calculate position: 50% (center) + offset
-                                return `calc(50% + ${offsetPixels}px)`;
+                                // Default: If we can't calculate, use center position
+                                return "50%";
+                              } catch (err) {
+                                console.error("Error calculating dot position:", err);
+                                return "50%"; // Default to center in case of error
                               }
-                              
-                              // Default: If we can't calculate, use center position
-                              return "50%";
-                            } catch (err) {
-                              console.error("Error calculating dot position:", err);
-                              return "50%"; // Default to center in case of error
-                            }
-                          })(),
-                          transform: 'translateX(-50%)',
-                          boxShadow: '0 0 4px rgba(0,0,0,0.3)'
-                        }}
-                      />
-                  </div>
+                            })(),
+                            transform: 'translateX(-50%)',
+                            boxShadow: '0 0 4px rgba(0,0,0,0.3)'
+                          }}
+                        />
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="bg-black/90 text-white text-sm p-3">
                     <div className="text-center">
@@ -1150,6 +1621,243 @@ export default function PresentMode() {
                         // No timed slides available
                         return <div>Add time markers to track presentation pacing</div>;
                       })()}
+                    </div>{(() => {
+                            if (currentNote?.time) {
+                              const nextTimedSlide = getNextTimedSlide();
+                              if (nextTimedSlide?.time) {
+                                const startMin = timeToMinutes(currentNote.time);
+                                const endMin = timeToMinutes(nextTimedSlide.time);
+                                let totalMin = endMin - startMin;
+                                if (totalMin < 0) totalMin += 24 * 60;
+                                const hours = Math.floor(totalMin / 60);
+                                const mins = Math.floor(totalMin % 60);
+                                const secs = Math.round((totalMin % 1) * 60);
+                                return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                              }
+                            }
+                            return '—';
+                          })()}</div>
+                          
+                          <div className="text-green-400 font-semibold whitespace-nowrap">Notes to spend on time:</div>
+                          <div>{(() => {
+                            if (currentNote?.time) {
+                              const nextTimedSlide = getNextTimedSlide();
+                              if (nextTimedSlide) {
+                                const nextIndex = flattenedNotes.findIndex(n => n.id === nextTimedSlide.id);
+                                if (nextIndex < 0) return '—';
+                                return nextIndex - currentSlideIndex;
+                              }
+                              return '1';
+                            }
+                            return '—';
+                          })()}</div>
+                          
+                          <div className="text-green-400 font-semibold whitespace-nowrap">Current Note of these:</div>
+                          <div>{(() => {
+                            if (currentNote?.time) {
+                              return '1'; // First note in the time span
+                            } else if (pacingInfo.previousTimedNote) {
+                              const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                              if (prevIndex >= 0) {
+                                // Return 1-based position (not 0-based)
+                                return (currentSlideIndex - prevIndex + 1).toString();
+                              }
+                            }
+                            return '—';
+                          })()}</div>
+                          
+                          <div className="text-green-400 font-semibold whitespace-nowrap">Result is:</div>
+                          <div>{(() => {
+                            // Get the current time
+                            const now = new Date();
+                            const currentHour = now.getHours();
+                            const currentMinute = now.getMinutes();
+                            const currentSeconds = now.getSeconds();
+                            
+                            // Calculate current time in minutes
+                            const currentTimeInMinutes = currentHour * 60 + currentMinute + (currentSeconds / 60);
+                            
+                            // If we're on a timed slide
+                            if (currentNote?.time) {
+                              // For timed slides, the result is the difference between current time and the slide's time
+                              const slideTimeInMinutes = timeToMinutes(currentNote.time);
+                              
+                              // Calculate difference
+                              let diffMinutes = currentTimeInMinutes - slideTimeInMinutes;
+                              
+                              // Handle crossing midnight
+                              if (diffMinutes < -12 * 60) { // If negative and more than 12 hours, assume we crossed midnight
+                                diffMinutes += 24 * 60;
+                              } else if (diffMinutes > 12 * 60) { // If positive and more than 12 hours, assume we crossed midnight backwards
+                                diffMinutes -= 24 * 60;
+                              }
+                              
+                              // Format the time difference
+                              const sign = diffMinutes >= 0 ? '+' : '-';
+                              const absDiff = Math.abs(diffMinutes);
+                              const hours = Math.floor(absDiff / 60);
+                              const mins = Math.floor(absDiff % 60);
+                              const secs = Math.round((absDiff % 1) * 60);
+                              
+                              return `${sign}${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                            }
+                            
+                            // Between two timed notes
+                            if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
+                              const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
+                              const nextTimeInMinutes = timeToMinutes(pacingInfo.nextTimedNote.time);
+                              
+                              // Calculate total time span
+                              let totalTimeSpan = nextTimeInMinutes - prevTimeInMinutes;
+                              if (totalTimeSpan < 0) totalTimeSpan += 24 * 60; // Handle crossing midnight
+                              
+                              // Find slide positions
+                              const prevSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                              const nextSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
+                              
+                              if (prevSlideIndex < 0 || nextSlideIndex < 0) return '—';
+                              
+                              // Calculate total slides and our position
+                              const totalSlides = nextSlideIndex - prevSlideIndex;
+                              if (totalSlides <= 1) return '00:00:00'; // Avoid division by zero
+                              
+                              // Calculate our position (fraction) between the two timed slides
+                              const slideProgress = (currentSlideIndex - prevSlideIndex) / totalSlides;
+                              
+                              // Calculate the expected time at our position using linear interpolation
+                              const expectedTimeInMinutes = prevTimeInMinutes + (totalTimeSpan * slideProgress);
+                              
+                              // Calculate difference between current time and expected time
+                              let diffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
+                              
+                              // Handle crossing midnight
+                              if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                              else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                              
+                              // Format the time difference
+                              const sign = diffMinutes >= 0 ? '+' : '-';
+                              const absDiff = Math.abs(diffMinutes);
+                              const hours = Math.floor(absDiff / 60);
+                              const mins = Math.floor(absDiff % 60);
+                              const secs = Math.round((absDiff % 1) * 60);
+                              
+                              return `${sign}${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                            }
+                            
+                            // No timed slides available for calculation
+                            return '00:00:00';
+                          })()}</div>
+                          
+                          {/* Human-readable time display */}
+                          <div className="text-green-400 font-semibold whitespace-nowrap mt-1">Status:</div>
+                          <div>{(() => {
+                            // Get the current time
+                            const now = new Date();
+                            const currentHour = now.getHours();
+                            const currentMinute = now.getMinutes();
+                            const currentSeconds = now.getSeconds();
+                            
+                            // Calculate current time in minutes
+                            const currentTimeInMinutes = currentHour * 60 + currentMinute + (currentSeconds / 60);
+                            
+                            // If we're on a timed slide
+                            if (currentNote?.time) {
+                              // For timed slides, calculate difference between current time and slide's time
+                              const slideTimeInMinutes = timeToMinutes(currentNote.time);
+                              let diffMinutes = currentTimeInMinutes - slideTimeInMinutes;
+                              
+                              // Handle crossing midnight
+                              if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                              else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                              
+                              // Format as human-readable time difference
+                              return formatTimeDifferenceHuman(diffMinutes, currentTimeInMinutes, slideTimeInMinutes);
+                            } else if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
+                              // If between timed slides, use linear interpolation
+                              const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
+                              const nextTimeInMinutes = timeToMinutes(pacingInfo.nextTimedNote.time);
+                              
+                              // Calculate total time span
+                              let totalTimeSpan = nextTimeInMinutes - prevTimeInMinutes;
+                              if (totalTimeSpan < 0) totalTimeSpan += 24 * 60; // Handle crossing midnight
+                              
+                              // Find slide positions
+                              const prevSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                              const nextSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
+                              
+                              if (prevSlideIndex < 0 || nextSlideIndex < 0) return 'Time data unavailable';
+                              
+                              // Calculate total slides and our position
+                              const totalSlides = nextSlideIndex - prevSlideIndex;
+                              if (totalSlides <= 1) return 'Right on time'; // Avoid division by zero
+                              
+                              // Calculate our position (fraction) between the two timed slides
+                              const slideProgress = (currentSlideIndex - prevSlideIndex) / totalSlides;
+                              
+                              // Calculate the expected time at our position using linear interpolation
+                              const expectedTimeInMinutes = prevTimeInMinutes + (totalTimeSpan * slideProgress);
+                              
+                              // Calculate difference between current time and expected time
+                              let diffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
+                              
+                              // Handle crossing midnight
+                              if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                              else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                              
+                              // Format as human-readable time difference
+                              return formatTimeDifferenceHuman(diffMinutes, currentTimeInMinutes, expectedTimeInMinutes);
+                            }
+                            
+                            // No timed slides available for calculation
+                            return 'Time data unavailable';
+                          })()}</div>
+                        </div>
+                      </div>
+
+                      {/* Pacing information - only show if both timing markers are available */}
+                      {pacingInfo.previousTimedNote || pacingInfo.nextTimedNote ? (
+                        <div className="mt-1 pt-1 border-t border-gray-700">
+                          <div className="flex justify-between text-[9px] sm:text-xs">
+                            <span className={pacingInfo.slideDifference > 0 ? "text-green-400" : 
+                                            pacingInfo.slideDifference < 0 ? "text-orange-400" : "text-blue-400"}>
+                              {pacingInfo.slideDifference > 0 ? `${pacingInfo.slideDifference} slides ahead` :
+                              pacingInfo.slideDifference < 0 ? `${Math.abs(pacingInfo.slideDifference)} slides behind` :
+                              'On schedule'}
+                            </span>
+                            <span className="opacity-70">
+                              {pacingInfo.previousTimedNote && pacingInfo.nextTimedNote ? 
+                                `${Math.round(pacingInfo.percentComplete * 100)}% between time points` :
+                                pacingInfo.nextTimedNote ? 'Starting segment' : 'Ending segment'}
+                            </span>
+                          </div>
+                          
+                          {/* Time markers */}
+                          <div className="flex justify-between mt-1 text-[8px] sm:text-[10px] opacity-60">
+                            <span>{pacingInfo.previousTimedNote?.time || '—'}</span>
+                            <span>{pacingInfo.previousTimedNote && pacingInfo.nextTimedNote ? 
+                              `${Math.floor(pacingInfo.percentComplete * 100)}%` : 
+                              currentNote?.time || 'Current'}</span>
+                            <span>{pacingInfo.nextTimedNote?.time || '—'}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-1 pt-1 border-t border-gray-700">
+                          <div className="text-[9px] sm:text-xs text-yellow-300">
+                            {pacingInfo.previousTimedNote ? 
+                              'Add time to upcoming slides to track pacing' : 
+                              pacingInfo.nextTimedNote ?
+                              'The progress indicator shows your position between timed slides' :
+                              'Add time markers to track presentation pacing'}
+                          </div>
+                          
+                          {/* Simple time markers */}
+                          <div className="flex justify-between mt-1 text-[8px] sm:text-[10px] opacity-60">
+                            <span>{pacingInfo.previousTimedNote ? (pacingInfo.previousTimedNote as Note).time || '—' : '—'}</span>
+                            <span>{currentNote?.time || 'No time set'}</span>
+                            <span>{pacingInfo.nextTimedNote ? (pacingInfo.nextTimedNote as Note).time || '—' : '—'}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -1158,39 +1866,6 @@ export default function PresentMode() {
           )}
         </>
       )}
-      
-      {/* Navigation and Controls */}
-      <div className="px-4 py-2 flex justify-between items-center">
-        <button 
-          onClick={() => setCurrentSlideIndex(Math.max(0, currentSlideIndex - 1))}
-          disabled={currentSlideIndex <= 0}
-          className={`px-3 py-1 rounded transition-colors 
-            ${currentSlideIndex <= 0 ? 'text-white/20 cursor-not-allowed' : 'hover:bg-white/10 text-white'}`}
-        >
-          Previous
-        </button>
-        
-        <FullscreenToggle 
-          isFullscreen={isFullscreen}
-          onToggle={toggleFullscreen}
-        />
-        
-        <button 
-          onClick={handleExitPresentation}
-          className="px-3 py-1 rounded hover:bg-white/10 transition-colors"
-        >
-          Exit
-        </button>
-        
-        <button 
-          onClick={() => setCurrentSlideIndex(Math.min(flattenedNotes.length - 1, currentSlideIndex + 1))}
-          disabled={currentSlideIndex >= flattenedNotes.length - 1}
-          className={`px-3 py-1 rounded transition-colors
-            ${currentSlideIndex >= flattenedNotes.length - 1 ? 'text-white/20 cursor-not-allowed' : 'hover:bg-white/10 text-white'}`}
-        >
-          Next
-        </button>
-      </div>
     </div>
   );
 }
