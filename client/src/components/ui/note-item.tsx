@@ -912,11 +912,29 @@ export default function NoteItem({
                       // in the onSuccess callback in useNotes hook
                       localStorage.setItem('newNoteCreated', 'true');
                       
+                      // Find the maximum order value among existing child notes
+                      let maxOrder = -1;
+                      if (notes && notes.length > 0) {
+                        const childNotes = notes.filter(n => n.parentId === note.id);
+                        if (childNotes.length > 0) {
+                          childNotes.forEach(childNote => {
+                            const orderValue = parseFloat(childNote.order.toString());
+                            if (!isNaN(orderValue) && orderValue > maxOrder) {
+                              maxOrder = orderValue;
+                            }
+                          });
+                        }
+                      }
+                      
+                      // Use an order value higher than any existing child note
+                      const newOrderValue = (maxOrder + 1).toString();
+                      console.log(`Creating new child note with order ${newOrderValue} (max child order was ${maxOrder})`);
+                      
                       (createNote.mutate as any)({
                         projectId: note.projectId,
                         parentId: note.id,
                         content: "",
-                        order: "0",
+                        order: newOrderValue,
                         url: "",
                         linkText: "",
                         youtubeLink: "",

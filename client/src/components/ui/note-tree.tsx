@@ -486,6 +486,24 @@ export default function NoteTree({
     // Set a temporary flag in localStorage to indicate a new note is being created
     localStorage.setItem('newNoteCreated', 'true');
     
+    // Find the maximum order value among existing root notes
+    let maxOrder = -1;
+    if (notes && notes.length > 0) {
+      const rootNotes = notes.filter(n => n.parentId === null);
+      if (rootNotes.length > 0) {
+        rootNotes.forEach(note => {
+          const orderValue = parseFloat(note.order.toString());
+          if (!isNaN(orderValue) && orderValue > maxOrder) {
+            maxOrder = orderValue;
+          }
+        });
+      }
+    }
+    
+    // Use an order value higher than any existing note to place it at the end
+    const newOrderValue = (maxOrder + 1).toString();
+    console.log(`Creating new root note with order ${newOrderValue} (max order was ${maxOrder})`);
+    
     // Cast as any to avoid TypeScript errors from TanStack Query
     (createNote.mutate as any)({
       content: "",
@@ -496,7 +514,7 @@ export default function NoteTree({
       youtubeLink: "",
       time: "",
       images: [],
-      order: "0" // Send as string to match the server's expected type
+      order: newOrderValue // Send as string to match the server's expected type
     });
   };
 
