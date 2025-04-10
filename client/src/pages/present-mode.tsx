@@ -1271,146 +1271,65 @@ export default function PresentMode() {
                       
                       {/* Debug timing information - always visible */}
                       <div className="mt-2 pt-1 border-t border-gray-700 bg-gray-800 p-1 rounded text-[9px] sm:text-xs">
-                        <div className="text-white font-mono">
-                          <div>Start Time: {currentNote?.time || pacingInfo.previousTimedNote?.time || '—'}, End Time: {getNextTimedSlide()?.time || '—'}</div>
-                          <div>
-                            Total Time: {(() => {
-                              // If we're on a timed note, directly check for the next timed note
-                              if (currentNote?.time) {
-                                // Get the next timed slide directly
-                                const nextTimedSlide = getNextTimedSlide();
-                                if (nextTimedSlide) {
-                                  const startMin = timeToMinutes(currentNote.time || '');
-                                  const endMin = timeToMinutes(nextTimedSlide.time || '');
-                                  let totalMin = endMin - startMin;
-                                  if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
-                                  const hours = Math.floor(totalMin / 60);
-                                  const mins = Math.floor(totalMin % 60);
-                                  const secs = Math.round((totalMin % 1) * 60);
-                                  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                                }
-                                
-                                // If there's no next timed slide, this is the last/only one
-                                return '00:00:00'; // No time to spend
-                              }
-                              
-                              // Fall back to using pacingInfo for non-timed notes
-                              if (pacingInfo.previousTimedNote && pacingInfo.nextTimedNote) {
-                                const startMin = timeToMinutes(pacingInfo.previousTimedNote.time || '');
-                                const endMin = timeToMinutes(pacingInfo.nextTimedNote.time || '');
+                        <div className="grid grid-cols-2 gap-x-1 font-mono text-white">
+                          <div className="text-green-400 font-semibold whitespace-nowrap">Start Time:</div>
+                          <div>{currentNote?.time || '—'}</div>
+                          
+                          <div className="text-green-400 font-semibold whitespace-nowrap">End Time:</div>
+                          <div>{getNextTimedSlide()?.time || '—'}</div>
+                          
+                          <div className="text-green-400 font-semibold whitespace-nowrap">Total Time to spend:</div>
+                          <div>{(() => {
+                            if (currentNote?.time) {
+                              const nextTimedSlide = getNextTimedSlide();
+                              if (nextTimedSlide?.time) {
+                                const startMin = timeToMinutes(currentNote.time);
+                                const endMin = timeToMinutes(nextTimedSlide.time);
                                 let totalMin = endMin - startMin;
-                                if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
+                                if (totalMin < 0) totalMin += 24 * 60;
                                 const hours = Math.floor(totalMin / 60);
                                 const mins = Math.floor(totalMin % 60);
                                 const secs = Math.round((totalMin % 1) * 60);
                                 return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                               }
-                              
-                              return '—';
-                            })()}
-                          </div>
-                          <div>
-                            Notes to spend on time: {(() => {
-                              // If we're on a timed note - use direct check for next timed slide
-                              if (currentNote?.time) {
-                                // Get next timed slide directly
-                                const nextTimedSlide = getNextTimedSlide();
-                                if (nextTimedSlide) {
-                                  const currentIndex = currentSlideIndex;
-                                  const nextIndex = flattenedNotes.findIndex(n => n.id === nextTimedSlide.id);
-                                  if (nextIndex < 0) return '—';
-                                  return nextIndex - currentIndex;
-                                }
-                                return '1'; // This is the only timed slide, count it as 1
+                            }
+                            return '—';
+                          })()}</div>
+                          
+                          <div className="text-green-400 font-semibold whitespace-nowrap">Notes to spend on time:</div>
+                          <div>{(() => {
+                            if (currentNote?.time) {
+                              const nextTimedSlide = getNextTimedSlide();
+                              if (nextTimedSlide) {
+                                const nextIndex = flattenedNotes.findIndex(n => n.id === nextTimedSlide.id);
+                                if (nextIndex < 0) return '—';
+                                return nextIndex - currentSlideIndex;
                               }
-                              
-                              // Fall back to pacingInfo for non-timed notes
-                              if (pacingInfo.previousTimedNote && pacingInfo.nextTimedNote) {
-                                const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
-                                const nextIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
-                                if (prevIndex < 0 || nextIndex < 0) return '—';
-                                return nextIndex - prevIndex;
-                              }
-                              
-                              return '—';
-                            })()}, 
-                            Current Note of these: {(() => {
-                              // If we're on a timed note, we're at position 1 of the range 
-                              if (currentNote?.time) {
-                                return '1'; // We're the first note in the range (position 1, not 0)
-                              }
-                              
-                              // Otherwise, use previous timed note as reference
-                              if (pacingInfo.previousTimedNote) {
-                                const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
-                                const currIndex = currentSlideIndex;
-                                if (prevIndex < 0) return '—';
-                                return currIndex - prevIndex;
-                              }
-                              
-                              return '—';
-                            })()}
-                          </div>
-                          <div>
-                            Result is: {(() => {
-                              // If we're on a timed note
-                              if (currentNote?.time) {
-                                // Check if there's a next timed slide
-                                const nextTimedSlide = getNextTimedSlide();
-                                if (nextTimedSlide) {
-                                  // Show the time difference in the format HH:MM:SS
-                                  const startMin = timeToMinutes(currentNote.time || '');
-                                  const endMin = timeToMinutes(nextTimedSlide.time || '');
-                                  let totalMin = endMin - startMin;
-                                  if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
-                                  const hours = Math.floor(totalMin / 60);
-                                  const mins = Math.floor(totalMin % 60);
-                                  const secs = Math.round((totalMin % 1) * 60);
-                                  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                                }
-                                // No next timed slide, so we're at the end
-                                return '00:00:00';
-                              }
-                              
-                              // For notes between timed notes
-                              if (pacingInfo.previousTimedNote && pacingInfo.nextTimedNote) {
-                                const startMin = timeToMinutes(pacingInfo.previousTimedNote.time || '');
-                                const endMin = timeToMinutes(pacingInfo.nextTimedNote.time || '');
+                              return '1';
+                            }
+                            return '—';
+                          })()}</div>
+                          
+                          <div className="text-green-400 font-semibold whitespace-nowrap">Current Note of these:</div>
+                          <div>{currentNote?.time ? '1' : '—'}</div>
+                          
+                          <div className="text-green-400 font-semibold whitespace-nowrap">Result is:</div>
+                          <div>{(() => {
+                            if (currentNote?.time) {
+                              const nextTimedSlide = getNextTimedSlide();
+                              if (nextTimedSlide?.time) {
+                                const startMin = timeToMinutes(currentNote.time);
+                                const endMin = timeToMinutes(nextTimedSlide.time);
                                 let totalMin = endMin - startMin;
-                                if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
-                                
-                                const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
-                                const nextIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
-                                const currIndex = currentSlideIndex;
-                                if (prevIndex < 0 || nextIndex < 0) return '—';
-                                
-                                const totalSlides = nextIndex - prevIndex;
-                                const slidesPassed = currIndex - prevIndex;
-                                
-                                // If there's only one slide, avoid division by zero
-                                if (totalSlides <= 1) return '00:00:00';
-                                
-                                // Expected time spent so far based on linear progression
-                                const expectedProgress = slidesPassed / totalSlides;
-                                const expectedTimeSpent = totalMin * expectedProgress;
-                                
-                                // Difference between expected and actual (for display only, not using real-time)
-                                // This shows if you're ahead or behind the planned pace
-                                const diffMin = 0; // We're not comparing to real time, so always 0
-                                
-                                // Format as HH:MM:SS
-                                const hours = Math.floor(Math.abs(diffMin) / 60);
-                                const mins = Math.floor(Math.abs(diffMin) % 60);
-                                const secs = Math.round((Math.abs(diffMin) % 1) * 60);
-                                
-                                // Show with +/- sign to indicate ahead/behind
-                                const sign = diffMin > 0 ? '+' : diffMin < 0 ? '-' : '';
-                                return `${sign}${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                                if (totalMin < 0) totalMin += 24 * 60;
+                                const hours = Math.floor(totalMin / 60);
+                                const mins = Math.floor(totalMin % 60);
+                                const secs = Math.round((totalMin % 1) * 60);
+                                return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                               }
-                              
-                              return '—';
-                            })()}
-                          </div>
+                            }
+                            return '00:00:00';
+                          })()}</div>
                         </div>
                       </div>
 
