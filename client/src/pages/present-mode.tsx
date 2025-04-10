@@ -971,7 +971,7 @@ export default function PresentMode() {
           <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-black/95 p-2 rounded border border-gray-600 z-20 text-[9px] sm:text-[11px] font-mono w-[240px] sm:w-[300px]">
             <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
               <div className="text-green-400 font-semibold whitespace-nowrap">Start Time:</div>
-              <div className="text-white">{pacingInfo.previousTimedNote?.time || '—'}</div>
+              <div className="text-white">{currentNote?.time || pacingInfo.previousTimedNote?.time || '—'}</div>
               
               <div className="text-green-400 font-semibold whitespace-nowrap">End Time:</div>
               <div className="text-white">{pacingInfo.nextTimedNote?.time || '—'}</div>
@@ -1018,7 +1018,7 @@ export default function PresentMode() {
                     if (nextIndex < 0) return '—';
                     return nextIndex - currentIndex;
                   }
-                  return '0'; // No following timed slides
+                  return '1'; // This is the only timed slide, count it as 1
                 }
                 
                 // Between two timed slides
@@ -1037,9 +1037,11 @@ export default function PresentMode() {
                 // We're on a timed slide
                 if (currentNote?.time) {
                   if (pacingInfo.nextTimedNote) {
+                    // We're on a timed note with a next timed note
                     return '0'; // We're at the start (position 0)
                   }
-                  return '—'; // Not between timed slides
+                  // If we're on the last timed note with no next timed note
+                  return '0'; // Consider it the first/only note in the range
                 }
                 
                 // Between two timed slides
