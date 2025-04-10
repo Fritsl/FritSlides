@@ -256,9 +256,13 @@ export class DatabaseStorage implements IStorage {
       
       const maxOrder = maxOrderResult?.maxOrder ?? -1;
       
-      // If order is provided in the request, use it, otherwise place at the end
-      // This allows the client to control positioning precisely
+      // Calculate the order value:
+      // - If explicit order is provided, use it (allows precise positioning)
+      // - Otherwise, always place new notes at the end (maxOrder + 1)
       const order = insertNote.order !== undefined ? Number(insertNote.order) : maxOrder + 1;
+      
+      // Log the order calculation for debugging
+      console.log(`Creating note with order ${order} (maxOrder was ${maxOrder})`); 
       
       // Create and return the note first, so we can respond quickly to the client
       const [note] = await db

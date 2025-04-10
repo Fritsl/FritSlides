@@ -19,16 +19,36 @@ const updateNoteInList = (notes: Note[], updatedNote: Partial<Note> & { id: numb
 };
 
 // Helper function to handle optimistic creation of a note with a temporary ID
-const createOptimisticNote = (note: Partial<InsertNote>, projectId: number): Note => {
+const createOptimisticNote = (note: Partial<InsertNote>, projectId: number, existingNotes: Note[] = []): Note => {
   // Generate a temporary negative ID to avoid conflicts with real IDs
   const tempId = -Math.floor(Math.random() * 1000000);
   const now = new Date();
+  
+  // Calculate the highest order for notes with the same parent
+  let maxOrder = -1;
+  const parentId = typeof note.parentId === 'number' ? note.parentId : null;
+  
+  if (existingNotes.length > 0) {
+    // Find all notes with the same parent
+    const siblingNotes = existingNotes.filter(n => 
+      (n.parentId === null && parentId === null) || 
+      (n.parentId === parentId)
+    );
+    
+    // Find the maximum order value
+    if (siblingNotes.length > 0) {
+      maxOrder = Math.max(...siblingNotes.map(n => parseFloat(String(n.order))));
+    }
+  }
+  
+  // New note should have an order value higher than any existing note
+  const newOrder = (maxOrder + 1).toString();
   
   // Create an optimistic note with explicit type casting to fix type errors
   return {
     id: tempId,
     projectId: projectId,
-    parentId: typeof note.parentId === 'number' ? note.parentId : null,
+    parentId: parentId,
     content: typeof note.content === 'string' ? note.content : "",
     url: typeof note.url === 'string' ? note.url : null,
     linkText: typeof note.linkText === 'string' ? note.linkText : null,
@@ -36,7 +56,7 @@ const createOptimisticNote = (note: Partial<InsertNote>, projectId: number): Not
     time: typeof note.time === 'string' ? note.time : null,
     isDiscussion: typeof note.isDiscussion === 'boolean' ? note.isDiscussion : null,
     images: Array.isArray(note.images) ? note.images.filter(img => typeof img === 'string') as string[] : null,
-    order: (typeof note.order === 'number' || typeof note.order === 'string') ? String(note.order) : "0",
+    order: (typeof note.order === 'number' || typeof note.order === 'string') ? String(note.order) : newOrder,
     createdAt: now,
     updatedAt: now
   };
@@ -180,9 +200,9 @@ export function useNotes(projectId: number | null) {
       // Snapshot the previous value
       const previousNotes = queryClient.getQueryData<Note[]>([`/api/projects/${projectId}/notes`]);
       
-      // Create an optimistic note
-      const optimisticNote = createOptimisticNote(newNote, projectId);
-      console.log(`[CREATE MUTATE] Created optimistic note with temp ID: ${optimisticNote.id}`);
+      // Create an optimistic note with the previous notes to calculate proper order
+      const optimisticNote = createOptimisticNote(newNote, projectId, previousNotes || []);
+      console.log(`[CREATE MUTATE] Created optimistic note with temp ID: ${optimisticNote.id}, order: ${optimisticNote.order}`);
       
       // Optimistically update the UI
       if (previousNotes) {
