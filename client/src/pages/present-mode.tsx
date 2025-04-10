@@ -1346,34 +1346,34 @@ export default function PresentMode() {
                         width: '140px', // 25 slides * 4px + center area
                       }}
                     >
-                      {/* White dot (current position) - always centered */}
+                      {/* White dot (current position) - always centered with 35% opacity */}
                       <div 
-                        className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white/80 transition-all duration-300"
+                        className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-white/35 transition-all duration-300"
                         style={{
                           left: '50%',
                           transform: 'translateX(-50%)',
-                          boxShadow: '0 0 4px rgba(255,255,255,0.5)'
+                          boxShadow: '0 0 4px rgba(255,255,255,0.3)'
                         }}
                       />
                       
-                      {/* Grey dot (time adherence) - position shows ahead/behind schedule */}
-                      {pacingInfo.shouldShow && (
+                      {/* Black dot (time adherence) - position shows ahead/behind schedule - 35% opacity */}
+                      {pacingInfo.shouldShow && !isOverviewSlide && (
                         <div 
-                          className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gray-400 transition-all duration-300"
+                          className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-black/35 transition-all duration-300"
                           style={{
-                            // Position the grey dot on a scale from 25% to 75% width:
-                            // 25% = maximum ahead (1 hour ahead)
+                            // Position the black dot on a smaller scale within the container
+                            // 40% = maximum ahead (1 hour ahead)
                             // 50% = on time
-                            // 75% = maximum behind (1 hour behind)
+                            // 60% = maximum behind (1 hour behind)
                             left: (() => {
                               // Cap timePositionInMinutes to -60..60 range
                               const timePosition = Math.max(-60, Math.min(60, pacingInfo.timePositionInMinutes));
-                              // Map from -60..60 to 25%..75% (with 0 = 50%)
-                              const percentPosition = 50 + ((timePosition / 60) * 25);
+                              // Map from -60..60 to 40%..60% (with 0 = 50%)
+                              const percentPosition = 50 + ((timePosition / 60) * 10);
                               return `${percentPosition}%`;
                             })(),
                             transform: 'translateX(-50%)',
-                            boxShadow: '0 0 4px rgba(200,200,200,0.5)'
+                            boxShadow: '0 0 4px rgba(0,0,0,0.3)'
                           }}
                         />
                       )}
@@ -1430,7 +1430,7 @@ export default function PresentMode() {
                       <div className="mt-1 text-[9px] sm:text-xs">
                         <span className="text-white/80">White dot:</span> Your current position
                         <br />
-                        <span className="text-gray-400">Grey dot:</span> Schedule status - 
+                        <span className="text-gray-700">Black dot:</span> Schedule status - 
                         {pacingInfo.timePositionInMinutes > 0
                           ? `${Math.abs(Math.round(pacingInfo.timePositionInMinutes))} min behind`
                           : pacingInfo.timePositionInMinutes < 0 
