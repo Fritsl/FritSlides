@@ -52,6 +52,7 @@ export function formatTimeString(time: string): string {
 
 /**
  * Convert HH:MM time format to minutes
+ * This is critical for time calculations - it returns a decimal number of minutes
  */
 export function timeToMinutes(time: string): number {
   if (!time || typeof time !== 'string' || time.trim() === '') return 0;
@@ -68,7 +69,17 @@ export function timeToMinutes(time: string): number {
     });
     
     if (parts.length === 1) return parts[0]; // Just minutes
-    if (parts.length === 2) return parts[0] * 60 + parts[1]; // Hours and minutes
+    if (parts.length === 2) {
+      const hours = parts[0];
+      const minutes = parts[1];
+      
+      // Validate the parts to ensure they're in a reasonable range
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        return hours * 60 + minutes; // Convert hours to minutes and add minutes
+      } else {
+        console.warn('Invalid time format (out of range):', time);
+      }
+    }
   } catch (err) {
     console.warn('Error converting time to minutes:', time, err);
   }
