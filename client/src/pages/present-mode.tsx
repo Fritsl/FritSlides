@@ -971,30 +971,54 @@ export default function PresentMode() {
           <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-black/95 p-2 rounded border border-gray-600 z-20 text-[9px] sm:text-[11px] font-mono w-[240px] sm:w-[300px]">
             <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
               <div className="text-green-400 font-semibold whitespace-nowrap">Start Time:</div>
-              <div className="text-white">{currentNote?.time || pacingInfo.previousTimedNote?.time || '—'}</div>
+              <div className="text-white">{(() => {
+                // If we're on a timed note with a next timed note, this note is the start time
+                if (currentNote?.time && pacingInfo.nextTimedNote) {
+                  return currentNote.time;
+                }
+                // If we're on a timed note without a next timed note, we use previous timed note (if exists)
+                // or the current note's time
+                if (currentNote?.time && !pacingInfo.nextTimedNote) {
+                  return pacingInfo.previousTimedNote?.time || currentNote.time;
+                }
+                // If we're between timed notes
+                return pacingInfo.previousTimedNote?.time || '—';
+              })()}</div>
               
               <div className="text-green-400 font-semibold whitespace-nowrap">End Time:</div>
-              <div className="text-white">{pacingInfo.nextTimedNote?.time || '—'}</div>
+              <div className="text-white">{(() => {
+                // If we're on a timed note with a next timed note, use the next timed note as end
+                if (currentNote?.time && pacingInfo.nextTimedNote) {
+                  return pacingInfo.nextTimedNote.time;
+                }
+                // If we're on a timed note without a next timed note, this is the end time
+                if (currentNote?.time && !pacingInfo.nextTimedNote) {
+                  return currentNote.time;
+                }
+                // If we're between timed notes
+                return pacingInfo.nextTimedNote?.time || '—';
+              })()}</div>
               
               <div className="text-green-400 font-semibold whitespace-nowrap">Total Time to spend:</div>
               <div className="text-white">{(() => {
-                // Handle the case where we're directly on a timed note
-                if (currentNote?.time) {
-                  // Check if we have a next timed note or just the current one
-                  if (pacingInfo.nextTimedNote) {
-                    const startMin = timeToMinutes(currentNote.time || '');
-                    const endMin = timeToMinutes(pacingInfo.nextTimedNote.time || '');
-                    let totalMin = endMin - startMin;
-                    if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
-                    const hours = Math.floor(totalMin / 60);
-                    const mins = Math.floor(totalMin % 60);
-                    const secs = Math.round((totalMin % 1) * 60);
-                    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                  }
-                  // If we're on a timed note but don't have a next one
-                  return '00:00:00';
+                // If we're on a timed note with a next timed note, calculate from current to next
+                if (currentNote?.time && pacingInfo.nextTimedNote) {
+                  const startMin = timeToMinutes(currentNote.time || '');
+                  const endMin = timeToMinutes(pacingInfo.nextTimedNote.time || '');
+                  let totalMin = endMin - startMin;
+                  if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
+                  const hours = Math.floor(totalMin / 60);
+                  const mins = Math.floor(totalMin % 60);
+                  const secs = Math.round((totalMin % 1) * 60);
+                  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 }
-                // Normal case between two timed points
+                  
+                // If we're on the last timed note with no next timed note, or if we're on a standalone timed note
+                if (currentNote?.time && !pacingInfo.nextTimedNote) {
+                  return '00:00:00'; // No time to spend
+                }
+                  
+                // If we're between two timed notes (not on either one)
                 if (pacingInfo.previousTimedNote && pacingInfo.nextTimedNote) {
                   const startMin = timeToMinutes(pacingInfo.previousTimedNote.time || '');
                   const endMin = timeToMinutes(pacingInfo.nextTimedNote.time || '');
@@ -1005,6 +1029,7 @@ export default function PresentMode() {
                   const secs = Math.round((totalMin % 1) * 60);
                   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 }
+                  
                 return '—';
               })()}</div>
               
