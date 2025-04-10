@@ -1333,8 +1333,8 @@ export default function PresentMode() {
             </div>
           </div>
           
-          {/* Time tracking dots - Modified to always show for timed slides */}
-          {(pacingInfo.shouldShow || currentNote?.time) && (
+          {/* Time tracking dots - Always show on all non-overview slides */}
+          {!isOverviewSlide && (
             <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10">
               <TooltipProvider>
                 <Tooltip>
@@ -1357,16 +1357,15 @@ export default function PresentMode() {
                       />
                       
                       {/* Black dot (time adherence) - position shows ahead/behind schedule - 35% opacity 
-                          Must always show on slides with time markers (especially on first slides) */}
-                      {!isOverviewSlide && (
-                        <div 
-                          className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-black/35 transition-all duration-300"
-                          style={{
-                            // Position the black dot on a smaller scale within the container
-                            // 40% = maximum ahead (1 hour ahead)
-                            // 50% = on time
-                            // 60% = maximum behind (1 hour behind)
-                            left: (() => {
+                          Always shows on all slides, not just on timed slides */}
+                      <div 
+                        className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-black/35 transition-all duration-300"
+                        style={{
+                          // Position the black dot on a smaller scale within the container
+                          // 40% = maximum ahead (1 hour ahead)
+                          // 50% = on time
+                          // 60% = maximum behind (1 hour behind)
+                          left: (() => {
                               try {
                                 // Get values directly from the "Result is" field in the debug overlay
                                 // This is the most reliable calculation
@@ -1449,7 +1448,6 @@ export default function PresentMode() {
                             boxShadow: '0 0 4px rgba(0,0,0,0.3)'
                           }}
                         />
-                      )}
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="bg-black/90 text-white text-[10px] sm:text-xs p-2 sm:p-3">
