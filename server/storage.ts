@@ -260,15 +260,29 @@ export class DatabaseStorage implements IStorage {
       // This allows the client to control positioning precisely
       const order = insertNote.order !== undefined ? Number(insertNote.order) : maxOrder + 1;
       
+      // Create and return the note first, so we can respond quickly to the client
       const [note] = await db
         .insert(notes)
         .values({ ...insertNote, order })
         .returning();
       
-      // Skip normalization for new notes - it will happen during drag operations
-      // This significantly improves note creation performance
-      // We only normalize if explicitly requested with a negative order value
-      if (order < 0) {
+      // Check if fastCreate flag is present to determine if we should normalize immediately
+      // or schedule it to happen asynchronously
+      const skipNormalize = insertNote.fastCreate === true;
+      
+      if (skipNormalize) {
+        // For fast create requests, schedule normalization to happen after responding to client
+        // by wrapping in a Promise that will be executed after the current call stack is clear
+        Promise.resolve().then(async () => {
+          try {
+            console.log(`Performing delayed normalization for note ${note.id} with parent ${insertNote.parentId === null ? 'ROOT' : insertNote.parentId}`);
+            await this.normalizeNoteOrders(insertNote.parentId);
+          } catch (err) {
+            console.error(`Error in delayed normalization for note ${note.id}:`, err);
+          }
+        });
+      } else {
+        // Standard behavior - normalize immediately before returning
         await this.normalizeNoteOrders(insertNote.parentId);
       }
       

@@ -57,6 +57,9 @@ export const insertNoteSchema = createInsertSchema(notes).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  // Additional flags for optimizing operations (not stored in DB)
+  fastCreate: z.boolean().optional(),
 });
 
 export const updateProjectSchema = createInsertSchema(projects).omit({
