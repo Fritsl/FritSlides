@@ -15,6 +15,7 @@ import { formatTimeString } from "@/lib/time-utils";
 import { useNotes, useNoteEditing } from "@/hooks/use-notes";
 import { getLevelColor } from "@/lib/colors";
 import { useLocation } from "wouter";
+import { ImageWithFallback } from "./image-with-fallback";
 import {
   Link,
   Edit,
@@ -1019,7 +1020,12 @@ export default function NoteItem({
                       rel="noopener noreferrer"
                       className="block border-2 border-blue-800 rounded overflow-hidden hover:border-blue-600 transition-colors"
                     >
-                      <img src={image} alt={`Note image ${idx + 1}`} className="h-16 w-auto object-cover" />
+                      <ImageWithFallback 
+                        src={image} 
+                        alt={`Note image ${idx + 1}`} 
+                        className="h-16 w-auto object-cover" 
+                        loadingTimeout={30000} // 30 seconds timeout (5x the default)
+                      />
                     </a>
                   ))}
                 </div>

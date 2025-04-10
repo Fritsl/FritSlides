@@ -6,6 +6,7 @@ import { Note, Project } from "@shared/schema";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Users } from "lucide-react";
 import { getThemeBackgroundStyle, getPresentationTheme, ThemeColors, PresentationTheme, START_END_THEME } from "@/lib/presentation-themes";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import '@fontsource/mulish';
 import '@fontsource/roboto';
 import { 
@@ -994,10 +995,11 @@ export default function PresentMode() {
                               <div className="w-full grid grid-cols-1 gap-4">
                                 {currentNote.images.slice(0, 2).map((image: string, idx: number) => (
                                   <div key={idx} className={`rounded-lg overflow-hidden shadow-xl ${currentNote.images!.length === 1 ? 'aspect-[16/10] max-h-[75vh]' : 'aspect-[16/9] max-h-[40vh]'}`}>
-                                    <img 
+                                    <ImageWithFallback 
                                       src={image} 
                                       alt={`Slide image ${idx + 1}`} 
                                       className="w-full h-full object-contain" 
+                                      loadingTimeout={30000} // 30 seconds timeout (5x the default)
                                     />
                                   </div>
                                 ))}
