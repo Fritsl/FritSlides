@@ -1291,7 +1291,7 @@ export default function PresentMode() {
                   else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
                   
                   // Format as human-readable time difference
-                  return formatTimeDifferenceHuman(diffMinutes);
+                  return formatTimeDifferenceHuman(diffMinutes, currentTimeInMinutes, expectedTimeInMinutes);
                 } else if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
                   // If between timed slides, use linear interpolation
                   const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
@@ -1325,7 +1325,7 @@ export default function PresentMode() {
                   else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
                   
                   // Format as human-readable time difference
-                  return formatTimeDifferenceHuman(diffMinutes);
+                  return formatTimeDifferenceHuman(diffMinutes, currentTimeInMinutes, expectedTimeInMinutes);
                 }
                 
                 // No timed slides available for calculation
