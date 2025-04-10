@@ -170,7 +170,7 @@ export default function PresentMode() {
     // Sort child notes by order for proper presentation
     notesMap.forEach(note => {
       if (note.childNotes && note.childNotes.length > 0) {
-        note.childNotes.sort((a, b) => String(a.order).localeCompare(String(b.order)));
+        note.childNotes.sort((a, b) => Number(a.order) - Number(b.order));
       }
     });
     
