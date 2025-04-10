@@ -153,9 +153,45 @@ export default function PresentMode() {
   // Format time difference as a human-readable string with additional information
   const formatTimeDifferenceHuman = (
     diffMinutes: number, 
-    currentTimeInMinutes: number, 
+    currentTimeInMinutes?: number, 
     expectedTimeInMinutes?: number
   ): string => {
+    // Basic time difference format when no current/expected times are provided
+    if (currentTimeInMinutes === undefined) {
+      // If very close to zero (within 30 seconds), consider it "on time"
+      if (Math.abs(diffMinutes) < 0.5) {
+        return 'Right on time';
+      }
+      
+      // Remember: positive means behind, negative means ahead
+      const isAhead = diffMinutes < 0;
+      const absDiff = Math.abs(diffMinutes);
+      
+      // Format time components
+      const hours = Math.floor(absDiff / 60);
+      const mins = Math.floor(absDiff % 60);
+      const secs = Math.round((absDiff % 1) * 60);
+      
+      let timeText = '';
+      
+      if (hours > 0) {
+        timeText += `${hours} hour${hours !== 1 ? 's' : ''}`;
+        if (mins > 0) {
+          timeText += ` ${mins} minute${mins !== 1 ? 's' : ''}`;
+        }
+      } else if (mins > 0) {
+        timeText += `${mins} minute${mins !== 1 ? 's' : ''}`;
+        if (secs > 0 && mins < 2) {  // Only add seconds for precision when under 2 minutes
+          timeText += ` ${secs} second${secs !== 1 ? 's' : ''}`;
+        }
+      } else {
+        timeText += `${secs} second${secs !== 1 ? 's' : ''}`;
+      }
+      
+      return `${timeText} ${isAhead ? 'ahead' : 'behind'}`;
+    }
+    
+    // Extended format with current time and expected time
     // Format current system time
     const currentTimeFormatted = formatTimeHHMM(currentTimeInMinutes);
     
