@@ -515,7 +515,8 @@ export default function PresentMode() {
     percentComplete: 0,
     expectedSlideIndex: 0,
     slideDifference: 0,
-    shouldShow: false
+    shouldShow: false,
+    timePositionInMinutes: 0
   });
   
   // Initialize from the project's last viewed slide index or specified start note
@@ -1355,7 +1356,27 @@ export default function PresentMode() {
                         }}
                       />
                       
-                      {/* Black dot display has been removed */}
+                      {/* Grey dot (time adherence) - position shows ahead/behind schedule */}
+                      {pacingInfo.shouldShow && (
+                        <div 
+                          className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gray-400 transition-all duration-300"
+                          style={{
+                            // Position the grey dot on a scale from 25% to 75% width:
+                            // 25% = maximum ahead (1 hour ahead)
+                            // 50% = on time
+                            // 75% = maximum behind (1 hour behind)
+                            left: (() => {
+                              // Cap timePositionInMinutes to -60..60 range
+                              const timePosition = Math.max(-60, Math.min(60, pacingInfo.timePositionInMinutes));
+                              // Map from -60..60 to 25%..75% (with 0 = 50%)
+                              const percentPosition = 50 + ((timePosition / 60) * 25);
+                              return `${percentPosition}%`;
+                            })(),
+                            transform: 'translateX(-50%)',
+                            boxShadow: '0 0 4px rgba(200,200,200,0.5)'
+                          }}
+                        />
+                      )}
                     </div>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="bg-black/90 text-white text-[10px] sm:text-xs p-2 sm:p-3">
@@ -1408,6 +1429,13 @@ export default function PresentMode() {
                       
                       <div className="mt-1 text-[9px] sm:text-xs">
                         <span className="text-white/80">White dot:</span> Your current position
+                        <br />
+                        <span className="text-gray-400">Grey dot:</span> Schedule status - 
+                        {pacingInfo.timePositionInMinutes > 0
+                          ? `${Math.abs(Math.round(pacingInfo.timePositionInMinutes))} min behind`
+                          : pacingInfo.timePositionInMinutes < 0 
+                            ? `${Math.abs(Math.round(pacingInfo.timePositionInMinutes))} min ahead` 
+                            : "right on time"}
                       </div>
                       
                       {/* Time allocation info */}
