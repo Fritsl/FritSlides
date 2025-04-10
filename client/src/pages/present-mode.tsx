@@ -999,9 +999,11 @@ export default function PresentMode() {
                           className="absolute w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300 z-10"
                           style={{
                             transform: `translateX(-50%)`,
-                            left: `calc(50% + ${(pacingInfo.expectedTimePosition - 0.5) * 250}px)`, // Reduced amplitude by 75% (250px instead of 1000px)
-                            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                            boxShadow: '0 0 3px rgba(0, 0, 0, 0.4)'
+                            // Adjust position to ensure gray dot doesn't overlap white dots at 0 or 1
+                            // We limit to range 0.05-0.95 to keep it visible but away from white dots
+                            left: `calc(50% + ${(Math.max(0.05, Math.min(0.95, pacingInfo.expectedTimePosition)) - 0.5) * 250}px)`,
+                            backgroundColor: 'rgba(0, 0, 0, 0.75)', // Made more visible
+                            boxShadow: '0 0 4px rgba(0, 0, 0, 0.5)'
                           }}
                         />
                       )}
