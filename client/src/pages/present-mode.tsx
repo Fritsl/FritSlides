@@ -1026,6 +1026,36 @@ export default function PresentMode() {
                         ) : null;
                       })()}
                       
+                      {/* Debug information - ALWAYS VISIBLE */}
+                      <div className="mt-2 p-1 bg-slate-900 rounded text-[9px] text-left border border-slate-700">
+                        <div className="grid grid-cols-2 gap-x-1 font-mono">
+                          <div className="text-slate-400">Start:</div>
+                          <div>{pacingInfo.previousTimedNote?.time || '—'}</div>
+                          <div className="text-slate-400">End:</div>
+                          <div>{pacingInfo.nextTimedNote?.time || '—'}</div>
+                          <div className="text-slate-400">Total Time:</div>
+                          <div>{(() => {
+                            if (!pacingInfo.previousTimedNote || !pacingInfo.nextTimedNote) return '—';
+                            const startMin = timeToMinutes(pacingInfo.previousTimedNote.time || '');
+                            const endMin = timeToMinutes(pacingInfo.nextTimedNote.time || '');
+                            let totalMin = endMin - startMin;
+                            if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
+                            const hours = Math.floor(totalMin / 60);
+                            const mins = Math.floor(totalMin % 60);
+                            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+                          })()}</div>
+                          <div className="text-slate-400">Notes:</div>
+                          <div>{(() => {
+                            if (!pacingInfo.previousTimedNote || !pacingInfo.nextTimedNote) return '—';
+                            const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                            const nextIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
+                            const currIndex = currentSlideIndex;
+                            if (prevIndex < 0 || nextIndex < 0) return '—';
+                            return `${currIndex - prevIndex}/${nextIndex - prevIndex}`;
+                          })()}</div>
+                        </div>
+                      </div>
+                      
                       <div className="mt-1 text-[9px] sm:text-xs">
                         <span className="text-white/80">White dot:</span> Your current position<br/>
                         <span className="text-gray-400">
