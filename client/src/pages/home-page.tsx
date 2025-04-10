@@ -7,8 +7,16 @@ import { useLocation } from "wouter";
 import Header from "@/components/ui/header";
 import NoteTree from "@/components/ui/note-tree";
 import { Button } from "@/components/ui/button";
-import { Loader2, FolderPlus } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Loader2, FolderPlus, FileText, FileJson } from "lucide-react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger, 
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -234,7 +242,8 @@ export default function HomePage() {
   };
   
   // Handle exporting notes
-  const handleExportNotes = () => {
+  // Function to handle JSON export
+  const handleExportNotesJson = () => {
     if (!selectedProjectId || !selectedProject) {
       toast({
         title: "No project selected",
@@ -287,6 +296,86 @@ export default function HomePage() {
           variant: "destructive",
         });
       });
+  };
+
+  // Function to handle Text export
+  const handleExportNotesText = () => {
+    if (!selectedProjectId || !selectedProject) {
+      toast({
+        title: "No project selected",
+        description: "Please select a project to export notes from",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Create an anchor element if it doesn't exist
+    if (!downloadLinkRef.current) {
+      const link = document.createElement('a');
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      downloadLinkRef.current = link;
+    }
+    
+    // Show loading toast
+    toast({
+      title: "Preparing text export",
+      description: "Please wait while we format your notes...",
+    });
+    
+    // Fetch the export data as text
+    fetch(`/api/projects/${selectedProjectId}/export-text`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Failed to export notes as text");
+        }
+        return response.text();
+      })
+      .then(data => {
+        // Create a Blob from the text data
+        const blob = new Blob([data], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        
+        // Set up the download link
+        if (downloadLinkRef.current) {
+          downloadLinkRef.current.href = url;
+          downloadLinkRef.current.download = `${selectedProject.name.replace(/\s+/g, '_')}_export_${new Date().toISOString().split('T')[0]}.txt`;
+          downloadLinkRef.current.click();
+          
+          // Clean up
+          URL.revokeObjectURL(url);
+        }
+        
+        toast({
+          title: "Export successful",
+          description: "Your notes have been exported to a text file",
+        });
+      })
+      .catch(error => {
+        toast({
+          title: "Export failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      });
+  };
+
+  // State for export format dialog
+  const [isExportFormatDialogOpen, setIsExportFormatDialogOpen] = useState(false);
+  
+  // Main export function that will show a dialog to choose format
+  const handleExportNotes = () => {
+    if (!selectedProjectId || !selectedProject) {
+      toast({
+        title: "No project selected",
+        description: "Please select a project to export notes from",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Open the export format dialog
+    setIsExportFormatDialogOpen(true);
   };
   
   // Handle opening the import dialog
@@ -493,6 +582,48 @@ export default function HomePage() {
         />
       )}
       
+      {/* Export format dialog */}
+      <Dialog open={isExportFormatDialogOpen} onOpenChange={setIsExportFormatDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export Format</DialogTitle>
+            <DialogDescription>
+              Choose the format for exporting your notes
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            <Button 
+              onClick={() => {
+                setIsExportFormatDialogOpen(false);
+                handleExportNotesJson();
+              }}
+              className="flex items-center"
+            >
+              <FileJson className="mr-2 h-5 w-5" />
+              JSON Format
+              <span className="ml-auto text-xs text-muted-foreground">For technical use</span>
+            </Button>
+            <Button 
+              onClick={() => {
+                setIsExportFormatDialogOpen(false);
+                handleExportNotesText();
+              }}
+              className="flex items-center"
+              variant="outline"
+            >
+              <FileText className="mr-2 h-5 w-5" />
+              Text Format
+              <span className="ml-auto text-xs text-muted-foreground">Plain text</span>
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsExportFormatDialogOpen(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Hidden download anchor for exports */}
       <div style={{ display: 'none' }}>
         <a ref={downloadLinkRef} />

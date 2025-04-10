@@ -681,6 +681,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ message: "Failed to export notes" });
     }
   });
+  
+  // Export notes as plain text
+  app.get("/api/projects/:projectId/export-text", isAuthenticated, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      
+      // Check if project exists and belongs to the user
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      if (project.userId !== req.user!.id) {
+        return res.status(403).json({ message: "Not authorized to export this project" });
+      }
+      
+      // Get all notes for the project
+      const notes = await storage.getNotes(projectId);
+      
+      // Create a map of notes by parent ID to build the hierarchy
+      const notesByParent = new Map<number | null, Note[]>();
+      notes.forEach(note => {
+        if (!notesByParent.has(note.parentId)) {
+          notesByParent.set(note.parentId, []);
+        }
+        notesByParent.get(note.parentId)!.push(note);
+      });
+      
+      // Sort notes at each level by their order
+      for (const [parentId, children] of notesByParent.entries()) {
+        children.sort((a, b) => {
+          const aOrder = parseFloat(String(a.order));
+          const bOrder = parseFloat(String(b.order));
+          return aOrder - bOrder;
+        });
+      }
+      
+      // Generate formatted text with proper indentation
+      let textContent = `# ${project.name}\n`;
+      if (project.author) {
+        textContent += `Author: ${project.author}\n`;
+      }
+      textContent += `Exported: ${new Date().toLocaleString()}\n\n`;
+      
+      // Recursive function to build the text content
+      function buildTextContent(parentId: number | null, level: number): string {
+        const children = notesByParent.get(parentId) || [];
+        let content = '';
+        
+        for (const note of children) {
+          // Create the indentation based on the level
+          const indent = '  '.repeat(level);
+          
+          // Add the note content with proper indentation
+          content += `${indent}- ${note.content.replace(/\n/g, `\n${indent}  `)}\n`;
+          
+          // Add URL if available
+          if (note.url) {
+            content += `${indent}  [Link: ${note.linkText || note.url}](${note.url})\n`;
+          }
+          
+          // Add YouTube link and time if available
+          if (note.youtubeLink) {
+            const timeInfo = note.time ? ` (at ${note.time})` : '';
+            content += `${indent}  [YouTube${timeInfo}](${note.youtubeLink})\n`;
+          } else if (note.time) {
+            content += `${indent}  Time: ${note.time}\n`;
+          }
+          
+          // Add images if available
+          if (note.images && note.images.length > 0) {
+            for (const image of note.images) {
+              content += `${indent}  [Image](${image})\n`;
+            }
+          }
+          
+          // Recursively add children with increased indentation
+          content += buildTextContent(note.id, level + 1);
+        }
+        
+        return content;
+      }
+      
+      // Start building content from the root
+      textContent += buildTextContent(null, 0);
+      
+      // Format the timestamp for the filename
+      const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+      const filename = `${project.name.replace(/\s+/g, '_')}_${timestamp}.txt`;
+      
+      // Set headers for file download
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+      
+      // Send the text content
+      return res.send(textContent);
+    } catch (err) {
+      console.error("Error exporting notes as text:", err);
+      return res.status(500).json({ message: "Failed to export notes as text" });
+    }
+  });
 
   // Create a Map to store import status information
   const importStatusMap = new Map<string, {
