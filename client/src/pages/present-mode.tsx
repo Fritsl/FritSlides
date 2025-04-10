@@ -1311,7 +1311,18 @@ export default function PresentMode() {
                           })()}</div>
                           
                           <div className="text-green-400 font-semibold whitespace-nowrap">Current Note of these:</div>
-                          <div>{currentNote?.time ? '1' : '—'}</div>
+                          <div>{(() => {
+                            if (currentNote?.time) {
+                              return '1'; // First note in the time span
+                            } else if (pacingInfo.previousTimedNote) {
+                              const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                              if (prevIndex >= 0) {
+                                // Return 1-based position (not 0-based)
+                                return (currentSlideIndex - prevIndex + 1).toString();
+                              }
+                            }
+                            return '—';
+                          })()}</div>
                           
                           <div className="text-green-400 font-semibold whitespace-nowrap">Result is:</div>
                           <div>{(() => {
