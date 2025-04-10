@@ -10,7 +10,6 @@ export interface PacingInfo {
   expectedSlideIndex: number;  // Estimated slide we should be on
   slideDifference: number;  // How many slides ahead/behind we are
   shouldShow: boolean;  // Whether we have enough info to show the indicator
-  expectedTimePosition: number; // Expected time progress between 0-1 used for gray dot
 }
 
 /**
@@ -395,8 +394,7 @@ export function calculatePacingInfo(
     percentComplete: 0,
     expectedSlideIndex: currentSlideIndex,
     slideDifference: 0,
-    shouldShow: false,
-    expectedTimePosition: 0.5 // Default to center
+    shouldShow: false
   };
   
   // Safety check for invalid inputs
@@ -477,8 +475,7 @@ export function calculatePacingInfo(
       percentComplete: 0,
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: false, // Never show for the last timed slide
-      expectedTimePosition: 0.5 // Centered (but not used since shouldShow is false)
+      shouldShow: false // Never show for the last timed slide
     };
   }
   
@@ -490,8 +487,7 @@ export function calculatePacingInfo(
       percentComplete: 0,
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: false, // Never show for the first timed slide
-      expectedTimePosition: 0.35 // Slightly to the left of center (but not used)
+      shouldShow: false // Never show for the first timed slide
     };
   }
   
@@ -503,8 +499,7 @@ export function calculatePacingInfo(
       percentComplete: 1, // We've completed all timed notes
       expectedSlideIndex: currentSlideIndex,
       slideDifference: 0,
-      shouldShow: false, // Never show for the last timed slide
-      expectedTimePosition: 0.65 // Slightly to the right of center (but not used)
+      shouldShow: false // Never show for the last timed slide
     };
   }
   
@@ -540,7 +535,6 @@ export function calculatePacingInfo(
     percentComplete: progress,
     expectedSlideIndex: currentSlideIndex, // We're exactly where we should be
     slideDifference: 0, // No slide difference since we're not comparing to wall clock
-    shouldShow: true,
-    expectedTimePosition: timePosition
+    shouldShow: true
   };
 }
