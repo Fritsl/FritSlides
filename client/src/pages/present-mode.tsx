@@ -1366,11 +1366,64 @@ export default function PresentMode() {
                             // 50% = on time
                             // 60% = maximum behind (1 hour behind)
                             left: (() => {
-                              // Cap timePositionInMinutes to -60..60 range
-                              const timePosition = Math.max(-60, Math.min(60, pacingInfo.timePositionInMinutes));
-                              // Map from -60..60 to 40%..60% (with 0 = 50%)
-                              const percentPosition = 50 + ((timePosition / 60) * 10);
-                              return `${percentPosition}%`;
+                              try {
+                                // Get the current time (same calculation as in the debug overlay)
+                                const now = new Date();
+                                const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
+                                
+                                let diffMinutes = 0;
+                                
+                                // If we're on a timed slide, use that calculation
+                                if (currentNote?.time) {
+                                  const slideTimeInMinutes = timeToMinutes(currentNote.time);
+                                  diffMinutes = currentTimeInMinutes - slideTimeInMinutes;
+                                  
+                                  // Handle crossing midnight
+                                  if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                                  else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                                } 
+                                // Between two timed notes, use interpolation calculation from debug overlay
+                                else if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
+                                  const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
+                                  const nextTimeInMinutes = timeToMinutes(pacingInfo.nextTimedNote.time);
+                                  
+                                  // Calculate total time span
+                                  let totalTimeSpan = nextTimeInMinutes - prevTimeInMinutes;
+                                  if (totalTimeSpan < 0) totalTimeSpan += 24 * 60; // Handle crossing midnight
+                                  
+                                  // Find slide positions
+                                  const prevSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                                  const nextSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
+                                  
+                                  if (prevSlideIndex < 0 || nextSlideIndex < 0) return "50%";
+                                  
+                                  // Calculate total slides and our position
+                                  const totalSlides = nextSlideIndex - prevSlideIndex;
+                                  if (totalSlides <= 1) return "50%"; // Avoid division by zero
+                                  
+                                  // Calculate our position (fraction) between the two timed slides
+                                  const slideProgress = (currentSlideIndex - prevSlideIndex) / totalSlides;
+                                  
+                                  // Calculate the expected time at our position using linear interpolation
+                                  const expectedTimeInMinutes = prevTimeInMinutes + (totalTimeSpan * slideProgress);
+                                  
+                                  // Calculate difference between current time and expected time
+                                  diffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
+                                  
+                                  // Handle crossing midnight
+                                  if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                                  else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                                }
+                                
+                                // Cap diffMinutes to -60..60 range
+                                const timePosition = Math.max(-60, Math.min(60, diffMinutes));
+                                // Map from -60..60 to 40%..60% (with 0 = 50%)
+                                const percentPosition = 50 + ((timePosition / 60) * 10);
+                                return `${percentPosition}%`;
+                              } catch (err) {
+                                console.error("Error calculating dot position:", err);
+                                return "50%"; // Default to center in case of error
+                              }
                             })(),
                             transform: 'translateX(-50%)',
                             boxShadow: '0 0 4px rgba(0,0,0,0.3)'
@@ -1431,11 +1484,71 @@ export default function PresentMode() {
                         <span className="text-white/80">White dot:</span> Your current position
                         <br />
                         <span className="text-gray-700">Black dot:</span> Schedule status - 
-                        {pacingInfo.timePositionInMinutes > 0
-                          ? `${Math.abs(Math.round(pacingInfo.timePositionInMinutes))} min behind`
-                          : pacingInfo.timePositionInMinutes < 0 
-                            ? `${Math.abs(Math.round(pacingInfo.timePositionInMinutes))} min ahead` 
-                            : "right on time"}
+                        {(() => {
+                          try {
+                            // Get the current time (same calculation as in the debug overlay)
+                            const now = new Date();
+                            const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() / 60);
+                            
+                            let diffMinutes = 0;
+                            
+                            // If we're on a timed slide, use that calculation
+                            if (currentNote?.time) {
+                              const slideTimeInMinutes = timeToMinutes(currentNote.time);
+                              diffMinutes = currentTimeInMinutes - slideTimeInMinutes;
+                              
+                              // Handle crossing midnight
+                              if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                              else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                            } 
+                            // Between two timed notes, use interpolation calculation from debug overlay
+                            else if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
+                              const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
+                              const nextTimeInMinutes = timeToMinutes(pacingInfo.nextTimedNote.time);
+                              
+                              // Calculate total time span
+                              let totalTimeSpan = nextTimeInMinutes - prevTimeInMinutes;
+                              if (totalTimeSpan < 0) totalTimeSpan += 24 * 60; // Handle crossing midnight
+                              
+                              // Find slide positions
+                              const prevSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
+                              const nextSlideIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
+                              
+                              if (prevSlideIndex < 0 || nextSlideIndex < 0) return "right on time";
+                              
+                              // Calculate total slides and our position
+                              const totalSlides = nextSlideIndex - prevSlideIndex;
+                              if (totalSlides <= 1) return "right on time"; // Avoid division by zero
+                              
+                              // Calculate our position (fraction) between the two timed slides
+                              const slideProgress = (currentSlideIndex - prevSlideIndex) / totalSlides;
+                              
+                              // Calculate the expected time at our position using linear interpolation
+                              const expectedTimeInMinutes = prevTimeInMinutes + (totalTimeSpan * slideProgress);
+                              
+                              // Calculate difference between current time and expected time
+                              diffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
+                              
+                              // Handle crossing midnight
+                              if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                              else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                            } else {
+                              return "right on time";
+                            }
+                            
+                            // Format the time difference as human-readable text
+                            if (diffMinutes > 1) {
+                              return `${Math.round(diffMinutes)} min behind`;
+                            } else if (diffMinutes < -1) {
+                              return `${Math.abs(Math.round(diffMinutes))} min ahead`;
+                            } else {
+                              return "right on time";
+                            }
+                          } catch (err) {
+                            console.error("Error calculating schedule status:", err);
+                            return "right on time"; // Default in case of error
+                          }
+                        })()}
                       </div>
                       
                       {/* Time allocation info */}
