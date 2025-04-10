@@ -1070,10 +1070,10 @@ export default function PresentMode() {
                 if (currentNote?.time) {
                   if (pacingInfo.nextTimedNote) {
                     // We're on a timed note with a next timed note
-                    return '0'; // We're at the start (position 0)
+                    return '1'; // We're at the start (position 1, not 0)
                   }
                   // If we're on the last timed note with no next timed note
-                  return '0'; // Consider it the first/only note in the range
+                  return '1'; // Consider it the first/only note in the range (position 1, not 0)
                 }
                 
                 // Between two timed slides
@@ -1081,7 +1081,8 @@ export default function PresentMode() {
                   const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
                   const currIndex = currentSlideIndex;
                   if (prevIndex < 0) return '—';
-                  return currIndex - prevIndex;
+                  // Add 1 to convert from 0-based to 1-based position
+                  return (currIndex - prevIndex + 1).toString();
                 }
                 
                 return '—';
@@ -1224,7 +1225,8 @@ export default function PresentMode() {
                             const nextIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
                             const currIndex = currentSlideIndex;
                             if (prevIndex < 0 || nextIndex < 0) return '—';
-                            return `${currIndex - prevIndex}/${nextIndex - prevIndex}`;
+                            // Add 1 to convert from 0-based to 1-based position
+                            return `${currIndex - prevIndex + 1}/${nextIndex - prevIndex}`;
                           })()}</div>
                         </div>
                       </div>
