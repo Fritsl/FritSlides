@@ -514,24 +514,14 @@ export function calculatePacingInfo(
   // Calculate how far along we are between the timed notes (0-1)
   const progress = (currentSlideIndex - prevIndex) / slidesBetween;
   
-  // Calculate the expected time position with a wider range (0.3 to 0.7)
-  // This ensures that the black dot is never at the center (0.5) where the white dot is
-  const timePosition = 0.3 + (progress * 0.4);
+  // Calculate the expected time position that ensures consistent left-to-right movement
+  // We want the gray dot to always appear between the two white dots, but never on top of them
+  // Map the progress linearly to a position between 0.05 and 0.95
+  // This ensures the gray dot stays away from the white dots at positions 0 and 1
+  const timePosition = 0.05 + (progress * 0.9);
   
-  // If we're exactly at 0.5, shift slightly to avoid the white dot
-  if (Math.abs(timePosition - 0.5) < 0.01) {
-    // If we're slightly less than 0.5, go more to the left
-    // If we're slightly more than 0.5, go more to the right
-    return {
-      previousTimedNote,
-      nextTimedNote,
-      percentComplete: progress,
-      expectedSlideIndex: currentSlideIndex,
-      slideDifference: 0,
-      shouldShow: true,
-      expectedTimePosition: timePosition < 0.5 ? 0.45 : 0.55 // Avoid the center
-    };
-  }
+  // We no longer need special handling for the 0.5 position since we're not using that
+  // range anymore. The gray dot will move smoothly from left (0.05) to right (0.95)
   
   // Determine our position information for the UI
   return {
