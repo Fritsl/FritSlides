@@ -967,16 +967,16 @@ export default function PresentMode() {
             </div>
           </div>
           
-          {/* Debug overlay - ALWAYS VISIBLE */}
-          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-black/80 p-1 sm:p-2 rounded border border-gray-700 z-20 text-[8px] sm:text-[10px] font-mono w-[240px] sm:w-[300px]">
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-              <div className="text-white/70">Start Time:</div>
+          {/* Debug overlay - ALWAYS VISIBLE regardless of pacing state */}
+          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-black/95 p-2 rounded border border-gray-600 z-20 text-[9px] sm:text-[11px] font-mono w-[240px] sm:w-[300px]">
+            <div className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1">
+              <div className="text-green-400 font-semibold whitespace-nowrap">Start Time:</div>
               <div className="text-white">{pacingInfo.previousTimedNote?.time || '—'}</div>
               
-              <div className="text-white/70">End Time:</div>
+              <div className="text-green-400 font-semibold whitespace-nowrap">End Time:</div>
               <div className="text-white">{pacingInfo.nextTimedNote?.time || '—'}</div>
               
-              <div className="text-white/70">Total Time to spend:</div>
+              <div className="text-green-400 font-semibold whitespace-nowrap">Total Time to spend:</div>
               <div className="text-white">{(() => {
                 if (!pacingInfo.previousTimedNote || !pacingInfo.nextTimedNote) return '—';
                 const startMin = timeToMinutes(pacingInfo.previousTimedNote.time || '');
@@ -989,7 +989,7 @@ export default function PresentMode() {
                 return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
               })()}</div>
               
-              <div className="text-white/70">Notes to spend on time:</div>
+              <div className="text-green-400 font-semibold whitespace-nowrap">Notes to spend on time:</div>
               <div className="text-white">{(() => {
                 if (!pacingInfo.previousTimedNote || !pacingInfo.nextTimedNote) return '—';
                 const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
@@ -998,7 +998,7 @@ export default function PresentMode() {
                 return nextIndex - prevIndex;
               })()}</div>
               
-              <div className="text-white/70">Current Note of these:</div>
+              <div className="text-green-400 font-semibold whitespace-nowrap">Current Note of these:</div>
               <div className="text-white">{(() => {
                 if (!pacingInfo.previousTimedNote) return '—';
                 const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
@@ -1007,7 +1007,7 @@ export default function PresentMode() {
                 return currIndex - prevIndex;
               })()}</div>
               
-              <div className="text-white/70">Result is:</div>
+              <div className="text-green-400 font-semibold whitespace-nowrap">Result is:</div>
               <div className="text-white">{(() => {
                 if (!pacingInfo.previousTimedNote || !pacingInfo.nextTimedNote) return '—';
                 const startMin = timeToMinutes(pacingInfo.previousTimedNote.time || '');
