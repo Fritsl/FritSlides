@@ -1090,53 +1090,49 @@ export default function PresentMode() {
               
               <div className="text-green-400 font-semibold whitespace-nowrap">Result is:</div>
               <div className="text-white">{(() => {
-                // If we're on a timed note
+                // Get the current time
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+                const currentSeconds = now.getSeconds();
+                
+                // Calculate current time in minutes
+                const currentTimeInMinutes = currentHour * 60 + currentMinute + (currentSeconds / 60);
+                
+                // Get the reference time (the time we're comparing against)
+                let referenceTimeString = '';
                 if (currentNote?.time) {
-                  // If there's a next timed note, we're exactly on time (at the dot position)
-                  if (pacingInfo.nextTimedNote) {
-                    return '00:00:00'; // On time
-                  }
-                  // If we're on the last timed note
-                  return '00:00:00'; // On time
+                  // If we're on a timed note, use its time
+                  referenceTimeString = currentNote.time;
+                } else if (pacingInfo.previousTimedNote?.time) {
+                  // If we're between timed notes, use the previous timed note's time
+                  referenceTimeString = pacingInfo.previousTimedNote.time;
+                } else {
+                  // No reference time available
+                  return '00:00:00';
                 }
                 
-                // Between two timed notes
-                if (pacingInfo.previousTimedNote && pacingInfo.nextTimedNote) {
-                  const startMin = timeToMinutes(pacingInfo.previousTimedNote.time || '');
-                  const endMin = timeToMinutes(pacingInfo.nextTimedNote.time || '');
-                  let totalMin = endMin - startMin;
-                  if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
-                  
-                  const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
-                  const nextIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
-                  const currIndex = currentSlideIndex;
-                  if (prevIndex < 0 || nextIndex < 0) return '—';
-                  
-                  const totalSlides = nextIndex - prevIndex;
-                  const slidesPassed = currIndex - prevIndex;
-                  
-                  // If there's only one slide, avoid division by zero
-                  if (totalSlides <= 1) return '00:00:00';
-                  
-                  // Expected time spent so far based on linear progression
-                  const expectedProgress = slidesPassed / totalSlides;
-                  const expectedTimeSpent = totalMin * expectedProgress;
-                  
-                  // Difference between expected and actual (for display only, not using real-time)
-                  // This shows if you're ahead or behind the planned pace
-                  const diffMin = 0; // We're not comparing to real time, so always 0
-                  
-                  // Format as HH:MM:SS
-                  const hours = Math.floor(Math.abs(diffMin) / 60);
-                  const mins = Math.floor(Math.abs(diffMin) % 60);
-                  const secs = Math.round((Math.abs(diffMin) % 1) * 60);
-                  
-                  // Show with +/- sign to indicate ahead/behind
-                  const sign = diffMin > 0 ? '+' : diffMin < 0 ? '-' : '';
-                  return `${sign}${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                // Convert reference time to minutes
+                const referenceTimeInMinutes = timeToMinutes(referenceTimeString);
+                
+                // Calculate difference
+                let diffMinutes = currentTimeInMinutes - referenceTimeInMinutes;
+                
+                // Handle crossing midnight
+                if (diffMinutes < -12 * 60) { // If negative and more than 12 hours, assume we crossed midnight
+                  diffMinutes += 24 * 60;
+                } else if (diffMinutes > 12 * 60) { // If positive and more than 12 hours, assume we crossed midnight backwards
+                  diffMinutes -= 24 * 60;
                 }
                 
-                return '—';
+                // Format the time difference
+                const sign = diffMinutes >= 0 ? '+' : '-';
+                const absDiff = Math.abs(diffMinutes);
+                const hours = Math.floor(absDiff / 60);
+                const mins = Math.floor(absDiff % 60);
+                const secs = Math.round((absDiff % 1) * 60);
+                
+                return `${sign}${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
               })()}</div>
             </div>
           </div>
@@ -1328,20 +1324,49 @@ export default function PresentMode() {
                           
                           <div className="text-green-400 font-semibold whitespace-nowrap">Result is:</div>
                           <div>{(() => {
+                            // Get the current time
+                            const now = new Date();
+                            const currentHour = now.getHours();
+                            const currentMinute = now.getMinutes();
+                            const currentSeconds = now.getSeconds();
+                            
+                            // Calculate current time in minutes
+                            const currentTimeInMinutes = currentHour * 60 + currentMinute + (currentSeconds / 60);
+                            
+                            // Get the reference time (the time we're comparing against)
+                            let referenceTimeString = '';
                             if (currentNote?.time) {
-                              const nextTimedSlide = getNextTimedSlide();
-                              if (nextTimedSlide?.time) {
-                                const startMin = timeToMinutes(currentNote.time);
-                                const endMin = timeToMinutes(nextTimedSlide.time);
-                                let totalMin = endMin - startMin;
-                                if (totalMin < 0) totalMin += 24 * 60;
-                                const hours = Math.floor(totalMin / 60);
-                                const mins = Math.floor(totalMin % 60);
-                                const secs = Math.round((totalMin % 1) * 60);
-                                return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                              }
+                              // If we're on a timed note, use its time
+                              referenceTimeString = currentNote.time;
+                            } else if (pacingInfo.previousTimedNote?.time) {
+                              // If we're between timed notes, use the previous timed note's time
+                              referenceTimeString = pacingInfo.previousTimedNote.time;
+                            } else {
+                              // No reference time available
+                              return '00:00:00';
                             }
-                            return '00:00:00';
+                            
+                            // Convert reference time to minutes
+                            const referenceTimeInMinutes = timeToMinutes(referenceTimeString);
+                            
+                            // Calculate difference
+                            let diffMinutes = currentTimeInMinutes - referenceTimeInMinutes;
+                            
+                            // Handle crossing midnight
+                            if (diffMinutes < -12 * 60) { // If negative and more than 12 hours, assume we crossed midnight
+                              diffMinutes += 24 * 60;
+                            } else if (diffMinutes > 12 * 60) { // If positive and more than 12 hours, assume we crossed midnight backwards
+                              diffMinutes -= 24 * 60;
+                            }
+                            
+                            // Format the time difference
+                            const sign = diffMinutes >= 0 ? '+' : '-';
+                            const absDiff = Math.abs(diffMinutes);
+                            const hours = Math.floor(absDiff / 60);
+                            const mins = Math.floor(absDiff % 60);
+                            const secs = Math.round((absDiff % 1) * 60);
+                            
+                            return `${sign}${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                           })()}</div>
                         </div>
                       </div>
