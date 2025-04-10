@@ -1024,7 +1024,6 @@ export default function NoteItem({
                         src={image} 
                         alt={`Note image ${idx + 1}`} 
                         className="h-16 w-auto object-cover" 
-                        loadingTimeout={30000} // 30 seconds timeout (5x the default)
                       />
                     </a>
                   ))}

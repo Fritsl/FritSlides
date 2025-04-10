@@ -999,7 +999,6 @@ export default function PresentMode() {
                                       src={image} 
                                       alt={`Slide image ${idx + 1}`} 
                                       className="w-full h-full object-contain" 
-                                      loadingTimeout={30000} // 30 seconds timeout (5x the default)
                                     />
                                   </div>
                                 ))}
