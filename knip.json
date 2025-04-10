@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/knip@2/schema.json",
+  "entry": [
+    "client/src/main.tsx"
+  ],
+  "project": [
+    "client/src/**/*.{ts,tsx}",
+    "server/**/*.{ts,tsx}",
+    "shared/**/*.{ts,tsx}"
+  ],
+  "ignore": ["**/*.d.ts", "**/node_modules/**"]
+}
