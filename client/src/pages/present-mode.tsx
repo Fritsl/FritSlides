@@ -1335,9 +1335,9 @@ export default function PresentMode() {
                               return '—';
                             })()}, 
                             Current Note of these: {(() => {
-                              // If we're on a timed note, we're at position 0
+                              // If we're on a timed note, we're at position 1 of the range 
                               if (currentNote?.time) {
-                                return '0'; // We're at the start (position 0)
+                                return '1'; // We're the first note in the range (position 1, not 0)
                               }
                               
                               // Otherwise, use previous timed note as reference
@@ -1355,7 +1355,20 @@ export default function PresentMode() {
                             Result is: {(() => {
                               // If we're on a timed note
                               if (currentNote?.time) {
-                                // Always show 00:00:00 for timed notes (exactly on time)
+                                // Check if there's a next timed slide
+                                const nextTimedSlide = getNextTimedSlide();
+                                if (nextTimedSlide) {
+                                  // Show the time difference in the format HH:MM:SS
+                                  const startMin = timeToMinutes(currentNote.time || '');
+                                  const endMin = timeToMinutes(nextTimedSlide.time || '');
+                                  let totalMin = endMin - startMin;
+                                  if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
+                                  const hours = Math.floor(totalMin / 60);
+                                  const mins = Math.floor(totalMin % 60);
+                                  const secs = Math.round((totalMin % 1) * 60);
+                                  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                                }
+                                // No next timed slide, so we're at the end
                                 return '00:00:00';
                               }
                               
