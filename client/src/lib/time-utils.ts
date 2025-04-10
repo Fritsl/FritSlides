@@ -88,38 +88,6 @@ export function timeToMinutes(time: string): number {
 }
 
 /**
- * Format a time difference in minutes to a human-readable string
- * showing "X hours Y minutes ahead/behind" format
- */
-export function formatTimeDifferenceHuman(diffMinutes: number): string {
-  // If the difference is very small (less than half a minute), we're right on time
-  if (Math.abs(diffMinutes) < 0.5) {
-    return "Right on time";
-  }
-  
-  const isAhead = diffMinutes < 0;
-  const absDiff = Math.abs(diffMinutes);
-  
-  // Format time components
-  const hours = Math.floor(absDiff / 60);
-  const mins = Math.floor(absDiff % 60);
-  
-  // Build the appropriate string based on hours and minutes
-  let timeText = '';
-  if (hours > 0) {
-    timeText += `${hours} hour${hours !== 1 ? 's' : ''}`;
-    if (mins > 0) {
-      timeText += ` ${mins} minute${mins !== 1 ? 's' : ''}`;
-    }
-  } else {
-    timeText += `${mins} minute${mins !== 1 ? 's' : ''}`;
-  }
-  
-  // Add the ahead/behind indicator
-  return `${timeText} ${isAhead ? 'ahead' : 'behind'}`;
-}
-
-/**
  * Convert minutes to a human-readable format with appropriate units
  * For per-slide time display
  */
