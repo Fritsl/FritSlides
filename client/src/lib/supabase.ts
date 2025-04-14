@@ -61,10 +61,21 @@ try {
   } else {
     // Create a mock client if credentials are missing
     supabaseClient = {
+      from: (table) => ({
+        select: () => ({
+          limit: () => Promise.resolve({ data: [], error: null }),
+          eq: () => ({
+            maybeSingle: () => Promise.resolve({ data: null, error: null })
+          })
+        }),
+        insert: () => Promise.resolve({ data: null, error: null }),
+        update: () => Promise.resolve({ data: null, error: null })
+      }),
       storage: {
         from: () => ({
           upload: () => Promise.resolve({ error: new Error('Supabase not configured') }),
-          getPublicUrl: () => ({ data: { publicUrl: '' } })
+          getPublicUrl: () => ({ data: { publicUrl: '' } }),
+          list: () => Promise.resolve({ data: [], error: null })
         })
       }
     };
@@ -73,10 +84,21 @@ try {
   console.error('Error initializing Supabase client:', error);
   // Create a mock client if initialization fails
   supabaseClient = {
+    from: (table) => ({
+      select: () => ({
+        limit: () => Promise.resolve({ data: [], error: null }),
+        eq: () => ({
+          maybeSingle: () => Promise.resolve({ data: null, error: null })
+        })
+      }),
+      insert: () => Promise.resolve({ data: null, error: null }),
+      update: () => Promise.resolve({ data: null, error: null })
+    }),
     storage: {
       from: () => ({
         upload: () => Promise.resolve({ error: new Error('Supabase initialization failed') }),
-        getPublicUrl: () => ({ data: { publicUrl: '' } })
+        getPublicUrl: () => ({ data: { publicUrl: '' } }),
+        list: () => Promise.resolve({ data: [], error: null })
       })
     }
   };
