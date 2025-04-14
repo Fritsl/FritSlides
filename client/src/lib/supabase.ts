@@ -70,9 +70,14 @@ try {
       auth: {
         signUp: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
         signIn: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
+        signInWithPassword: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
         signOut: () => Promise.resolve({ error: null }),
         getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-        getUser: () => Promise.resolve({ data: { user: null }, error: null })
+        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        onAuthStateChange: (callback) => ({ 
+          data: { subscription: { unsubscribe: () => {} } },
+          error: null 
+        })
       },
       from: (table) => ({
         select: () => ({
@@ -97,6 +102,18 @@ try {
   console.error('Error initializing Supabase client:', error);
   // Create a mock client if initialization fails
   supabaseClient = {
+    auth: {
+      signUp: () => Promise.resolve({ data: null, error: new Error('Supabase initialization failed') }),
+      signIn: () => Promise.resolve({ data: null, error: new Error('Supabase initialization failed') }),
+      signInWithPassword: () => Promise.resolve({ data: null, error: new Error('Supabase initialization failed') }),
+      signOut: () => Promise.resolve({ error: null }),
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      onAuthStateChange: (callback) => ({ 
+        data: { subscription: { unsubscribe: () => {} } },
+        error: null 
+      })
+    },
     from: (table) => ({
       select: () => ({
         limit: () => Promise.resolve({ data: [], error: null }),
