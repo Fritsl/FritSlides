@@ -62,12 +62,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/supabase-credentials", async (req, res) => {
     try {
       // Check for environment variables - try both with and without VITE_ prefix
-      const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+      let supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+      
+      // TEMPORARY FIX: Hard-code the correct Supabase URL
+      // This is based on the project ID extracted from the existing URL
+      if (supabaseUrl) {
+        // Extract the project ID regardless of the current domain
+        const projectIdMatch = supabaseUrl.match(/https:\/\/([^.]+)/);
+        if (projectIdMatch && projectIdMatch[1]) {
+          const projectId = projectIdMatch[1];
+          // Override with the correct URL format
+          supabaseUrl = `https://${projectId}.supabase.co`;
+          console.log(`Ensuring correct Supabase URL format: https://${projectId}.supabase.co`);
+        }
+      }
       
       console.log('Supabase env variables status:', {
         urlPresent: !!supabaseUrl, 
-        anonKeyPresent: !!supabaseAnonKey
+        anonKeyPresent: !!supabaseAnonKey,
+        urlFormat: supabaseUrl ? supabaseUrl.substring(0, 15) + '...' : 'none'
       });
       
       if (!supabaseUrl || !supabaseAnonKey) {

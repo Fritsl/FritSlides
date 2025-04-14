@@ -54,21 +54,27 @@ export const createSupabaseClient = async () => {
     }
   }
   
+  // Fix for URL truncation issue - if URL ends with .supaba, fix it to .supabase.co
+  let correctedUrl = supabaseUrl;
+  if (supabaseUrl.includes('.supaba')) {
+    correctedUrl = supabaseUrl.replace('.supaba', '.supabase.co');
+    console.log('Fixed truncated Supabase URL from .supaba to .supabase.co');
+  }
+  
   // Additional validation for URL format before creating client
-  if (!supabaseUrl.includes('supabase.co')) {
-    console.error('Supabase URL appears to be invalid, should contain "supabase.co":', supabaseUrl);
-    // Don't throw immediately - let Supabase client attempt the connection,
-    // as this could be a custom domain or different format
+  if (!correctedUrl.includes('supabase.co')) {
+    console.warn('Supabase URL might be invalid, should contain "supabase.co":', 
+                 correctedUrl.substring(0, 15) + '...');
   }
   
   // Log a masked version of the URL for privacy in console logs
-  const urlParts = supabaseUrl.split('.');
+  const urlParts = correctedUrl.split('.');
   const maskedUrl = urlParts.length >= 3 
     ? `https://${urlParts[0].substring(0, 4)}*****.${urlParts[1]}.${urlParts[2]}` 
-    : `${supabaseUrl.substring(0, 10)}...`;
+    : `${correctedUrl.substring(0, 10)}...`;
   console.log('Supabase client initialized with URL format:', maskedUrl);
   
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient(correctedUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
