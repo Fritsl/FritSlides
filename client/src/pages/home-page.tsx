@@ -7,8 +7,7 @@ import { useLocation } from "wouter";
 import Header from "@/components/ui/header";
 import NoteTree from "@/components/ui/note-tree";
 import { Button } from "@/components/ui/button";
-import { Loader2, FolderPlus, FileText, FileJson, Database } from "lucide-react";
-import { SupabaseNav } from "@/components/ui/supabase-nav";
+import { Loader2, FolderPlus, FileText, FileJson } from "lucide-react";
 import { 
   Dialog, 
   DialogContent, 
@@ -412,15 +411,6 @@ export default function HomePage() {
   if (isLoadingProjects) {
     return (
       <div className="min-h-screen flex flex-col">
-        {/* Supabase Banner */}
-        <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-4 py-1.5 text-white flex items-center justify-between">
-          <div className="flex items-center text-sm">
-            <Database className="h-4 w-4 mr-2" />
-            <span>Enhance your experience with persistent storage</span>
-          </div>
-          <SupabaseNav />
-        </div>
-        
         <Header 
           user={user} 
           currentProject={null} 
@@ -444,15 +434,6 @@ export default function HomePage() {
   if (!isLoadingProjects && (!projects || projects.length === 0)) {
     return (
       <div className="min-h-screen flex flex-col">
-        {/* Supabase Banner */}
-        <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-4 py-1.5 text-white flex items-center justify-between">
-          <div className="flex items-center text-sm">
-            <Database className="h-4 w-4 mr-2" />
-            <span>Enhance your experience with persistent storage</span>
-          </div>
-          <SupabaseNav />
-        </div>
-        
         <Header 
           user={user} 
           currentProject={null} 
@@ -486,15 +467,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Supabase Banner */}
-      <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-4 py-1.5 text-white flex items-center justify-between">
-        <div className="flex items-center text-sm">
-          <Database className="h-4 w-4 mr-2" />
-          <span>Enhance your experience with persistent storage</span>
-        </div>
-        <SupabaseNav />
-      </div>
-      
       <Header 
         user={user} 
         currentProject={selectedProject || null} 

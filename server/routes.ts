@@ -55,24 +55,6 @@ function isAuthenticated(req: Request, res: Response, next: Function) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // API endpoint to expose Supabase credentials to the client
-  app.get("/api/supabase-credentials", (req, res) => {
-    res.json({
-      url: process.env.SUPABASE_URL || '',
-      anonKey: process.env.SUPABASE_ANON_KEY || ''
-    });
-  });
-  
-  // API endpoint to expose Supabase service key (for migration utility)
-  // Note: In a production environment, you would want better protection for this endpoint
-  app.get("/api/supabase-service-key", (req, res) => {
-    const serviceKey = process.env.SUPABASE_SERVICE_KEY || '';
-    if (!serviceKey) {
-      console.warn('Warning: SUPABASE_SERVICE_KEY environment variable is not set');
-      return res.status(500).json({ error: 'Service key not available' });
-    }
-    res.json({ key: serviceKey });
-  });
   // Setup authentication routes
   setupAuth(app);
 
@@ -633,58 +615,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Image upload - using Supabase Storage
-  app.post("/api/upload", isAuthenticated, upload.single("image"), async (req, res) => {
+  // Image upload
+  app.post("/api/upload", isAuthenticated, upload.single("image"), (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
       
-      // Import the supabase client
-      const { supabase } = await import('./supabase');
-      
-      // Create a buffer from the file
-      const fileBuffer = req.file.buffer || fs.readFileSync(req.file.path);
-      const fileName = req.file.filename;
-      
-      // Upload to Supabase Storage
-      const { data, error } = await supabase
-        .storage
-        .from('slides-images')
-        .upload(fileName, fileBuffer, {
-          contentType: req.file.mimetype,
-          cacheControl: '3600'
-        });
-      
-      if (error) {
-        console.error("Supabase upload error:", error);
-        
-        // Fall back to local storage if Supabase upload fails
-        const localImageUrl = `/api/images/${req.file.filename}`;
-        console.log(`Falling back to local storage: ${localImageUrl}`);
-        return res.status(201).json({ imageUrl: localImageUrl });
-      }
-      
-      // Get the public URL
-      const { data: urlData } = supabase
-        .storage
-        .from('slides-images')
-        .getPublicUrl(fileName);
-      
-      const supabaseImageUrl = urlData.publicUrl;
-      console.log(`Image uploaded to Supabase: ${supabaseImageUrl}`);
-      
-      return res.status(201).json({ imageUrl: supabaseImageUrl });
+      const imageUrl = `/api/images/${req.file.filename}`;
+      return res.status(201).json({ imageUrl });
     } catch (err) {
       console.error("Error uploading image:", err);
-      
-      // Fall back to local storage in case of any errors
-      if (req.file && req.file.filename) {
-        const localImageUrl = `/api/images/${req.file.filename}`;
-        console.log(`Error occurred, falling back to local storage: ${localImageUrl}`);
-        return res.status(201).json({ imageUrl: localImageUrl });
-      }
-      
       return res.status(500).json({ message: "Failed to upload image" });
     }
   });

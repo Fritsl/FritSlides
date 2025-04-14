@@ -1,7 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { initializeSupabase } from "./supabase";
 
 const app = express();
 app.use(express.json());
@@ -38,15 +37,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize Supabase
-  try {
-    await initializeSupabase();
-    console.log('Supabase storage initialized successfully');
-  } catch (error) {
-    console.error('Failed to initialize Supabase:', error);
-    // Continue anyway to allow the app to work with local storage as fallback
-  }
-
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

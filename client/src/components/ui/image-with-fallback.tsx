@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ImageIcon } from 'lucide-react';
-import { getImageUrl } from '@/lib/supabase';
 
 interface ImageWithFallbackProps {
   src: string;
@@ -63,13 +62,10 @@ export function ImageWithFallback({
     );
   }
 
-  // Process the image source to handle both Supabase and local URLs
-  const processedSrc = getImageUrl(src);
-  
   return (
     <img
       ref={imgRef}
-      src={processedSrc}
+      src={src}
       alt={alt}
       className={className}
       onError={handleError}
