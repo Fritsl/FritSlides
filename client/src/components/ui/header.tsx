@@ -278,6 +278,14 @@ export default function Header({
                   <Settings className="h-4 w-4 mr-2" />
                   <span>Account Settings</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    window.location.href = '/migration-utility';
+                  }}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  <span>Data Migration Utility</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setIsLogoutDialogOpen(true)}>
                   <LogOut className="h-4 w-4 mr-2" />
                   <span>Logout</span>
