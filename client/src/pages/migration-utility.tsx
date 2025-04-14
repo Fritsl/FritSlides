@@ -917,15 +917,16 @@ export default function MigrationUtilityPage() {
         <CardContent>
           <div className="mb-8 p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
             <h3 className="text-lg font-semibold mb-2 text-amber-800 dark:text-amber-300">Important: SQL Function Setup Required</h3>
-            <p className="mb-2">Before you can migrate data, you need to create an <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">execute_sql</code> function in your Supabase project:</p>
-            <ol className="list-decimal list-inside space-y-1 text-sm">
+            <p className="mb-2 text-amber-800 dark:text-amber-300">Before you can migrate data, you need to create an <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded text-amber-900 dark:text-amber-200">execute_sql</code> function in your Supabase project:</p>
+            <ol className="list-decimal list-inside space-y-1 text-sm text-amber-800 dark:text-amber-300">
               <li>Log in to your Supabase dashboard</li>
               <li>Go to the SQL Editor</li>
               <li>Create a new query</li>
               <li>Paste the following SQL code:</li>
             </ol>
             <pre className="bg-gray-800 text-gray-100 p-3 rounded mt-2 text-sm overflow-x-auto">
-{`CREATE OR REPLACE FUNCTION execute_sql(sql_query TEXT)
+{`-- Create the SQL execution function
+CREATE OR REPLACE FUNCTION execute_sql(sql_query TEXT)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -943,9 +944,109 @@ EXCEPTION WHEN OTHERS THEN
     'detail', SQLSTATE
   );
 END;
+$$;
+
+-- Run this section in a separate query if the first part succeeds
+-- Create a helper function to check or create storage buckets
+CREATE OR REPLACE FUNCTION create_storage_bucket_if_not_exists(bucket_name TEXT) 
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- Check if bucket exists first
+  IF NOT EXISTS (
+    SELECT 1 FROM storage.buckets WHERE name = bucket_name
+  ) THEN
+    -- Create bucket if it doesn't exist
+    INSERT INTO storage.buckets (id, name, public)
+    VALUES (bucket_name, bucket_name, true);
+    
+    -- Add public access policy
+    INSERT INTO storage.policies (name, definition, bucket_id)
+    VALUES (
+      'Public Read', 
+      '{"name":"Public Read","id":"slides-images-public-select","allow_full_access":"false","allowed_operation":"SELECT","selector":"bucket_id=''slides-images''","description":"Allow public read access"}',
+      bucket_name
+    );
+  END IF;
+  
+  RETURN jsonb_build_object('success', true, 'bucket', bucket_name);
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object(
+    'success', false,
+    'error', SQLERRM,
+    'detail', SQLSTATE
+  );
+END;
 $$;`}
             </pre>
-            <p className="mt-2 text-sm">This function will allow the migration utility to create tables and execute SQL commands.</p>
+            <p className="mt-2 text-sm text-amber-800 dark:text-amber-300">This function will allow the migration utility to create tables and execute SQL commands.</p>
+          </div>
+          
+          <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
+            <h3 className="text-lg font-semibold mb-2 text-blue-800 dark:text-blue-300">Step 2: Create Required Tables</h3>
+            <p className="mb-2 text-blue-800 dark:text-blue-300">You need to create the database tables in Supabase before migrating data. Run this SQL script:</p>
+            <pre className="bg-gray-800 text-gray-100 p-3 rounded mt-2 text-sm overflow-x-auto">
+{`-- Create users table
+CREATE TABLE IF NOT EXISTS public.users (
+  id SERIAL PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL,
+  "lastOpenedProjectId" INTEGER
+);
+
+-- Create projects table
+CREATE TABLE IF NOT EXISTS public.projects (
+  id SERIAL PRIMARY KEY,
+  "userId" INTEGER NOT NULL REFERENCES public.users(id),
+  name TEXT NOT NULL,
+  "lastViewedSlideIndex" INTEGER DEFAULT 0,
+  author TEXT,
+  "startSlogan" TEXT,
+  "endSlogan" TEXT,
+  "isLocked" BOOLEAN DEFAULT false
+);
+
+-- Create notes table
+CREATE TABLE IF NOT EXISTS public.notes (
+  id SERIAL PRIMARY KEY,
+  "projectId" INTEGER NOT NULL REFERENCES public.projects(id),
+  "parentId" INTEGER REFERENCES public.notes(id),
+  content TEXT,
+  "order" TEXT,
+  url TEXT,
+  "linkText" TEXT,
+  "youtubeLink" TEXT,
+  time TEXT,
+  images TEXT[]
+);
+
+-- Create storage bucket for images
+-- Note: You should also create this bucket in the Supabase Dashboard under Storage
+SELECT execute_sql('
+  CREATE POLICY "Public Access" ON storage.objects
+    FOR SELECT USING (bucket_id = ''slides-images'');
+  
+  CREATE POLICY "Authenticated Insert" ON storage.objects
+    FOR INSERT WITH CHECK (bucket_id = ''slides-images'' AND auth.role() = ''authenticated'');
+');`}
+            </pre>
+            <p className="mt-2 text-sm text-blue-800 dark:text-blue-300">After running this script, return to the migration utility and try again.</p>
+          </div>
+          
+          <div className="mb-8 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
+            <h3 className="text-lg font-semibold mb-2 text-green-800 dark:text-green-300">Step 3: Create Storage Bucket</h3>
+            <p className="mb-2 text-green-800 dark:text-green-300">You need to create a storage bucket for image uploads:</p>
+            <ol className="list-decimal list-inside space-y-1 text-sm text-green-800 dark:text-green-300">
+              <li>Go to the Supabase dashboard</li>
+              <li>Navigate to Storage in the left sidebar</li>
+              <li>Click "Create a new bucket"</li>
+              <li>Name it exactly <code className="bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded text-green-900 dark:text-green-200">slides-images</code></li>
+              <li>Enable "Public bucket" option</li>
+              <li>Click "Create bucket"</li>
+            </ol>
+            <p className="mt-2 text-sm text-green-800 dark:text-green-300">This bucket will store all the images from your notes, making them persistent across deployments.</p>
           </div>
 
           
@@ -978,7 +1079,16 @@ $$;`}
                   <div className="text-gray-500 italic">Log output will appear here...</div>
                 ) : (
                   log.map((entry, i) => (
-                    <div key={i} className={entry.startsWith('ERROR') ? 'text-red-500' : ''}>
+                    <div 
+                      key={i} 
+                      className={
+                        entry.startsWith('ERROR') ? 'text-red-500 dark:text-red-400' : 
+                        entry.startsWith('SUCCESS') ? 'text-green-600 dark:text-green-400' :
+                        entry.startsWith('WARNING') ? 'text-amber-600 dark:text-amber-400' :
+                        entry.startsWith('---') ? 'text-blue-600 dark:text-blue-400 font-bold' :
+                        'text-slate-800 dark:text-slate-200'
+                      }
+                    >
                       {entry}
                     </div>
                   ))
@@ -1036,7 +1146,16 @@ $$;`}
                   </div>
                 ) : (
                   log.map((entry, i) => (
-                    <div key={i} className={entry.startsWith('ERROR') ? 'text-red-500' : ''}>
+                    <div 
+                      key={i} 
+                      className={
+                        entry.startsWith('ERROR') ? 'text-red-500 dark:text-red-400' : 
+                        entry.startsWith('SUCCESS') ? 'text-green-600 dark:text-green-400' :
+                        entry.startsWith('WARNING') ? 'text-amber-600 dark:text-amber-400' :
+                        entry.startsWith('---') ? 'text-blue-600 dark:text-blue-400 font-bold' :
+                        'text-slate-800 dark:text-slate-200'
+                      }
+                    >
                       {entry}
                     </div>
                   ))
