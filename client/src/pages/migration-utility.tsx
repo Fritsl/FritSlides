@@ -984,8 +984,22 @@ $$;`}
             <p className="mt-2 text-sm text-amber-800 dark:text-amber-300">This function will allow the migration utility to create tables and execute SQL commands.</p>
           </div>
           
+          <div className="mb-8 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
+            <h3 className="text-lg font-semibold mb-2 text-green-800 dark:text-green-300">Step 2: Create Storage Bucket</h3>
+            <p className="mb-2 text-green-800 dark:text-green-300">You need to create a storage bucket for image uploads:</p>
+            <ol className="list-decimal list-inside space-y-1 text-sm text-green-800 dark:text-green-300">
+              <li>Go to the Supabase dashboard</li>
+              <li>Navigate to Storage in the left sidebar</li>
+              <li>Click "Create a new bucket"</li>
+              <li>Name it exactly <code className="bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded text-green-900 dark:text-green-200">slides-images</code></li>
+              <li>Enable "Public bucket" option</li>
+              <li>Click "Create bucket"</li>
+            </ol>
+            <p className="mt-2 text-sm text-green-800 dark:text-green-300">This bucket will store all the images from your notes, making them persistent across deployments.</p>
+          </div>
+          
           <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
-            <h3 className="text-lg font-semibold mb-2 text-blue-800 dark:text-blue-300">Step 2: Create Required Tables</h3>
+            <h3 className="text-lg font-semibold mb-2 text-blue-800 dark:text-blue-300">Step 3: Create Required Tables</h3>
             <p className="mb-2 text-blue-800 dark:text-blue-300">You need to create the database tables in Supabase before migrating data. Run this SQL script:</p>
             <pre className="bg-gray-800 text-gray-100 p-3 rounded mt-2 text-sm overflow-x-auto">
 {`-- Create users table
@@ -1022,8 +1036,7 @@ CREATE TABLE IF NOT EXISTS public.notes (
   images TEXT[]
 );
 
--- Create storage bucket for images
--- Note: You should also create this bucket in the Supabase Dashboard under Storage
+-- Create storage policies (must be done after creating the bucket in step 2)
 SELECT execute_sql('
   CREATE POLICY "Public Access" ON storage.objects
     FOR SELECT USING (bucket_id = ''slides-images'');
@@ -1033,20 +1046,6 @@ SELECT execute_sql('
 ');`}
             </pre>
             <p className="mt-2 text-sm text-blue-800 dark:text-blue-300">After running this script, return to the migration utility and try again.</p>
-          </div>
-          
-          <div className="mb-8 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
-            <h3 className="text-lg font-semibold mb-2 text-green-800 dark:text-green-300">Step 3: Create Storage Bucket</h3>
-            <p className="mb-2 text-green-800 dark:text-green-300">You need to create a storage bucket for image uploads:</p>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-green-800 dark:text-green-300">
-              <li>Go to the Supabase dashboard</li>
-              <li>Navigate to Storage in the left sidebar</li>
-              <li>Click "Create a new bucket"</li>
-              <li>Name it exactly <code className="bg-green-100 dark:bg-green-900 px-1 py-0.5 rounded text-green-900 dark:text-green-200">slides-images</code></li>
-              <li>Enable "Public bucket" option</li>
-              <li>Click "Create bucket"</li>
-            </ol>
-            <p className="mt-2 text-sm text-green-800 dark:text-green-300">This bucket will store all the images from your notes, making them persistent across deployments.</p>
           </div>
 
           
