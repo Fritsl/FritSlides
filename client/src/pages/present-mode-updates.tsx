@@ -13,11 +13,9 @@ import {
   getYoutubeEmbedUrl, 
   calculateLevel, 
   ContentType, 
-  SlideContentType,
   getTypographyStyles, 
-  getAdvancedTypographyStyles,
   generateTypographyStyles,
-} from '@/lib/presentation-typography';
+} from '@/components/slide-components';
 import { OverviewSlide } from "@/components/ui/overview-slide";
 import { formatMinutesToHumanReadable, minutesToString, timeToMinutes } from "@/lib/time-utils";
 import { TimeDisplay } from "@/components/ui/time-display";
