@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { useNoteEditing } from "@/hooks/use-notes";
 import { Button } from "@/components/ui/button";
@@ -76,11 +75,9 @@ export default function Header({
   onToggleTimedNotes,
   showOnlyTimedNotes = false
 }: HeaderProps) {
-  const { logoutMutation } = useAuth();
   const { user: supabaseUser, signOut: supabaseSignOut } = useSupabaseAuth();
   const { toast } = useToast();
   const { editingNoteId, setEditingNoteId, isEditing } = useNoteEditing();
-  const usingSupabase = !!supabaseUser;
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
   // Function to open project settings
@@ -95,17 +92,13 @@ export default function Header({
   };
 
   const handleLogout = () => {
-    if (usingSupabase) {
-      supabaseSignOut();
-      toast({
-        title: "Logged out",
-        description: "You have been logged out of your Supabase account"
-      });
-      // Redirect to auth page
-      window.location.href = "/auth/supabase";
-    } else {
-      logoutMutation.mutate();
-    }
+    supabaseSignOut();
+    toast({
+      title: "Logged out",
+      description: "You have been logged out of your Supabase account"
+    });
+    // Redirect to auth page
+    window.location.href = "/auth";
   };
 
   if (!user) {
@@ -287,24 +280,13 @@ export default function Header({
                 <DropdownMenuItem>
                   <UserIcon className="h-4 w-4 mr-2" />
                   <span>Logged in as <span className="font-semibold">
-                    {usingSupabase ? supabaseUser?.email : user.username}
+                    {supabaseUser?.email || user?.email || "User"}
                   </span></span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Settings className="h-4 w-4 mr-2" />
                   <span>Account Settings</span>
                 </DropdownMenuItem>
-                {!usingSupabase ? (
-                  <DropdownMenuItem onClick={() => window.location.href = "/auth/supabase"}>
-                    <Database className="h-4 w-4 mr-2" />
-                    <span>Switch to Supabase Auth</span>
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem onClick={() => window.location.href = "/auth"}>
-                    <Database className="h-4 w-4 mr-2" />
-                    <span>Switch to Local Auth</span>
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuItem onClick={() => setIsLogoutDialogOpen(true)}>
                   <LogOut className="h-4 w-4 mr-2" />
                   <span>Logout</span>
@@ -490,7 +472,7 @@ export default function Header({
         description="Are you sure you want to log out of your account?"
         confirmText="Log Out"
         onConfirm={handleLogout}
-        isPending={logoutMutation.isPending}
+        isPending={false}
       />
       
       <ProjectSelectorDialog

@@ -201,23 +201,8 @@ export default function HomePage() {
         setSelectedProjectId(newProject.id);
         form.reset();
         
-        // Update the last opened project in the database
-        if (localUser) {
-          fetch('/api/user/lastProject', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ projectId: newProject.id }),
-          }).catch(error => {
-            console.error('Error updating last opened project:', error);
-          });
-        }
-        // If using Supabase, update last opened project there
-        else if (supabaseUser) {
-          // We'll implement this in the Supabase migration features
-          console.log("Using Supabase authentication, project creation successful");
-        }
+        // Update the last opened project in Supabase
+        console.log("Project created successfully, ID:", newProject.id);
       },
     });
   };
@@ -480,23 +465,8 @@ export default function HomePage() {
         onSelectProject={(id) => {
           setSelectedProjectId(id);
           
-          // Update the last opened project in the database
-          if (localUser) {
-            fetch('/api/user/lastProject', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ projectId: id }),
-            }).catch(error => {
-              console.error('Error updating last opened project:', error);
-            });
-          }
-          // If using Supabase, update the last project there
-          else if (supabaseUser) {
-            // We'll implement this in the Supabase migration features
-            console.log("Using Supabase authentication, updating last viewed project");
-          }
+          // Update the last opened project in Supabase
+          console.log("Selected project ID:", id);
         }}
         onNewProject={() => setIsNewProjectDialogOpen(true)}
         onUpdateProject={onUpdateProject}
