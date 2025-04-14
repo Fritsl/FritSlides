@@ -1,20 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Create Supabase client with service role key for server-side operations
-let supabaseUrl = process.env.SUPABASE_URL as string;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY as string;
+const supabaseUrl = process.env.SUPABASE_URL || '';
+const serviceKey = process.env.SUPABASE_SERVICE_KEY || '';
 
-// Make sure URL has proper protocol
-if (supabaseUrl && !supabaseUrl.startsWith('http')) {
-  supabaseUrl = `https://${supabaseUrl}`;
+// Check for required environment variables
+if (!supabaseUrl) {
+  console.error('Error: SUPABASE_URL is not defined in environment variables');
 }
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be defined in environment variables');
+if (!serviceKey) {
+  console.error('Error: SUPABASE_SERVICE_KEY is not defined in environment variables');
 }
+
+// Debug log for troubleshooting (avoiding full key exposure)
+console.log(`Supabase Configuration:`);
+console.log(`- Project URL: ${supabaseUrl ? supabaseUrl : 'Not set'}`);
+console.log(`- Service Role Key: ${serviceKey ? 'Present (length: ' + serviceKey.length + ')' : 'Not set'}`);
 
 // Create and export the Supabase client with the service role key
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+export const supabase = createClient(supabaseUrl, serviceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
