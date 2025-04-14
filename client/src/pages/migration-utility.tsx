@@ -313,6 +313,89 @@ export default function MigrationUtilityPage() {
     }
   }
   
+  // Function to directly test SQL execution capability
+  async function testDirectSQL() {
+    addLog('Testing direct SQL execution...');
+    try {
+      // First, initialize the admin client if not already done
+      if (!adminClient) {
+        const supabaseUrl = localStorage.getItem('supabase-url') || 'https://db.waaqtqxoylxvhykessnc.supabase.co';
+        adminClient = createClient(supabaseUrl, SERVICE_KEY, {
+          auth: { autoRefreshToken: false, persistSession: false },
+          db: { schema: 'public' }
+        });
+        addLog('Created admin client with service key');
+      }
+      
+      // Try a simple SQL query using the REST API
+      addLog('Executing test SQL query via REST API...');
+      
+      // Using direct fetch to the REST API endpoint
+      const response = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SERVICE_KEY,
+          'Authorization': `Bearer ${SERVICE_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          sql_query: 'SELECT current_database() as db_name;'
+        })
+      });
+      
+      const responseBody = await response.text();
+      addLog(`Response status: ${response.status} ${response.statusText}`);
+      addLog(`Response body: ${responseBody}`);
+      
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status} ${response.statusText} - ${responseBody}`);
+      }
+      
+      // Try creating a simple test table
+      addLog('Attempting to create a test table...');
+      const createTableResponse = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SERVICE_KEY,
+          'Authorization': `Bearer ${SERVICE_KEY}`,
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({
+          sql_query: 'CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY, name TEXT);'
+        })
+      });
+      
+      const createTableBody = await createTableResponse.text();
+      addLog(`Create table response: ${createTableResponse.status} ${createTableResponse.statusText}`);
+      addLog(`Create table body: ${createTableBody}`);
+      
+      if (!createTableResponse.ok) {
+        throw new Error(`Table creation failed: ${createTableResponse.status} ${createTableResponse.statusText} - ${createTableBody}`);
+      }
+      
+      // Check if execute_sql function exists
+      addLog('Checking if execute_sql function exists...');
+      const checkFunctionResponse = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc', {
+        method: 'GET',
+        headers: {
+          'apikey': SERVICE_KEY,
+          'Authorization': `Bearer ${SERVICE_KEY}`
+        }
+      });
+      
+      const functions = await checkFunctionResponse.json();
+      addLog(`Available RPC functions: ${JSON.stringify(functions)}`);
+      
+      return true;
+    } catch (error) {
+      addLog(`ERROR in direct SQL test: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('Direct SQL test error:', error);
+      return false;
+    }
+  }
+
   async function testConnection() {
     try {
       setConnectionStatus('running');
@@ -749,13 +832,20 @@ export default function MigrationUtilityPage() {
                 )}
               </div>
               
-              <div className="mt-4">
+              <div className="mt-4 flex space-x-2">
                 <Button 
                   onClick={testConnection} 
                   disabled={connectionStatus === 'running'}
                   variant={connectionStatus === 'error' ? 'destructive' : 'default'}
                 >
                   {connectionStatus === 'error' ? 'Retry Connection Test' : 'Test Supabase Connection'}
+                </Button>
+                <Button
+                  onClick={testDirectSQL}
+                  disabled={connectionStatus === 'running'}
+                  variant="outline"
+                >
+                  Test SQL Execution
                 </Button>
               </div>
             </TabsContent>
