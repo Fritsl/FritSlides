@@ -7,7 +7,10 @@ import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import PresentMode from "@/pages/present-mode";
 import MigrationUtilityPage from "@/pages/migration-utility";
+import SupabaseAuthPage from "@/pages/supabase-auth-page";
+import SupabaseMigrationPage from "@/pages/supabase-migration-page";
 import { AuthProvider } from "@/hooks/use-auth";
+import { SupabaseAuthProvider } from "@/hooks/use-supabase-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { NoteEditingProvider } from "@/hooks/use-notes";
 
@@ -18,6 +21,8 @@ function Router() {
       <ProtectedRoute path="/present/:projectId" component={PresentMode} />
       <ProtectedRoute path="/migration-utility" component={MigrationUtilityPage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/supabase-auth" component={SupabaseAuthPage} />
+      <Route path="/supabase-migration" component={SupabaseMigrationPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -26,12 +31,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <NoteEditingProvider>
-          <Router />
-          <Toaster />
-        </NoteEditingProvider>
-      </AuthProvider>
+      <SupabaseAuthProvider>
+        <AuthProvider>
+          <NoteEditingProvider>
+            <Router />
+            <Toaster />
+          </NoteEditingProvider>
+        </AuthProvider>
+      </SupabaseAuthProvider>
     </QueryClientProvider>
   );
 }
