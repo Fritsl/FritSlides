@@ -1,8 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Create Supabase client with service role key for server-side operations
-const supabaseUrl = process.env.SUPABASE_URL as string;
+let supabaseUrl = process.env.SUPABASE_URL as string;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY as string;
+
+// Make sure URL has proper protocol
+if (supabaseUrl && !supabaseUrl.startsWith('http')) {
+  supabaseUrl = `https://${supabaseUrl}`;
+}
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY must be defined in environment variables');
