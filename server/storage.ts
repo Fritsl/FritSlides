@@ -16,14 +16,14 @@ const pgPool = new pg.Pool({
 });
 
 export interface IStorage {
-  // User operations
-  getUser(id: number): Promise<User | undefined>;
+  // User operations - updated for Supabase (string user IDs)
+  getUser(id: string | number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateLastOpenedProject(userId: number, projectId: number | null): Promise<boolean>;
+  updateLastOpenedProject(userId: string | number, projectId: number | null): Promise<boolean>;
   
-  // Project operations
-  getProjects(userId: number): Promise<Project[]>;
+  // Project operations - updated for Supabase (string user IDs)
+  getProjects(userId: string | number): Promise<Project[]>;
   getProject(id: number): Promise<Project | undefined>;
   createProject(project: InsertProject): Promise<Project>;
   updateProject(id: number, data: UpdateProject): Promise<Project | undefined>;
@@ -59,9 +59,9 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  // User operations
-  async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+  // User operations - updated for Supabase
+  async getUser(id: string | number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, String(id)));
     return user;
   }
 
@@ -71,11 +71,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+    // For Supabase integration, add ID if not provided
+    const userData = {
+      ...insertUser,
+      // Use provided ID or generate a random one for testing
+      id: insertUser.id || crypto.randomUUID()
+    };
+    
+    const [user] = await db.insert(users).values(userData).returning();
     return user;
   }
   
-  async updateLastOpenedProject(userId: number, projectId: number | null): Promise<boolean> {
+  async updateLastOpenedProject(userId: string | number, projectId: number | null): Promise<boolean> {
     try {
       // Make sure projectId is a number or null (not an object)
       let validProjectId: number | null = null;
@@ -100,12 +107,28 @@ export class DatabaseStorage implements IStorage {
         }
       }
       
-      // Now use the validated project ID
+      console.log(`Updating last opened project for user ${userId} to project ${validProjectId}`);
+      
+      // Now use the validated project ID and ensure userId is a string
+      const userIdStr = String(userId);
       const [updatedUser] = await db
         .update(users)
         .set({ lastOpenedProjectId: validProjectId })
-        .where(eq(users.id, userId))
+        .where(eq(users.id, userIdStr))
         .returning();
+        
+      if (!updatedUser) {
+        // If user doesn't exist yet (first Supabase login), create the user
+        console.log(`User ${userId} not found, creating new user record for Supabase integration`);
+        const newUser = await this.createUser({
+          id: userIdStr,
+          username: `user_${userIdStr.substring(0, 8)}`,
+          password: null, // Password not needed for Supabase users
+          lastOpenedProjectId: validProjectId
+        });
+        return !!newUser;
+      }
+      
       return !!updatedUser;
     } catch (error) {
       console.error("Error updating last opened project:", error);
@@ -113,9 +136,10 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Project operations
-  async getProjects(userId: number): Promise<Project[]> {
-    return await db.select().from(projects).where(eq(projects.userId, userId));
+  // Project operations - updated for Supabase (string user IDs)
+  async getProjects(userId: string | number): Promise<Project[]> {
+    console.log(`Getting projects for user ${userId} (${typeof userId})`);
+    return await db.select().from(projects).where(eq(projects.userId, String(userId)));
   }
 
   async getProject(id: number): Promise<Project | undefined> {

@@ -39,9 +39,9 @@ export const notes = pgTable("notes", {
 });
 
 // Define schemas for data insertion/validation
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const insertUserSchema = createInsertSchema(users).extend({
+  id: z.string().optional(), // Allow explicit ID for Supabase users
+  password: z.string().nullable().optional() // Make password optional for Supabase auth
 });
 
 export const insertProjectSchema = createInsertSchema(projects).pick({
