@@ -63,7 +63,8 @@ export default function MigrationUtilityPage() {
         SERVICE_KEY = serviceKey;
         addLog(`Service key retrieved successfully (length: ${serviceKey.length})`);
         
-        const supabaseUrl = localStorage.getItem('supabase-url') || 'https://db.waaqtqxoylxvhykessnc.supabase.co';
+        // Use the correct Supabase URL (without 'db.' prefix)
+        const supabaseUrl = localStorage.getItem('supabase-url') || 'https://waaqtqxoylxvhykessnc.supabase.co';
         
         // Create admin client with service key
         adminClient = createClient(supabaseUrl, serviceKey, {
@@ -121,7 +122,7 @@ export default function MigrationUtilityPage() {
         
         // Try directly through the REST API
         try {
-          const usersResponse = await fetch(`https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql`, {
+          const usersResponse = await fetch(`https://waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -173,7 +174,7 @@ export default function MigrationUtilityPage() {
       // Create projects table
       addLog('Creating projects table if it doesn\'t exist...');
       try {
-        const projectsResponse = await fetch(`https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql`, {
+        const projectsResponse = await fetch(`https://waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -240,7 +241,7 @@ export default function MigrationUtilityPage() {
       // Create notes table
       addLog('Creating notes table if it doesn\'t exist...');
       try {
-        const notesResponse = await fetch(`https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql`, {
+        const notesResponse = await fetch(`https://waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -359,7 +360,7 @@ export default function MigrationUtilityPage() {
       
       // First, initialize the admin client if not already done
       if (!adminClient) {
-        const supabaseUrl = localStorage.getItem('supabase-url') || 'https://db.waaqtqxoylxvhykessnc.supabase.co';
+        const supabaseUrl = localStorage.getItem('supabase-url') || 'https://waaqtqxoylxvhykessnc.supabase.co';
         adminClient = createClient(supabaseUrl, SERVICE_KEY, {
           auth: { autoRefreshToken: false, persistSession: false },
           db: { schema: 'public' }
@@ -369,7 +370,7 @@ export default function MigrationUtilityPage() {
       
       // 1. Test if we can ping the Supabase API
       addLog('1. Testing API accessibility...');
-      const pingResponse = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/', {
+      const pingResponse = await fetch('https://waaqtqxoylxvhykessnc.supabase.co/rest/v1/', {
         method: 'GET',
         headers: {
           'apikey': SERVICE_KEY,
@@ -388,7 +389,7 @@ export default function MigrationUtilityPage() {
       // 2. Test if the service key has permission to create tables
       addLog('2. Testing RPC functions availability...');
       try {
-        const functionResponse = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/', {
+        const functionResponse = await fetch('https://waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/', {
           method: 'GET',
           headers: {
             'apikey': SERVICE_KEY,
@@ -420,7 +421,7 @@ export default function MigrationUtilityPage() {
       // 3. Try to directly execute a simple query
       addLog('3. Testing direct SQL query execution...');
       try {
-        const response = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql', {
+        const response = await fetch('https://waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -817,7 +818,7 @@ export default function MigrationUtilityPage() {
         addLog('Testing if we have a real Supabase client...');
         try {
           // Try fetching directly using the API URL
-          const apiUrl = `https://${process.env.REACT_APP_SUPABASE_URL || 'db.waaqtqxoylxvhykessnc.supabase.co'}/rest/v1/users?select=id&limit=1`;
+          const apiUrl = `https://${process.env.REACT_APP_SUPABASE_URL || 'waaqtqxoylxvhykessnc.supabase.co'}/rest/v1/users?select=id&limit=1`;
           const response = await fetch(apiUrl, {
             headers: {
               'apikey': process.env.REACT_APP_SUPABASE_ANON_KEY || localStorage.getItem('supabase-anon-key') || '',
