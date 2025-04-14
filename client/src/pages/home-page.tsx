@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { useProjects } from "@/hooks/use-projects";
 import { useNotes, useNoteEditing } from "@/hooks/use-notes";
@@ -36,9 +35,7 @@ const projectSchema = z.object({
 });
 
 export default function HomePage() {
-  const { user: localUser } = useAuth();
-  const { user: supabaseUser } = useSupabaseAuth();
-  const user = localUser || supabaseUser;
+  const { user } = useSupabaseAuth();
   const { projects, isLoading: isLoadingProjects, createProject, updateProject } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const { notes, isLoading: isLoadingNotes } = useNotes(selectedProjectId);
