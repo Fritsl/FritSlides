@@ -1,17 +1,56 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Create a single Supabase client for the frontend
-let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Fetch credentials from either environment variables or try to get them from the server
+// Note: In production, we should use environment variables directly
+let supabaseUrl = '';
+let supabaseAnonKey = '';
+
+// Function to fetch Supabase credentials from the server
+async function fetchSupabaseCredentials() {
+  try {
+    console.log('Fetching Supabase credentials from server...');
+    const response = await fetch('/api/supabase-credentials');
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Got credentials response:', { url: data.url ? 'present' : 'missing', anonKey: data.anonKey ? 'present' : 'missing' });
+      
+      if (data.url && data.anonKey) {
+        supabaseUrl = data.url;
+        supabaseAnonKey = data.anonKey;
+        
+        // Make sure URL has proper protocol
+        if (supabaseUrl && !supabaseUrl.startsWith('http')) {
+          supabaseUrl = `https://${supabaseUrl}`;
+        }
+        
+        console.log('Supabase credentials fetched successfully, URL:', supabaseUrl);
+        // Re-initialize the client with the new credentials
+        initializeSupabaseClient();
+        return true;
+      }
+    } else {
+      console.error('Error fetching Supabase credentials, status:', response.status);
+    }
+  } catch (error) {
+    console.error('Failed to fetch Supabase credentials:', error);
+  }
+  return false;
+}
+
+// Try to get credentials from environment variables first
+supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Make sure URL has proper protocol
 if (supabaseUrl && !supabaseUrl.startsWith('http')) {
   supabaseUrl = `https://${supabaseUrl}`;
 }
 
-// Check that we have the required environment variables
+// If environment variables are missing, try to fetch from server
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase credentials. Image uploads might not work properly.');
+  console.warn('Missing Supabase environment variables. Trying to fetch from server...');
+  fetchSupabaseCredentials();
 }
 
 // Create and export the Supabase client for browser usage
@@ -41,6 +80,20 @@ try {
       })
     }
   };
+}
+
+// Function to initialize/reinitialize the Supabase client
+function initializeSupabaseClient() {
+  try {
+    if (supabaseUrl && supabaseAnonKey) {
+      supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+      console.log('Supabase client initialized with URL:', supabaseUrl);
+    } else {
+      console.warn('Cannot initialize Supabase client: missing credentials');
+    }
+  } catch (error) {
+    console.error('Error reinitializing Supabase client:', error);
+  }
 }
 
 export const supabase = supabaseClient;

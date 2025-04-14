@@ -55,6 +55,13 @@ function isAuthenticated(req: Request, res: Response, next: Function) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // API endpoint to expose Supabase credentials to the client
+  app.get("/api/supabase-credentials", (req, res) => {
+    res.json({
+      url: process.env.SUPABASE_URL || '',
+      anonKey: process.env.SUPABASE_ANON_KEY || ''
+    });
+  });
   // Setup authentication routes
   setupAuth(app);
 
