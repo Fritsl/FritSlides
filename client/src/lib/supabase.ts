@@ -57,10 +57,23 @@ if (!supabaseUrl || !supabaseAnonKey) {
 let supabaseClient;
 try {
   if (supabaseUrl && supabaseAnonKey) {
-    supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,      // Keep the session active between page refreshes
+        autoRefreshToken: true,    // Automatically refresh the token if it expires
+        storage: localStorage,     // Use localStorage to persist the session
+      }
+    });
   } else {
     // Create a mock client if credentials are missing
     supabaseClient = {
+      auth: {
+        signUp: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
+        signIn: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
+        signOut: () => Promise.resolve({ error: null }),
+        getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+        getUser: () => Promise.resolve({ data: { user: null }, error: null })
+      },
       from: (table) => ({
         select: () => ({
           limit: () => Promise.resolve({ data: [], error: null }),
@@ -108,7 +121,13 @@ try {
 function initializeSupabaseClient() {
   try {
     if (supabaseUrl && supabaseAnonKey) {
-      supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+      supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: true,      // Keep the session active between page refreshes
+          autoRefreshToken: true,    // Automatically refresh the token if it expires
+          storage: localStorage,     // Use localStorage to persist the session
+        }
+      });
       console.log('Supabase client initialized with URL:', supabaseUrl);
     } else {
       console.warn('Cannot initialize Supabase client: missing credentials');
