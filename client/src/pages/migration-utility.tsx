@@ -19,9 +19,10 @@ let SERVICE_KEY = '';
 // Function to fetch the service key from the server
 async function fetchServiceKey(): Promise<string> {
   try {
+    // Try to get the service key directly
     const response = await fetch('/api/supabase-service-key');
     if (!response.ok) {
-      throw new Error(`Failed to fetch service key: ${response.statusText}`);
+      throw new Error(`Failed to fetch service key: ${response.status} ${response.statusText}`);
     }
     const data = await response.json();
     return data.key || '';
@@ -438,11 +439,27 @@ export default function MigrationUtilityPage() {
         
         if (!response.ok) {
           if (response.status === 404) {
-            addLog('ERROR: execute_sql function not found (404). This is likely because:');
-            addLog('1. The function has not been created in your Supabase project');
-            addLog('2. You need to create this function in the Supabase SQL editor');
+            addLog('ERROR: execute_sql function not found (404)');
+            addLog('--------------------------------------------------------');
+            addLog('TO FIX THIS ERROR:');
+            addLog('1. Log in to your Supabase dashboard at https://supabase.com/dashboard');
+            addLog('2. Select your project');
+            addLog('3. Click on "SQL Editor" in the left navigation');
+            addLog('4. Create a new query');
+            addLog('5. Paste the SQL function code shown above in the instructions');
+            addLog('6. Click "Run" to create the function');
+            addLog('7. Return to this migration utility and try again');
+            addLog('--------------------------------------------------------');
           } else {
             addLog(`ERROR: SQL query failed with status ${response.status}`);
+            addLog(`Response body: ${responseBody}`);
+            
+            // Check for specific error patterns
+            if (responseBody.includes('permission denied')) {
+              addLog('ERROR: Permission denied. The service role key might not have enough privileges.');
+            } else if (responseBody.includes('syntax error')) {
+              addLog('ERROR: SQL syntax error in the query.');
+            }
           }
           throw new Error(`API call failed: ${response.status} ${response.statusText} - ${responseBody}`);
         }
@@ -930,6 +947,8 @@ $$;`}
             </pre>
             <p className="mt-2 text-sm">This function will allow the migration utility to create tables and execute SQL commands.</p>
           </div>
+
+          
           <Tabs defaultValue="connection">
             <TabsList className="mb-4">
               <TabsTrigger value="connection">Connection Test</TabsTrigger>

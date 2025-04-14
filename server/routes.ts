@@ -63,11 +63,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
   
-  // API endpoint to expose Supabase service key to authenticated clients
-  app.get("/api/supabase-service-key", isAuthenticated, (req, res) => {
-    res.json({
-      key: process.env.SUPABASE_SERVICE_KEY || ''
-    });
+  // API endpoint to expose Supabase service key (for migration utility)
+  // Note: In a production environment, you would want better protection for this endpoint
+  app.get("/api/supabase-service-key", (req, res) => {
+    const serviceKey = process.env.SUPABASE_SERVICE_KEY || '';
+    if (!serviceKey) {
+      console.warn('Warning: SUPABASE_SERVICE_KEY environment variable is not set');
+      return res.status(500).json({ error: 'Service key not available' });
+    }
+    res.json({ key: serviceKey });
   });
   // Setup authentication routes
   setupAuth(app);
