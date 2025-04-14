@@ -10,6 +10,8 @@ async function fetchSupabaseCredentials() {
     console.log('Fetching Supabase credentials from server...');
     const response = await fetch('/api/supabase-credentials');
     const data = await response.json();
+    
+    // More detailed logging
     console.log('Got credentials response:', {
       url: data.url ? 'present' : 'missing',
       anonKey: data.anonKey ? 'present' : 'missing'
@@ -21,7 +23,20 @@ async function fetchSupabaseCredentials() {
     
     supabaseUrl = data.url;
     supabaseAnonKey = data.anonKey;
-    console.log('Supabase credentials fetched successfully, URL:', supabaseUrl);
+    
+    // Check that supabaseUrl ends with .supabase.co
+    if (!supabaseUrl.includes('supabase.co')) {
+      console.warn('Warning: Supabase URL may be incorrect, it does not contain "supabase.co"');
+    }
+    
+    // Log the URL with some asterisks for partial privacy
+    const urlParts = supabaseUrl.split('.');
+    if (urlParts.length >= 3) {
+      const maskedUrl = `https://${urlParts[0].substring(0, 4)}*****.${urlParts[1]}.${urlParts[2]}`;
+      console.log('Supabase credentials fetched successfully, URL format:', maskedUrl);
+    } else {
+      console.warn('Supabase URL format unexpected:', supabaseUrl.substring(0, 10) + '...');
+    }
   } catch (error) {
     console.error('Failed to fetch Supabase credentials:', error);
     throw error;
