@@ -236,6 +236,31 @@ export function useProjects() {
     },
   });
 
+  // Helper functions for present-mode.tsx
+  const getProject = (id: number): Project | undefined => {
+    return projects?.find(project => project.id === id);
+  };
+
+  const updateLastViewedSlideIndexMutation = useMutation({
+    mutationFn: async ({ projectId, slideIndex }: { projectId: number, slideIndex: number }) => {
+      const res = await apiRequest("PUT", `/api/projects/${projectId}`, { 
+        lastViewedSlideIndex: slideIndex 
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    },
+    onError: (error) => {
+      console.error("Failed to update last viewed slide index", error);
+    },
+  });
+  
+  // Helper wrapper function with more convenient signature
+  const updateLastViewedSlideIndex = async (projectId: number, slideIndex: number) => {
+    return updateLastViewedSlideIndexMutation.mutateAsync({ projectId, slideIndex });
+  };
+
   return {
     projects,
     isLoading,
@@ -244,5 +269,7 @@ export function useProjects() {
     updateProject,
     deleteProject,
     duplicateProject,
+    getProject,
+    updateLastViewedSlideIndex,
   };
 }
