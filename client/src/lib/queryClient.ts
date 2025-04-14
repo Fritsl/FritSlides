@@ -1,4 +1,31 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getSupabaseClient } from "./supabase";
+
+// Function to get Supabase auth headers
+async function getSupabaseAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const supabase = await getSupabaseClient();
+    const { data } = await supabase.auth.getSession();
+    
+    if (data.session) {
+      // Create a headers object with guaranteed string values
+      const headers: Record<string, string> = {
+        'x-supabase-user-id': data.session.user.id
+      };
+      
+      // Only include email if it exists
+      if (data.session.user.email) {
+        headers['x-supabase-user-email'] = data.session.user.email;
+      }
+      
+      return headers;
+    }
+    return {};
+  } catch (error) {
+    console.error("Failed to get Supabase auth headers:", error);
+    return {};
+  }
+}
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -16,10 +43,18 @@ export async function apiRequest(
     timeout?: number;
   }
 ): Promise<Response> {
-  // Create default fetch options
+  // Get Supabase authentication headers
+  const supabaseHeaders = await getSupabaseAuthHeaders();
+  
+  // Create default fetch options with combined headers
+  const headers: Record<string, string> = {
+    ...(data ? { "Content-Type": "application/json" } : {}),
+    ...supabaseHeaders
+  };
+  
   const fetchOptions: RequestInit = {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
     signal: options?.signal,
@@ -35,6 +70,10 @@ export async function apiRequest(
         reject(new Error(`Request timeout: Operation took longer than ${timeoutDuration/1000} seconds`));
       }, timeoutDuration);
     });
+    
+    // Log headers for debugging purposes
+    console.log(`Making ${method} request to ${url} with Supabase auth:`, 
+      supabaseHeaders['x-supabase-user-id'] ? 'User ID present' : 'No user ID');
     
     // Race between the fetch and the timeout
     const res = await Promise.race([
@@ -62,8 +101,16 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // Get Supabase authentication headers
+    const supabaseHeaders = await getSupabaseAuthHeaders();
+    
+    // Log headers for debugging purposes
+    console.log(`Making GET request to ${queryKey[0]} with Supabase auth:`, 
+      supabaseHeaders['x-supabase-user-id'] ? 'User ID present' : 'No user ID');
+    
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
+      headers: supabaseHeaders
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

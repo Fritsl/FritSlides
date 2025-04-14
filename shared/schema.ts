@@ -2,17 +2,17 @@ import { pgTable, text, serial, integer, timestamp, jsonb, numeric, boolean } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Define tables with foreign key references
+// Define tables with foreign key references - updated for Supabase
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey(), // Supabase uses UUID strings
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  password: text("password"),  // Optional for Supabase auth
   lastOpenedProjectId: integer("lastOpenedProjectId"),
 });
 
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   startSlogan: text("startSlogan"),
   endSlogan: text("endSlogan"),
