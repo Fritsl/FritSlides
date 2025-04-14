@@ -61,19 +61,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Supabase credentials
   app.get("/api/supabase-credentials", async (req, res) => {
     try {
-      // Check for environment variables
-      if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+      // Check for environment variables - try both with and without VITE_ prefix
+      const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+      
+      console.log('Supabase env variables status:', {
+        urlPresent: !!supabaseUrl, 
+        anonKeyPresent: !!supabaseAnonKey
+      });
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
         return res.status(500).json({ 
           message: "Supabase configuration is missing",
-          url: process.env.SUPABASE_URL || null,
-          anonKey: process.env.SUPABASE_ANON_KEY || null
+          url: null,
+          anonKey: null
         });
       }
       
       // Return the credentials
       res.json({
-        url: process.env.SUPABASE_URL,
-        anonKey: process.env.SUPABASE_ANON_KEY
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey
       });
     } catch (error) {
       console.error("Error fetching Supabase credentials:", error);

@@ -54,7 +54,20 @@ export const createSupabaseClient = async () => {
     }
   }
   
-  console.log('Supabase client initialized with URL:', supabaseUrl);
+  // Additional validation for URL format before creating client
+  if (!supabaseUrl.includes('supabase.co')) {
+    console.error('Supabase URL appears to be invalid, should contain "supabase.co":', supabaseUrl);
+    // Don't throw immediately - let Supabase client attempt the connection,
+    // as this could be a custom domain or different format
+  }
+  
+  // Log a masked version of the URL for privacy in console logs
+  const urlParts = supabaseUrl.split('.');
+  const maskedUrl = urlParts.length >= 3 
+    ? `https://${urlParts[0].substring(0, 4)}*****.${urlParts[1]}.${urlParts[2]}` 
+    : `${supabaseUrl.substring(0, 10)}...`;
+  console.log('Supabase client initialized with URL format:', maskedUrl);
+  
   return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
