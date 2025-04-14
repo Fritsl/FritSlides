@@ -533,25 +533,25 @@ export default function PresentMode() {
   
   // Calculate ContentType for styling
   const slideContentType = (() => {
-    if (!currentNote) return SlideContentType.Regular;
-    if (isStartSlide) return SlideContentType.Title;
-    if (isEndSlide) return SlideContentType.Title;
-    if (isOverviewSlide) return SlideContentType.Heading;
+    if (!currentNote) return ContentType.Regular;
+    if (isStartSlide) return ContentType.Title;
+    if (isEndSlide) return ContentType.Title;
+    if (isOverviewSlide) return ContentType.Heading;
     
     if (currentNote.content?.length < 50 && !currentNote.content.includes('\n')) 
-      return SlideContentType.Heading;
+      return ContentType.Heading;
     if (currentNote.content?.length < 100 && !currentNote.content.includes('\n')) 
-      return SlideContentType.Subheading;
+      return ContentType.Subheading;
     
     // Check for lists
     if (currentNote.content?.split('\n').some(line => 
         line.trim().startsWith('-') || 
         line.trim().startsWith('•') || 
         line.trim().startsWith('*'))) {
-      return SlideContentType.List;
+      return ContentType.List;
     }
     
-    return SlideContentType.Regular;
+    return ContentType.Regular;
   })();
   
   return (
