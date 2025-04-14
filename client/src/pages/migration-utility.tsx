@@ -39,8 +39,16 @@ export default function MigrationUtilityPage() {
         const supabaseUrl = localStorage.getItem('supabase-url') || 'https://db.waaqtqxoylxvhykessnc.supabase.co';
         
         // Create admin client with service key
-        adminClient = createClient(supabaseUrl, SERVICE_KEY);
-        console.log('Admin Supabase client initialized');
+        adminClient = createClient(supabaseUrl, SERVICE_KEY, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          },
+          db: {
+            schema: 'public'
+          }
+        });
+        console.log('Admin Supabase client initialized with service role');
       } catch (error) {
         console.error('Failed to initialize admin Supabase client:', error);
       }
@@ -61,112 +69,161 @@ export default function MigrationUtilityPage() {
     addLog('Ensuring all required tables exist in Supabase...');
     
     try {
-      // Check if users table exists
-      const { error: userTableError } = await adminClient
+      // Using SQL queries directly through Supabase's REST API
+      // This is a more direct approach than trying to use RPCs which might not exist
+      
+      addLog('Creating users table if it doesn\'t exist...');
+      const { error: createUsersError } = await adminClient.from('_supabase_migrations').insert({
+        name: 'create_users_table',
+        sql: `
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            "lastOpenedProjectId" INTEGER
+          );
+        `
+      });
+      
+      if (createUsersError) {
+        // Expected if the table already exists or _supabase_migrations table doesn't exist
+        addLog(`Note: Could not record migration: ${createUsersError.message}`);
+        
+        // Try directly through the REST API
+        try {
+          const usersResponse = await fetch(`https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SERVICE_KEY,
+              'Authorization': `Bearer ${SERVICE_KEY}`,
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              sql_query: `
+                CREATE TABLE IF NOT EXISTS users (
+                  id SERIAL PRIMARY KEY,
+                  username TEXT NOT NULL UNIQUE,
+                  password TEXT NOT NULL,
+                  "lastOpenedProjectId" INTEGER
+                );
+              `
+            })
+          });
+          
+          if (!usersResponse.ok) {
+            const errorText = await usersResponse.text();
+            addLog(`Warning: Failed to create users table: ${errorText}`);
+          } else {
+            addLog('Users table created or already exists');
+          }
+        } catch (directError) {
+          addLog(`Warning: Error in direct SQL for users table: ${directError instanceof Error ? directError.message : String(directError)}`);
+        }
+      } else {
+        addLog('Users table created or already exists');
+      }
+      
+      // Check if users table exists now
+      const { error: checkUsersError } = await adminClient
         .from('users')
         .select('id')
         .limit(1);
-      
-      if (userTableError && userTableError.code === '42P01') { // Table doesn't exist
-        addLog('Creating users table...');
         
-        // Create users table
-        const createUsersTable = await adminClient.rpc('create_users_table', {});
-        
-        if (createUsersTable.error) {
-          addLog(`ERROR: Failed to create users table: ${createUsersTable.error.message}`);
-          
-          // Try direct SQL if RPC fails
-          const { error: sqlError } = await adminClient.rpc('execute_sql', {
-            sql_query: `
-              CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL,
-                "lastOpenedProjectId" INTEGER
-              )
-            `
-          });
-          
-          if (sqlError) {
-            addLog(`ERROR: Failed to create users table via SQL: ${sqlError.message}`);
-            return false;
-          }
-          
-          addLog('Created users table via direct SQL');
+      if (checkUsersError) {
+        if (checkUsersError.code === '42P01') {
+          addLog('ERROR: Users table still does not exist after creation attempt');
         } else {
-          addLog('Created users table');
+          addLog(`ERROR checking users table: ${checkUsersError.message}`);
         }
       } else {
-        addLog('Users table already exists');
+        addLog('Users table exists and is accessible');
       }
       
-      // Check if projects table exists
-      const { error: projectTableError } = await adminClient
-        .from('projects')
-        .select('id')
-        .limit(1);
-      
-      if (projectTableError && projectTableError.code === '42P01') {
-        addLog('Creating projects table...');
-        
-        // Create projects table
-        const createProjectsTable = await adminClient.rpc('create_projects_table', {});
-        
-        if (createProjectsTable.error) {
-          addLog(`ERROR: Failed to create projects table: ${createProjectsTable.error.message}`);
-          
-          // Try direct SQL if RPC fails
-          const { error: sqlError } = await adminClient.rpc('execute_sql', {
+      // Create projects table
+      addLog('Creating projects table if it doesn\'t exist...');
+      try {
+        const projectsResponse = await fetch(`https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SERVICE_KEY,
+            'Authorization': `Bearer ${SERVICE_KEY}`,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
             sql_query: `
               CREATE TABLE IF NOT EXISTS projects (
                 id SERIAL PRIMARY KEY,
-                "userId" INTEGER NOT NULL REFERENCES users(id),
+                "userId" INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 "lastViewedSlideIndex" INTEGER DEFAULT 0,
                 author TEXT,
                 "startSlogan" TEXT,
                 "endSlogan" TEXT,
                 "isLocked" BOOLEAN DEFAULT false
-              )
+              );
+              
+              -- Add foreign key if not exists (separate statement to avoid errors if already exists)
+              DO $$
+              BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_constraint WHERE conname = 'projects_userId_fkey'
+                ) THEN
+                  ALTER TABLE projects
+                  ADD CONSTRAINT projects_userId_fkey
+                  FOREIGN KEY ("userId") REFERENCES users(id);
+                END IF;
+              EXCEPTION WHEN others THEN
+                -- Do nothing if it fails
+              END$$;
             `
-          });
-          
-          if (sqlError) {
-            addLog(`ERROR: Failed to create projects table via SQL: ${sqlError.message}`);
-            return false;
-          }
-          
-          addLog('Created projects table via direct SQL');
+          })
+        });
+        
+        if (!projectsResponse.ok) {
+          const errorText = await projectsResponse.text();
+          addLog(`Warning: Failed to create projects table: ${errorText}`);
         } else {
-          addLog('Created projects table');
+          addLog('Projects table created or already exists');
         }
-      } else {
-        addLog('Projects table already exists');
+      } catch (directError) {
+        addLog(`Warning: Error in direct SQL for projects table: ${directError instanceof Error ? directError.message : String(directError)}`);
       }
       
-      // Check if notes table exists
-      const { error: noteTableError } = await adminClient
-        .from('notes')
+      // Check if projects table exists now
+      const { error: checkProjectsError } = await adminClient
+        .from('projects')
         .select('id')
         .limit(1);
+        
+      if (checkProjectsError) {
+        if (checkProjectsError.code === '42P01') {
+          addLog('ERROR: Projects table still does not exist after creation attempt');
+        } else {
+          addLog(`ERROR checking projects table: ${checkProjectsError.message}`);
+        }
+      } else {
+        addLog('Projects table exists and is accessible');
+      }
       
-      if (noteTableError && noteTableError.code === '42P01') {
-        addLog('Creating notes table...');
-        
-        // Create notes table
-        const createNotesTable = await adminClient.rpc('create_notes_table', {});
-        
-        if (createNotesTable.error) {
-          addLog(`ERROR: Failed to create notes table: ${createNotesTable.error.message}`);
-          
-          // Try direct SQL if RPC fails
-          const { error: sqlError } = await adminClient.rpc('execute_sql', {
+      // Create notes table
+      addLog('Creating notes table if it doesn\'t exist...');
+      try {
+        const notesResponse = await fetch(`https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SERVICE_KEY,
+            'Authorization': `Bearer ${SERVICE_KEY}`,
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
             sql_query: `
               CREATE TABLE IF NOT EXISTS notes (
                 id SERIAL PRIMARY KEY,
-                "projectId" INTEGER NOT NULL REFERENCES projects(id),
-                "parentId" INTEGER REFERENCES notes(id),
+                "projectId" INTEGER NOT NULL,
+                "parentId" INTEGER,
                 content TEXT NOT NULL,
                 "order" TEXT,
                 url TEXT,
@@ -174,25 +231,82 @@ export default function MigrationUtilityPage() {
                 "youtubeLink" TEXT,
                 time TEXT,
                 images TEXT[]
-              )
+              );
+              
+              -- Add foreign keys if not exists
+              DO $$
+              BEGIN
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_constraint WHERE conname = 'notes_projectId_fkey'
+                ) THEN
+                  ALTER TABLE notes
+                  ADD CONSTRAINT notes_projectId_fkey
+                  FOREIGN KEY ("projectId") REFERENCES projects(id);
+                END IF;
+                
+                IF NOT EXISTS (
+                  SELECT 1 FROM pg_constraint WHERE conname = 'notes_parentId_fkey'
+                ) THEN
+                  ALTER TABLE notes
+                  ADD CONSTRAINT notes_parentId_fkey
+                  FOREIGN KEY ("parentId") REFERENCES notes(id);
+                END IF;
+              EXCEPTION WHEN others THEN
+                -- Do nothing if it fails
+              END$$;
             `
-          });
-          
-          if (sqlError) {
-            addLog(`ERROR: Failed to create notes table via SQL: ${sqlError.message}`);
-            return false;
-          }
-          
-          addLog('Created notes table via direct SQL');
+          })
+        });
+        
+        if (!notesResponse.ok) {
+          const errorText = await notesResponse.text();
+          addLog(`Warning: Failed to create notes table: ${errorText}`);
         } else {
-          addLog('Created notes table');
+          addLog('Notes table created or already exists');
         }
-      } else {
-        addLog('Notes table already exists');
+      } catch (directError) {
+        addLog(`Warning: Error in direct SQL for notes table: ${directError instanceof Error ? directError.message : String(directError)}`);
       }
       
-      addLog('All required tables are ready!');
-      return true;
+      // Check if notes table exists now
+      const { error: checkNotesError } = await adminClient
+        .from('notes')
+        .select('id')
+        .limit(1);
+        
+      if (checkNotesError) {
+        if (checkNotesError.code === '42P01') {
+          addLog('ERROR: Notes table still does not exist after creation attempt');
+        } else {
+          addLog(`ERROR checking notes table: ${checkNotesError.message}`);
+        }
+      } else {
+        addLog('Notes table exists and is accessible');
+      }
+      
+      // Final verification
+      const tables = ['users', 'projects', 'notes'];
+      let allTablesExist = true;
+      
+      for (const table of tables) {
+        const { error } = await adminClient
+          .from(table)
+          .select('id')
+          .limit(1);
+          
+        if (error && error.code === '42P01') {
+          addLog(`ERROR: ${table} table does not exist`);
+          allTablesExist = false;
+        }
+      }
+      
+      if (allTablesExist) {
+        addLog('All required tables are ready!');
+        return true;
+      } else {
+        addLog('WARNING: Not all tables exist. Migration may fail.');
+        return false;
+      }
     } catch (error) {
       addLog(`ERROR: Failed to ensure tables exist: ${error instanceof Error ? error.message : String(error)}`);
       return false;
