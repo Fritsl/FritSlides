@@ -57,6 +57,29 @@ function isAuthenticated(req: Request, res: Response, next: Function) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
   setupAuth(app);
+  
+  // Supabase credentials
+  app.get("/api/supabase-credentials", async (req, res) => {
+    try {
+      // Check for environment variables
+      if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+        return res.status(500).json({ 
+          message: "Supabase configuration is missing",
+          url: process.env.SUPABASE_URL || null,
+          anonKey: process.env.SUPABASE_ANON_KEY || null
+        });
+      }
+      
+      // Return the credentials
+      res.json({
+        url: process.env.SUPABASE_URL,
+        anonKey: process.env.SUPABASE_ANON_KEY
+      });
+    } catch (error) {
+      console.error("Error fetching Supabase credentials:", error);
+      res.status(500).json({ message: "Failed to fetch Supabase credentials" });
+    }
+  });
 
   // Project routes
   app.get("/api/projects", isAuthenticated, async (req, res) => {

@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../../types/supabase';
 
 // Initialize with empty values, will be updated later
 let supabaseUrl = '';
@@ -41,7 +40,7 @@ export const createSupabaseClient = async () => {
   }
   
   console.log('Supabase client initialized with URL:', supabaseUrl);
-  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  return createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
