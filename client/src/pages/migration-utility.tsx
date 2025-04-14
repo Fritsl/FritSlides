@@ -13,8 +13,23 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 // Create a direct client with service key for table operations
 let adminClient: SupabaseClient | null = null;
 
-// The service key from the env vars
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndhYXF0cXhveWx4dmh5a2Vzc25jIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDY0MjI3MiwiZXhwIjoyMDYwMjE4MjcyfQ.OkSjrMMVjzsk7vw4p45G3o0sbD2Lgpr-gSXLPuT4ygs';
+// The service key will be fetched from the server
+let SERVICE_KEY = '';
+
+// Function to fetch the service key from the server
+async function fetchServiceKey(): Promise<string> {
+  try {
+    const response = await fetch('/api/supabase-service-key');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch service key: ${response.statusText}`);
+    }
+    const data = await response.json();
+    return data.key || '';
+  } catch (error) {
+    console.error('Error fetching service key:', error);
+    return '';
+  }
+}
 
 type MigrationStatus = 'idle' | 'running' | 'success' | 'error';
 
@@ -34,12 +49,23 @@ export default function MigrationUtilityPage() {
   
   // Initialize the admin client when component mounts
   useEffect(() => {
-    if (!adminClient) {
+    const initializeAdminClient = async () => {
       try {
+        // Fetch the service key from the server
+        const serviceKey = await fetchServiceKey();
+        if (!serviceKey) {
+          console.error('Failed to retrieve service key from server');
+          addLog('ERROR: Failed to retrieve service key from server');
+          return;
+        }
+        
+        SERVICE_KEY = serviceKey;
+        addLog(`Service key retrieved successfully (length: ${serviceKey.length})`);
+        
         const supabaseUrl = localStorage.getItem('supabase-url') || 'https://db.waaqtqxoylxvhykessnc.supabase.co';
         
         // Create admin client with service key
-        adminClient = createClient(supabaseUrl, SERVICE_KEY, {
+        adminClient = createClient(supabaseUrl, serviceKey, {
           auth: {
             autoRefreshToken: false,
             persistSession: false
@@ -48,11 +74,14 @@ export default function MigrationUtilityPage() {
             schema: 'public'
           }
         });
-        console.log('Admin Supabase client initialized with service role');
+        addLog('Admin Supabase client initialized with service role');
       } catch (error) {
         console.error('Failed to initialize admin Supabase client:', error);
+        addLog(`ERROR: Admin client initialization failed: ${error instanceof Error ? error.message : String(error)}`);
       }
-    }
+    };
+    
+    initializeAdminClient();
   }, []);
 
   function addLog(entry: string) {

@@ -62,6 +62,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       anonKey: process.env.SUPABASE_ANON_KEY || ''
     });
   });
+  
+  // API endpoint to expose Supabase service key to authenticated clients
+  app.get("/api/supabase-service-key", isAuthenticated, (req, res) => {
+    res.json({
+      key: process.env.SUPABASE_SERVICE_KEY || ''
+    });
+  });
   // Setup authentication routes
   setupAuth(app);
 
