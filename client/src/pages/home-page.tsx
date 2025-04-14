@@ -26,6 +26,7 @@ import { ImportDialog } from "@/components/ui/import-dialog";
 import { SearchDialog } from "@/components/ui/search-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Project } from "@shared/schema";
+import { User } from "@supabase/supabase-js";
 
 const projectSchema = z.object({
   name: z.string().min(1, "Project name is required").max(50, "Project name is too long"),

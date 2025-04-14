@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { useNoteEditing } from "@/hooks/use-notes";
 import { Button } from "@/components/ui/button";
-import { Project, User, Note } from "@shared/schema";
+import { Project, Note } from "@shared/schema";
+import { User } from "@supabase/supabase-js";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -280,7 +281,7 @@ export default function Header({
                 <DropdownMenuItem>
                   <UserIcon className="h-4 w-4 mr-2" />
                   <span>Logged in as <span className="font-semibold">
-                    {supabaseUser?.email || user?.email || "User"}
+                    {supabaseUser?.email || "User"}
                   </span></span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
