@@ -1,50 +1,30 @@
 import { Link } from "wouter";
-import { LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
-import { useState } from "react";
+import { Database, Home, FileUp } from "lucide-react";
 
 export function SupabaseNav() {
-  const { user, signOut } = useSupabaseAuth();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  const handleLogout = async () => {
-    try {
-      setIsLoggingOut(true);
-      await signOut();
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      setIsLoggingOut(false);
-    }
-  };
-
   return (
-    <div className="flex items-center justify-between px-4 h-16 border-b border-gray-200">
-      <Link href="/" className="text-xl font-bold text-primary">
-        FritSlides
+    <div className="bg-slate-800 p-2 flex gap-2">
+      <Link href="/">
+        <Button variant="outline" size="sm" className="text-white border-slate-600 hover:bg-slate-700">
+          <Home className="h-4 w-4 mr-2" />
+          Home
+        </Button>
       </Link>
       
-      {user && (
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500">
-            {user.email}
-          </span>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-          >
-            {isLoggingOut ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <LogOut className="h-4 w-4 mr-2" />
-            )}
-            {isLoggingOut ? "Logging out..." : "Logout"}
-          </Button>
-        </div>
-      )}
+      <Link href="/migrate">
+        <Button variant="outline" size="sm" className="text-white border-slate-600 hover:bg-slate-700">
+          <FileUp className="h-4 w-4 mr-2" />
+          Migration Utility
+        </Button>
+      </Link>
+      
+      <Link href="/auth">
+        <Button variant="outline" size="sm" className="text-white border-slate-600 hover:bg-slate-700">
+          <Database className="h-4 w-4 mr-2" />
+          Switch to Local Auth
+        </Button>
+      </Link>
     </div>
   );
 }

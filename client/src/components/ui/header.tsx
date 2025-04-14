@@ -32,7 +32,8 @@ import {
   Clock,
   RotateCcw,
   Lock,
-  Unlock
+  Unlock,
+  Database
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
@@ -277,6 +278,10 @@ export default function Header({
                 <DropdownMenuItem>
                   <Settings className="h-4 w-4 mr-2" />
                   <span>Account Settings</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.location.href = "/auth/supabase"}>
+                  <Database className="h-4 w-4 mr-2" />
+                  <span>Switch to Supabase Auth</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setIsLogoutDialogOpen(true)}>
                   <LogOut className="h-4 w-4 mr-2" />

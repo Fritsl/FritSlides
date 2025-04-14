@@ -84,7 +84,7 @@ export default function SupabaseHeader() {
                 {/* Migration section */}
                 <DropdownMenuGroup>
                   <DropdownMenuItem onClick={() => window.location.href = "/migrate"}>
-                    <FileImport className="h-4 w-4 mr-2" />
+                    <FileUp className="h-4 w-4 mr-2" />
                     <span>Migration Utility</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => window.location.href = "/auth"}>
@@ -100,14 +100,14 @@ export default function SupabaseHeader() {
 
       {/* Logout confirmation dialog */}
       <ConfirmationDialog
-        open={isLogoutDialogOpen}
+        isOpen={isLogoutDialogOpen}
         onOpenChange={setIsLogoutDialogOpen}
         title="Logout"
         description="Are you sure you want to logout? Any unsaved changes will be lost."
-        action="Logout"
-        actionVariant="destructive"
-        onAction={handleLogout}
-        isActionLoading={isLoggingOut}
+        confirmText="Logout"
+        confirmVariant="destructive"
+        onConfirm={handleLogout}
+        isPending={isLoggingOut}
       />
     </header>
   );
