@@ -315,8 +315,18 @@ export default function MigrationUtilityPage() {
   
   // Function to directly test SQL execution capability
   async function testDirectSQL() {
-    addLog('Testing direct SQL execution...');
     try {
+      addLog('----------- DIRECT SQL TEST STARTED -----------');
+      addLog('Testing direct SQL execution capabilities...');
+      
+      // Check if we have the service key available
+      if (!SERVICE_KEY) {
+        addLog('ERROR: Service key is not available. Cannot perform SQL operations.');
+        throw new Error('Service key is missing');
+      } else {
+        addLog('Service key is available (length: ' + SERVICE_KEY.length + ')');
+      }
+      
       // First, initialize the admin client if not already done
       if (!adminClient) {
         const supabaseUrl = localStorage.getItem('supabase-url') || 'https://db.waaqtqxoylxvhykessnc.supabase.co';
@@ -327,57 +337,9 @@ export default function MigrationUtilityPage() {
         addLog('Created admin client with service key');
       }
       
-      // Try a simple SQL query using the REST API
-      addLog('Executing test SQL query via REST API...');
-      
-      // Using direct fetch to the REST API endpoint
-      const response = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SERVICE_KEY,
-          'Authorization': `Bearer ${SERVICE_KEY}`,
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
-          sql_query: 'SELECT current_database() as db_name;'
-        })
-      });
-      
-      const responseBody = await response.text();
-      addLog(`Response status: ${response.status} ${response.statusText}`);
-      addLog(`Response body: ${responseBody}`);
-      
-      if (!response.ok) {
-        throw new Error(`API call failed: ${response.status} ${response.statusText} - ${responseBody}`);
-      }
-      
-      // Try creating a simple test table
-      addLog('Attempting to create a test table...');
-      const createTableResponse = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': SERVICE_KEY,
-          'Authorization': `Bearer ${SERVICE_KEY}`,
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify({
-          sql_query: 'CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY, name TEXT);'
-        })
-      });
-      
-      const createTableBody = await createTableResponse.text();
-      addLog(`Create table response: ${createTableResponse.status} ${createTableResponse.statusText}`);
-      addLog(`Create table body: ${createTableBody}`);
-      
-      if (!createTableResponse.ok) {
-        throw new Error(`Table creation failed: ${createTableResponse.status} ${createTableResponse.statusText} - ${createTableBody}`);
-      }
-      
-      // Check if execute_sql function exists
-      addLog('Checking if execute_sql function exists...');
-      const checkFunctionResponse = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc', {
+      // 1. Test if we can ping the Supabase API
+      addLog('1. Testing API accessibility...');
+      const pingResponse = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/', {
         method: 'GET',
         headers: {
           'apikey': SERVICE_KEY,
@@ -385,13 +347,124 @@ export default function MigrationUtilityPage() {
         }
       });
       
-      const functions = await checkFunctionResponse.json();
-      addLog(`Available RPC functions: ${JSON.stringify(functions)}`);
+      addLog(`API ping response: ${pingResponse.status} ${pingResponse.statusText}`);
+      
+      if (!pingResponse.ok) {
+        const pingBody = await pingResponse.text();
+        addLog(`API ping error body: ${pingBody}`);
+        throw new Error(`Cannot access Supabase API: ${pingResponse.status} ${pingResponse.statusText}`);
+      }
+      
+      // 2. Test if the service key has permission to create tables
+      addLog('2. Testing RPC functions availability...');
+      try {
+        const functionResponse = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/', {
+          method: 'GET',
+          headers: {
+            'apikey': SERVICE_KEY,
+            'Authorization': `Bearer ${SERVICE_KEY}`
+          }
+        });
+        
+        if (functionResponse.ok) {
+          const functionList = await functionResponse.json();
+          addLog(`Available RPC functions: ${JSON.stringify(functionList)}`);
+          
+          if (Array.isArray(functionList) && functionList.length > 0) {
+            addLog(`Found ${functionList.length} RPC functions`);
+            // Check if execute_sql is in the list
+            const hasExecuteSql = functionList.some((fn: any) => fn.name === 'execute_sql');
+            addLog(`execute_sql function ${hasExecuteSql ? 'is' : 'is NOT'} available`);
+          } else {
+            addLog('No RPC functions found or invalid response format');
+          }
+        } else {
+          const errorBody = await functionResponse.text();
+          addLog(`Failed to get RPC functions: ${functionResponse.status} ${functionResponse.statusText}`);
+          addLog(`Error body: ${errorBody}`);
+        }
+      } catch (rpcError) {
+        addLog(`RPC functions check error: ${rpcError instanceof Error ? rpcError.message : String(rpcError)}`);
+      }
+      
+      // 3. Try to directly execute a simple query
+      addLog('3. Testing direct SQL query execution...');
+      try {
+        const response = await fetch('https://db.waaqtqxoylxvhykessnc.supabase.co/rest/v1/rpc/execute_sql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SERVICE_KEY,
+            'Authorization': `Bearer ${SERVICE_KEY}`,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify({
+            sql_query: 'SELECT current_database() as db_name;'
+          })
+        });
+        
+        const responseBody = await response.text();
+        addLog(`SQL query response status: ${response.status} ${response.statusText}`);
+        addLog(`SQL query response body: ${responseBody}`);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            addLog('ERROR: execute_sql function not found (404). This is likely because:');
+            addLog('1. The function has not been created in your Supabase project');
+            addLog('2. You need to create this function in the Supabase SQL editor');
+          } else {
+            addLog(`ERROR: SQL query failed with status ${response.status}`);
+          }
+          throw new Error(`API call failed: ${response.status} ${response.statusText} - ${responseBody}`);
+        }
+        
+        addLog('SQL query executed successfully!');
+      } catch (sqlError) {
+        addLog(`SQL query execution error: ${sqlError instanceof Error ? sqlError.message : String(sqlError)}`);
+      }
+      
+      // 4. Check if we can see existing tables
+      addLog('4. Checking existing tables using standard API...');
+      try {
+        const { data, error } = await adminClient.rpc('execute_sql', {
+          sql_query: "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';"
+        });
+        
+        if (error) {
+          addLog(`ERROR checking tables: ${error.message}`);
+          if (error.message.includes('function') && error.message.includes('does not exist')) {
+            addLog('The execute_sql function does not exist in your Supabase project.');
+            addLog('This function needs to be created for our migration to work.');
+          }
+        } else if (data) {
+          addLog(`Found tables: ${JSON.stringify(data)}`);
+        } else {
+          addLog('No table data returned from query');
+        }
+      } catch (tablesError) {
+        addLog(`Tables check error: ${tablesError instanceof Error ? tablesError.message : String(tablesError)}`);
+      }
+      
+      addLog('----------- DIRECT SQL TEST COMPLETED -----------');
+      addLog('CONCLUSION: We need to create an execute_sql function in Supabase.');
+      addLog('Please follow the instructions to add this function to your Supabase project.');
+      
+      toast({
+        title: "SQL Test Completed",
+        description: "Check the log for results. You may need to create an execute_sql function.",
+      });
       
       return true;
     } catch (error) {
       addLog(`ERROR in direct SQL test: ${error instanceof Error ? error.message : String(error)}`);
       console.error('Direct SQL test error:', error);
+      
+      toast({
+        title: "SQL Test Failed",
+        description: error instanceof Error ? error.message : String(error),
+        variant: "destructive"
+      });
+      
       return false;
     }
   }
@@ -796,6 +869,38 @@ export default function MigrationUtilityPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-8 p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-md">
+            <h3 className="text-lg font-semibold mb-2 text-amber-800 dark:text-amber-300">Important: SQL Function Setup Required</h3>
+            <p className="mb-2">Before you can migrate data, you need to create an <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded">execute_sql</code> function in your Supabase project:</p>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              <li>Log in to your Supabase dashboard</li>
+              <li>Go to the SQL Editor</li>
+              <li>Create a new query</li>
+              <li>Paste the following SQL code:</li>
+            </ol>
+            <pre className="bg-gray-800 text-gray-100 p-3 rounded mt-2 text-sm overflow-x-auto">
+{`CREATE OR REPLACE FUNCTION execute_sql(sql_query TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  result JSONB;
+BEGIN
+  EXECUTE sql_query;
+  RETURN '{"success": true}'::JSONB;
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object(
+    'success', false,
+    'error', SQLERRM,
+    'detail', SQLSTATE
+  );
+END;
+$$;`}
+            </pre>
+            <p className="mt-2 text-sm">This function will allow the migration utility to create tables and execute SQL commands.</p>
+          </div>
           <Tabs defaultValue="connection">
             <TabsList className="mb-4">
               <TabsTrigger value="connection">Connection Test</TabsTrigger>
