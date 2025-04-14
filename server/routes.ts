@@ -48,10 +48,29 @@ const upload = multer({
 
 // Authentication middleware
 function isAuthenticated(req: Request, res: Response, next: Function) {
-  if (req.isAuthenticated()) {
+  // For Supabase authentication, we'll check if the request contains a valid user ID in a header
+  // This is a temporary solution until we fully implement Supabase authentication on the server
+  
+  if (req.headers['x-supabase-user-id']) {
+    // If Supabase user ID is provided in header, use it
+    const supabaseUserId = req.headers['x-supabase-user-id'] as string;
+    
+    // Set up the user object that the rest of the code expects
+    req.user = {
+      id: supabaseUserId,
+      username: req.headers['x-supabase-user-email'] as string || supabaseUserId,
+      lastOpenedProjectId: null
+    };
+    
+    console.log("Authenticated with Supabase user ID:", supabaseUserId);
+    return next();
+  } 
+  else if (req.isAuthenticated && req.isAuthenticated()) {
+    // Fallback to local passport authentication (will be removed in the future)
     return next();
   }
-  return res.status(401).json({ message: "Unauthorized" });
+  
+  return res.status(401).json({ message: "Unauthorized - No valid authentication found" });
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -944,7 +963,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import notes into a project
   app.post("/api/projects/:projectId/import", isAuthenticated, async (req, res) => {
     try {
+      console.log("Import request received with user:", req.user ? `ID: ${req.user.id}` : "Not authenticated");
+      console.log("Request body type:", typeof req.body);
+      console.log("Request body has notes array:", req.body && Array.isArray(req.body.notes));
+      
       const projectId = parseInt(req.params.projectId);
+      console.log("Project ID from params:", projectId);
       
       // Generate a unique import ID
       const importId = `import-${projectId}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -1227,7 +1251,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (err) {
       console.error("Error importing notes:", err);
-      return res.status(500).json({ message: "Failed to import notes" });
+      
+      // Detailed error logging
+      if (err instanceof Error) {
+        console.error("Error message:", err.message);
+        console.error("Error stack:", err.stack);
+      }
+      
+      // Check if this is an authentication issue
+      if (req.isAuthenticated && !req.isAuthenticated()) {
+        console.error("Authentication failed during import - user not authenticated");
+        return res.status(401).json({ 
+          message: "Authentication required for import",
+          error: "Not authenticated"
+        });
+      }
+      
+      return res.status(500).json({ 
+        message: "Failed to import notes",
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
   });
 
