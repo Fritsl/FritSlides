@@ -578,9 +578,9 @@ export default function PresentMode() {
           <div className="max-w-7xl w-full relative">
             {isOverviewSlide ? (
               <OverviewSlide 
-                slide={currentNote} 
-                navigateToSlide={navigateToSlide}
-                flattenedNotes={flattenedNotes}
+                parentNote={currentNote} 
+                childNotes={currentNote.childNotes || []}
+                theme={currentTheme}
               />
             ) : isStartSlide ? (
               <div className="flex flex-col items-center justify-center text-center">
