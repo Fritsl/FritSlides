@@ -615,17 +615,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Image upload
-  app.post("/api/upload", isAuthenticated, upload.single("image"), (req, res) => {
+  // Image upload - using Supabase Storage
+  app.post("/api/upload", isAuthenticated, upload.single("image"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
       
-      const imageUrl = `/api/images/${req.file.filename}`;
-      return res.status(201).json({ imageUrl });
+      // Import the supabase client
+      const { supabase } = await import('./supabase');
+      
+      // Create a buffer from the file
+      const fileBuffer = req.file.buffer || fs.readFileSync(req.file.path);
+      const fileName = req.file.filename;
+      
+      // Upload to Supabase Storage
+      const { data, error } = await supabase
+        .storage
+        .from('slides-images')
+        .upload(fileName, fileBuffer, {
+          contentType: req.file.mimetype,
+          cacheControl: '3600'
+        });
+      
+      if (error) {
+        console.error("Supabase upload error:", error);
+        
+        // Fall back to local storage if Supabase upload fails
+        const localImageUrl = `/api/images/${req.file.filename}`;
+        console.log(`Falling back to local storage: ${localImageUrl}`);
+        return res.status(201).json({ imageUrl: localImageUrl });
+      }
+      
+      // Get the public URL
+      const { data: urlData } = supabase
+        .storage
+        .from('slides-images')
+        .getPublicUrl(fileName);
+      
+      const supabaseImageUrl = urlData.publicUrl;
+      console.log(`Image uploaded to Supabase: ${supabaseImageUrl}`);
+      
+      return res.status(201).json({ imageUrl: supabaseImageUrl });
     } catch (err) {
       console.error("Error uploading image:", err);
+      
+      // Fall back to local storage in case of any errors
+      if (req.file && req.file.filename) {
+        const localImageUrl = `/api/images/${req.file.filename}`;
+        console.log(`Error occurred, falling back to local storage: ${localImageUrl}`);
+        return res.status(201).json({ imageUrl: localImageUrl });
+      }
+      
       return res.status(500).json({ message: "Failed to upload image" });
     }
   });
