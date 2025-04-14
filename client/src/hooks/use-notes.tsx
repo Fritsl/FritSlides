@@ -538,16 +538,6 @@ export function useNotes(projectId: number | null) {
     },
   });
 
-  // Helper function for present-mode.tsx
-  const getNotes = (projId: number) => {
-    // If the requested project ID matches our current project ID, return the cached notes
-    if (projId === projectId && notes) {
-      return notes;
-    }
-    // Otherwise return an empty array (the component should fetch its own data)
-    return [];
-  };
-
   return {
     notes,
     isLoading,
@@ -561,7 +551,6 @@ export function useNotes(projectId: number | null) {
     startEditing,
     stopEditing,
     editingNoteId,
-    isEditing,
-    getNotes
+    isEditing
   };
 }

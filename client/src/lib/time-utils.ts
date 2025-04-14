@@ -119,41 +119,6 @@ export function minutesToTime(minutes: number): string {
 }
 
 /**
- * Alias for minutesToTime to maintain backward compatibility
- */
-export const minutesToString = minutesToTime;
-
-/**
- * Format minutes to a human-readable string with hours and minutes
- * For display in timing panels
- */
-export function formatMinutesToHumanReadable(minutes: number): string {
-  if (isNaN(minutes) || minutes === 0) {
-    return "On Time";
-  }
-  
-  const absMinutes = Math.abs(minutes);
-  const hours = Math.floor(absMinutes / 60);
-  const mins = Math.floor(absMinutes % 60);
-  
-  let result = "";
-  
-  if (hours > 0) {
-    result += `${hours}h `;
-  }
-  
-  if (mins > 0 || hours === 0) {
-    result += `${mins}m`;
-  }
-  
-  if (minutes < 0) {
-    return `${result} ahead`;
-  } else {
-    return `${result} behind`;
-  }
-}
-
-/**
  * Calculate time per slide in minutes
  */
 export function calculateTimePerSlide(totalTimeInMinutes: number, slideCount: number): number {
