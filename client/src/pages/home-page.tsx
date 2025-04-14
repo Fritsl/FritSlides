@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { useProjects } from "@/hooks/use-projects";
 import { useNotes, useNoteEditing } from "@/hooks/use-notes";
 import { useLastOpenedProject } from "@/hooks/use-last-project";
@@ -35,7 +36,9 @@ const projectSchema = z.object({
 });
 
 export default function HomePage() {
-  const { user } = useAuth();
+  const { user: localUser } = useAuth();
+  const { user: supabaseUser } = useSupabaseAuth();
+  const user = localUser || supabaseUser;
   const { projects, isLoading: isLoadingProjects, createProject, updateProject } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const { notes, isLoading: isLoadingNotes } = useNotes(selectedProjectId);
@@ -202,7 +205,7 @@ export default function HomePage() {
         form.reset();
         
         // Update the last opened project in the database
-        if (user) {
+        if (localUser) {
           fetch('/api/user/lastProject', {
             method: 'POST',
             headers: {
@@ -212,6 +215,11 @@ export default function HomePage() {
           }).catch(error => {
             console.error('Error updating last opened project:', error);
           });
+        }
+        // If using Supabase, update last opened project there
+        else if (supabaseUser) {
+          // We'll implement this in the Supabase migration features
+          console.log("Using Supabase authentication, project creation successful");
         }
       },
     });
@@ -476,7 +484,7 @@ export default function HomePage() {
           setSelectedProjectId(id);
           
           // Update the last opened project in the database
-          if (user) {
+          if (localUser) {
             fetch('/api/user/lastProject', {
               method: 'POST',
               headers: {
@@ -486,6 +494,11 @@ export default function HomePage() {
             }).catch(error => {
               console.error('Error updating last opened project:', error);
             });
+          }
+          // If using Supabase, update the last project there
+          else if (supabaseUser) {
+            // We'll implement this in the Supabase migration features
+            console.log("Using Supabase authentication, updating last viewed project");
           }
         }}
         onNewProject={() => setIsNewProjectDialogOpen(true)}
