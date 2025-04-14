@@ -87,6 +87,12 @@ export function getImageUrl(path: string): string {
  */
 export async function uploadImageToSupabase(file: File): Promise<string | null> {
   try {
+    // Check if Supabase client is properly configured
+    if (!supabase?.storage?.from) {
+      console.warn('Supabase storage not available, skipping upload');
+      return null;
+    }
+  
     // Create a unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
@@ -104,13 +110,28 @@ export async function uploadImageToSupabase(file: File): Promise<string | null> 
       return null;
     }
     
-    // Get the public URL
-    const { data: urlData } = supabase
-      .storage
-      .from('slides-images')
-      .getPublicUrl(data.path);
+    if (!data || !data.path) {
+      console.error('Supabase upload successful but no path returned');
+      return null;
+    }
     
-    return urlData.publicUrl;
+    // Get the public URL
+    try {
+      const { data: urlData } = supabase
+        .storage
+        .from('slides-images')
+        .getPublicUrl(data.path);
+      
+      if (urlData && urlData.publicUrl) {
+        return urlData.publicUrl;
+      } else {
+        console.error('No publicUrl returned from Supabase');
+        return null;
+      }
+    } catch (urlError) {
+      console.error('Error getting public URL:', urlError);
+      return null;
+    }
   } catch (error) {
     console.error('Error uploading to Supabase:', error);
     return null;

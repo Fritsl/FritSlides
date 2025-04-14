@@ -24,24 +24,59 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 // Create a bucket for image storage if it doesn't exist
 async function initializeStorage() {
   try {
-    const { data: buckets } = await supabase.storage.listBuckets();
-    
-    // Check if our bucket already exists
     const bucketName = 'slides-images';
-    const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
     
-    if (!bucketExists) {
-      // Create the bucket if it doesn't exist
+    // First check if we can list buckets (to verify permissions)
+    try {
+      const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+      
+      if (listError) {
+        console.warn(`Cannot list Supabase buckets: ${listError.message}`);
+        // Continue anyway, we'll try to create the bucket
+      } else {
+        // Check if our bucket already exists
+        const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
+        
+        if (bucketExists) {
+          console.log(`Bucket '${bucketName}' already exists in Supabase storage.`);
+          return;
+        }
+      }
+    } catch (listError) {
+      console.warn(`Error listing Supabase buckets: ${listError}`);
+      // Continue anyway, we'll try to create the bucket
+    }
+    
+    // Try to create the bucket
+    try {
       const { data, error } = await supabase.storage.createBucket(bucketName, {
         public: true, // Make files publicly accessible
         fileSizeLimit: 5 * 1024 * 1024, // 5MB limit
       });
       
       if (error) {
-        console.error(`Failed to create storage bucket: ${error.message}`);
+        if (error.message.includes('already exists')) {
+          console.log(`Bucket '${bucketName}' already exists in Supabase storage.`);
+        } else {
+          console.error(`Failed to create storage bucket: ${error.message}`);
+        }
       } else {
         console.log(`Created storage bucket: ${bucketName}`);
       }
+    } catch (createError) {
+      console.error(`Failed to create bucket: ${createError}`);
+    }
+    
+    // Try to update bucket policy to public even if creation failed
+    // (in case bucket exists but isn't public)
+    try {
+      await supabase.storage.updateBucket(bucketName, {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024,
+      });
+      console.log(`Updated bucket '${bucketName}' policy to public.`);
+    } catch (updateError) {
+      console.warn(`Could not update bucket policy: ${updateError}`);
     }
   } catch (error) {
     console.error('Error initializing Supabase storage:', error);
