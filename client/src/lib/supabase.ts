@@ -15,7 +15,35 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create and export the Supabase client for browser usage
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+let supabaseClient;
+try {
+  if (supabaseUrl && supabaseAnonKey) {
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+  } else {
+    // Create a mock client if credentials are missing
+    supabaseClient = {
+      storage: {
+        from: () => ({
+          upload: () => Promise.resolve({ error: new Error('Supabase not configured') }),
+          getPublicUrl: () => ({ data: { publicUrl: '' } })
+        })
+      }
+    };
+  }
+} catch (error) {
+  console.error('Error initializing Supabase client:', error);
+  // Create a mock client if initialization fails
+  supabaseClient = {
+    storage: {
+      from: () => ({
+        upload: () => Promise.resolve({ error: new Error('Supabase initialization failed') }),
+        getPublicUrl: () => ({ data: { publicUrl: '' } })
+      })
+    }
+  };
+}
+
+export const supabase = supabaseClient;
 
 /**
  * Utility function to get a direct URL to the image in Supabase Storage
@@ -33,8 +61,25 @@ export function getImageUrl(path: string): string {
     return path;
   }
   
-  // Otherwise, construct a Supabase URL
-  return supabase.storage.from('slides-images').getPublicUrl(path).data.publicUrl;
+  try {
+    // Otherwise, try to construct a Supabase URL
+    if (supabase && supabase.storage && typeof supabase.storage.from === 'function') {
+      const bucket = supabase.storage.from('slides-images');
+      if (bucket && typeof bucket.getPublicUrl === 'function') {
+        const result = bucket.getPublicUrl(path);
+        if (result && result.data && result.data.publicUrl) {
+          return result.data.publicUrl;
+        }
+      }
+    }
+    
+    // If any part of the process fails, fall back to the original path
+    console.warn(`Could not get Supabase URL for ${path}, using original path`);
+    return path;
+  } catch (error) {
+    console.error('Error getting Supabase URL:', error);
+    return path;
+  }
 }
 
 /**
