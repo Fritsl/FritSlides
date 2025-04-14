@@ -312,8 +312,7 @@ declare module './storage' {
 // Add temporary implementation to the storage class
 storage.getAllUsers = async function(): Promise<User[]> {
   try {
-    // Add implementation here - will depend on your database type
-    // For PostgreSQL:
+    // Use the PostgreSQL database directly
     const { db } = await import('./db');
     const { users } = await import('@shared/schema');
     const allUsers = await db.select().from(users);

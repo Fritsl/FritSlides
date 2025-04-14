@@ -327,7 +327,28 @@ export default function MigrationUtilityPage() {
       
       // Check if we have full Supabase client with database functionality
       if (!supabase.from) {
-        throw new Error('Database client not available - please set up proper Supabase credentials');
+        // Now we'll specifically check if we're using the real client or mock client
+        addLog('Testing if we have a real Supabase client...');
+        try {
+          // Try fetching directly using the API URL
+          const apiUrl = `https://${process.env.REACT_APP_SUPABASE_URL || 'db.waaqtqxoylxvhykessnc.supabase.co'}/rest/v1/users?select=id&limit=1`;
+          const response = await fetch(apiUrl, {
+            headers: {
+              'apikey': process.env.REACT_APP_SUPABASE_ANON_KEY || localStorage.getItem('supabase-anon-key') || '',
+              'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY || localStorage.getItem('supabase-anon-key') || ''}`,
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`API request failed: ${response.statusText}`);
+          }
+          
+          // We have direct API access to Supabase
+          addLog('Direct Supabase API access is working!');
+        } catch (apiError) {
+          // We can't access the API directly either
+          throw new Error('Cannot access Supabase API. Please check your credentials and internet connection.');
+        }
       }
       
       // Step 1: Migrate user
