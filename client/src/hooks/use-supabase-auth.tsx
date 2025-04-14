@@ -103,11 +103,22 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       
       // Check if auth is available
-      if (!supabase.auth || typeof supabase.auth.signInWithPassword !== 'function') {
-        console.error('Supabase auth not properly initialized');
+      if (!supabase?.auth) {
+        console.error('Supabase auth not properly initialized - auth object missing');
         toast({
           title: "Authentication Error",
           description: "The authentication system is not properly initialized. Please try again later.",
+          variant: "destructive",
+        });
+        return { success: false, error: "Authentication system unavailable" };
+      }
+      
+      // TypeScript safety check for signInWithPassword method
+      if (typeof (supabase.auth as any).signInWithPassword !== 'function') {
+        console.error('Supabase auth not properly initialized - signInWithPassword missing');
+        toast({
+          title: "Authentication Error",
+          description: "The authentication system is not properly configured. Please try again later.",
           variant: "destructive",
         });
         return { success: false, error: "Authentication system unavailable" };
@@ -159,11 +170,22 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       
       // Check if auth is available
-      if (!supabase.auth || typeof supabase.auth.signUp !== 'function') {
-        console.error('Supabase auth not properly initialized');
+      if (!supabase?.auth) {
+        console.error('Supabase auth not properly initialized - auth object missing');
         toast({
           title: "Authentication Error",
           description: "The registration system is not properly initialized. Please try again later.",
+          variant: "destructive",
+        });
+        return { success: false, error: "Authentication system unavailable" };
+      }
+      
+      // TypeScript safety check for signUp method
+      if (typeof (supabase.auth as any).signUp !== 'function') {
+        console.error('Supabase auth not properly initialized - signUp missing');
+        toast({
+          title: "Authentication Error",
+          description: "The registration system is not properly configured. Please try again later.",
           variant: "destructive",
         });
         return { success: false, error: "Authentication system unavailable" };
@@ -217,11 +239,22 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       
       // Check if auth is available
-      if (!supabase.auth || typeof supabase.auth.signOut !== 'function') {
-        console.error('Supabase auth not properly initialized');
+      if (!supabase?.auth) {
+        console.error('Supabase auth not properly initialized - auth object missing');
         toast({
           title: "Authentication Error",
           description: "The sign out function is not properly initialized. Please try again later.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // TypeScript safety check for signOut method
+      if (typeof (supabase.auth as any).signOut !== 'function') {
+        console.error('Supabase auth not properly initialized - signOut missing');
+        toast({
+          title: "Authentication Error",
+          description: "The sign out function is not properly configured. Please try again later.",
           variant: "destructive",
         });
         return;
