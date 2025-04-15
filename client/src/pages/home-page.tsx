@@ -495,6 +495,7 @@ export default function HomePage() {
           onImportNotes={() => {}}
           onPresentMode={() => {}}
           onShowTimeDistribution={() => {}}
+          onShowTimeGantt={() => {}}
         />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center p-8 max-w-md">
