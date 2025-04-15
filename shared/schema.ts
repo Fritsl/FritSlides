@@ -23,10 +23,11 @@ export const projects = pgTable("projects", {
   // No updatedAt field in the database
 });
 
+// Fixed the notes table with proper type annotation to avoid self-reference error
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
   projectId: integer("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  parentId: integer("parentId").references(() => notes.id, { onDelete: "set null" }),
+  parentId: integer("parentId").references((): any => notes.id, { onDelete: "set null" }),
   content: text("content").notNull(),
   url: text("url"),
   linkText: text("linkText"),

@@ -38,45 +38,57 @@ export class SupabaseStorage implements IStorage {
   
   // Helper: Convert user from Supabase format to our schema format
   private convertSupabaseUser(data: any): User {
+    if (!data) {
+      console.error('Null or undefined data passed to convertSupabaseUser');
+      throw new Error('Invalid user data');
+    }
     return {
-      id: data.id,
-      username: data.username || `user_${data.id.substring(0, 8)}`,
-      password: data.password, // May be null when using Supabase Auth
-      lastOpenedProjectId: data.lastOpenedProjectId
+      id: data.id || '',
+      username: data.username || `user_${typeof data.id === 'string' ? data.id.substring(0, 8) : 'unknown'}`,
+      password: data.password || null, // May be null when using Supabase Auth
+      lastOpenedProjectId: data.lastOpenedProjectId || null
     };
   }
   
   // Helper: Convert project from Supabase format to our schema format
   private convertSupabaseProject(data: any): Project {
+    if (!data) {
+      console.error('Null or undefined data passed to convertSupabaseProject');
+      throw new Error('Invalid project data');
+    }
     return {
-      id: data.id,
-      userId: data.userId,
-      name: data.name,
-      startSlogan: data.startSlogan,
-      endSlogan: data.endSlogan,
-      author: data.author,
-      lastViewedSlideIndex: data.lastViewedSlideIndex,
-      isLocked: data.isLocked,
-      createdAt: new Date(data.createdAt)
+      id: data.id || 0,
+      userId: data.userId || '',
+      name: data.name || '',
+      startSlogan: data.startSlogan || '',
+      endSlogan: data.endSlogan || '',
+      author: data.author || '',
+      lastViewedSlideIndex: typeof data.lastViewedSlideIndex === 'number' ? data.lastViewedSlideIndex : 0,
+      isLocked: typeof data.isLocked === 'boolean' ? data.isLocked : false,
+      createdAt: data.createdAt ? new Date(data.createdAt) : new Date()
     };
   }
   
   // Helper: Convert note from Supabase format to our schema format
   private convertSupabaseNote(data: any): Note {
+    if (!data) {
+      console.error('Null or undefined data passed to convertSupabaseNote');
+      throw new Error('Invalid note data');
+    }
     return {
-      id: data.id,
-      projectId: data.projectId,
-      parentId: data.parentId,
-      content: data.content,
-      url: data.url,
-      linkText: data.linkText,
-      youtubeLink: data.youtubeLink,
-      time: data.time,
-      isDiscussion: data.isDiscussion,
-      images: data.images || [],
-      order: data.order.toString(), // Convert to string as our schema expects
-      createdAt: new Date(data.createdAt),
-      updatedAt: new Date(data.updatedAt)
+      id: data.id || 0,
+      projectId: data.projectId || 0,
+      parentId: data.parentId, // Can be null
+      content: data.content || '',
+      url: data.url || null,
+      linkText: data.linkText || null,
+      youtubeLink: data.youtubeLink || null,
+      time: data.time || null,
+      isDiscussion: typeof data.isDiscussion === 'boolean' ? data.isDiscussion : false,
+      images: Array.isArray(data.images) ? data.images : [],
+      order: data.order ? data.order.toString() : "0", // Convert to string as our schema expects
+      createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+      updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date()
     };
   }
   
@@ -751,12 +763,20 @@ export class SupabaseStorage implements IStorage {
       const supabase = await getSupabaseClient();
       if (!supabase) throw new Error('Failed to get Supabase client');
       
-      // First get all notes with the specified parent
-      const { data, error } = await supabase
+      // First get all notes with the specified parent - handling null properly
+      let query = supabase
         .from('notes')
         .select('*')
-        .eq('parentId', parentId)
         .order('order', { ascending: true });
+        
+      // Use IS NULL for null values, eq for non-null values
+      if (parentId === null) {
+        query = query.is('parentId', null);
+      } else {
+        query = query.eq('parentId', parentId);
+      }
+      
+      const { data, error } = await query;
       
       if (error) {
         console.error('Error getting notes for normalization from Supabase:', error);
@@ -771,16 +791,24 @@ export class SupabaseStorage implements IStorage {
       for (let i = 0; i < data.length; i++) {
         const newOrder = i * 10; // Space them out by 10
         
-        const { error: updateError } = await supabase
-          .from('notes')
-          .update({ 
+        // Type-safe update
+        if (data[i] && data[i].id) {
+          const noteUpdate: Record<string, any> = { 
             order: newOrder,
             updatedAt: new Date().toISOString()
-          })
-          .eq('id', data[i].id);
-        
-        if (updateError) {
-          console.error(`Error normalizing order for note ${data[i].id}:`, updateError);
+          };
+          
+          const { error: updateError } = await supabase
+            .from('notes')
+            .update(noteUpdate)
+            .eq('id', data[i].id);
+          
+          if (updateError) {
+            console.error(`Error normalizing order for note ${data[i].id}:`, updateError);
+            return false;
+          }
+        } else {
+          console.error(`Invalid note data at index ${i}`);
           return false;
         }
       }
@@ -814,10 +842,17 @@ export class SupabaseStorage implements IStorage {
       
       // Get all unique parent IDs
       const parentIds = new Set<number | null>();
-      data.forEach(note => parentIds.add(note.parentId));
+      data.forEach(note => {
+        if (note && note.parentId !== undefined) {
+          parentIds.add(note.parentId as number | null);
+        }
+      });
+      
+      // Convert Set to Array to avoid iteration issues
+      const parentIdArray = Array.from(parentIds);
       
       // Normalize each parent group
-      for (const parentId of parentIds) {
+      for (const parentId of parentIdArray) {
         const success = await this.normalizeNoteOrders(parentId);
         if (!success) {
           console.error(`Failed to normalize notes with parent ${parentId}`);
