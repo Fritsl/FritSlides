@@ -814,8 +814,8 @@ export class SupabaseStorage implements IStorage {
       // Unfortunately, Supabase doesn't support batch updates directly, so we need to do them one by one
       for (const update of updates) {
         const supabaseUpdate: any = {
-          "parentId": update.parentId, // camelCase to match database column
-          "updatedAt": new Date().toISOString() // camelCase to match database column
+          "parentId": update.parentId // camelCase to match database column
+          // Removed updatedAt as it doesn't exist in Supabase table
         };
         
         if (update.order !== undefined) {
@@ -876,8 +876,8 @@ export class SupabaseStorage implements IStorage {
         // Type-safe update
         if (data[i] && data[i].id) {
           const noteUpdate: Record<string, any> = { 
-            "order": newOrder,
-            "updatedAt": new Date().toISOString()
+            "order": newOrder
+            // Removed updatedAt as it doesn't exist in Supabase table
           };
           
           const { error: updateError } = await supabase
