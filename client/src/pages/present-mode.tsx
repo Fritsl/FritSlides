@@ -31,6 +31,7 @@ import {
 import { OverviewSlide } from "@/components/ui/overview-slide";
 import { FullscreenToggle } from "@/components/ui/fullscreen-toggle";
 import screenfull from "screenfull";
+import TimeGanttDialog from "@/components/ui/time-gantt-dialog";
 
 // Define the PresentationNote interface extending the Note interface
 interface PresentationNote extends Note {
@@ -100,6 +101,7 @@ export default function PresentMode() {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [initializedFromStored, setInitializedFromStored] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showGanttDialog, setShowGanttDialog] = useState(false);
   
   // Compute loading state
   const isLoading = projectsLoading || notesLoading;
@@ -1117,10 +1119,11 @@ export default function PresentMode() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div 
-                      className="relative h-8 sm:h-10 flex items-center justify-center"
+                      className="relative h-8 sm:h-10 flex items-center justify-center cursor-pointer"
                       style={{ 
                         width: '140px', 
                       }}
+                      onClick={() => setShowGanttDialog(true)}
                     >
                       {/* White dot (current position) - always centered with 35% opacity */}
                       <div 
@@ -1261,6 +1264,17 @@ export default function PresentMode() {
                 </Tooltip>
               </TooltipProvider>
             </div>
+          )}
+
+          {/* Gantt chart dialog */}
+          {showGanttDialog && notes && currentProject && (
+            <TimeGanttDialog
+              isOpen={showGanttDialog}
+              onClose={() => setShowGanttDialog(false)}
+              projectId={projectId ?? 0}
+              projectName={currentProject.name}
+              notes={notes}
+            />
           )}
         </>
       )}
