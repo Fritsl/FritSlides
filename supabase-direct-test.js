@@ -1,109 +1,122 @@
-// The most basic possible Supabase connection test
-import { createClient } from '@supabase/supabase-js';
+// Direct test and fix for Supabase database
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
-async function runTest() {
-  console.log('=== DIRECT SUPABASE CONNECTION TEST ===');
+async function runDirectSupabaseTest() {
+  console.log('Running direct Supabase test and fix...');
   
-  // Check environment variables
-  console.log('SUPABASE_URL exists:', !!process.env.SUPABASE_URL);
-  console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-  
+  // Get credentials from environment variables
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   
   if (!supabaseUrl || !supabaseKey) {
-    console.error('ERROR: Missing Supabase credentials');
+    console.error('❌ Missing Supabase credentials in environment variables');
+    console.log('SUPABASE_URL present:', !!supabaseUrl);
+    console.log('SUPABASE_SERVICE_ROLE_KEY present:', !!supabaseKey);
     return;
   }
   
-  console.log('Supabase URL:', supabaseUrl);
-  console.log('Attempting to create Supabase client...');
+  console.log(`Connecting to Supabase at: ${supabaseUrl}`);
+  
+  // Create Supabase client with service role key
+  const supabase = createClient(supabaseUrl, supabaseKey);
   
   try {
-    // Create client
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    console.log('Supabase client created successfully');
+    // First, let's check what columns actually exist in the notes table
+    console.log('Listing existing columns in notes table...');
     
-    // Test the connection with a simple query
-    console.log('Testing connection with a simple query...');
-    const { data, error } = await supabase.from('_test_connection').select('*').limit(1);
-    
-    // Error is expected since the table doesn't exist, but we want to confirm the error is from Supabase
-    console.log('Response received from Supabase:');
-    console.log('Error:', error ? error.message : 'No error');
-    console.log('Data:', data);
-    
-    if (error && error.code === '42P01') {
-      console.log('SUCCESS: Connected to Supabase! (Got expected error for non-existent table)');
-    } else {
-      console.log('UNCERTAIN: Got a response but not the expected error code');
-    }
-    
-    // Check for existing tables
-    console.log('\nChecking for existing tables in Supabase...');
-    console.log('Looking for users table:');
-    const { data: usersTable, error: usersError } = await supabase
-      .from('users')
-      .select('*')
-      .limit(1);
-      
-    if (usersError) {
-      console.log('Users table error:', usersError.message);
-    } else {
-      console.log('Users table exists!', usersTable);
-    }
-    
-    console.log('\nLooking for projects table:');
-    const { data: projectsTable, error: projectsError } = await supabase
-      .from('projects')
-      .select('*')
-      .limit(1);
-      
-    if (projectsError) {
-      console.log('Projects table error:', projectsError.message);
-    } else {
-      console.log('Projects table exists!', projectsTable);
-    }
-    
-    console.log('\nLooking for notes table:');
-    const { data: notesTable, error: notesError } = await supabase
+    const { data: notesData, error: notesError } = await supabase
       .from('notes')
       .select('*')
       .limit(1);
       
     if (notesError) {
-      console.log('Notes table error:', notesError.message);
+      console.error('❌ Error fetching notes table data:', notesError);
     } else {
-      console.log('Notes table exists!', notesTable);
+      const sampleNote = notesData[0] || {};
+      console.log('Current note columns:', Object.keys(sampleNote).join(', '));
+      console.log('isDiscussion column exists:', 'isDiscussion' in sampleNote);
     }
     
-    // Create a test table if needed
-    console.log('\nTrying to create a users table:');
-    const createTableSQL = `
-      CREATE TABLE IF NOT EXISTS users (
-        id TEXT PRIMARY KEY,
-        username TEXT UNIQUE,
-        password TEXT,
-        "lastOpenedProjectId" INTEGER
-      )
-    `;
+    // Now try to add the isDiscussion column
+    console.log('Attempting to add isDiscussion column to notes table...');
     
+    // Method 1: Using Postgres functions (if available)
     try {
-      const { error: createError } = await supabase.rpc('exec_sql', { 
-        sql: createTableSQL 
+      const { error: sqlError } = await supabase.rpc('exec', {
+        sql: 'ALTER TABLE notes ADD COLUMN IF NOT EXISTS "isDiscussion" BOOLEAN DEFAULT FALSE;'
       });
       
-      if (createError) {
-        console.log('Error creating table:', createError.message);
+      if (sqlError) {
+        console.log('Method 1 failed:', sqlError.message);
+        
+        // Method 2: Try another RPC function
+        try {
+          const { error: rpcError } = await supabase.rpc('pg_execute', {
+            statement: 'ALTER TABLE notes ADD COLUMN IF NOT EXISTS "isDiscussion" BOOLEAN DEFAULT FALSE;'
+          });
+          
+          if (rpcError) {
+            console.log('Method 2 failed:', rpcError.message);
+            
+            // Method 3: Try direct REST API SQL endpoint
+            try {
+              const response = await fetch(`${supabaseUrl}/rest/v1/sql`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': supabaseKey,
+                  'Authorization': `Bearer ${supabaseKey}`
+                },
+                body: JSON.stringify({
+                  query: 'ALTER TABLE notes ADD COLUMN IF NOT EXISTS "isDiscussion" BOOLEAN DEFAULT FALSE;'
+                })
+              });
+              
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.log('Method 3 failed:', errorText);
+                console.log('All methods failed to add isDiscussion column.');
+              } else {
+                console.log('✅ Successfully added isDiscussion column using Method 3');
+              }
+            } catch (err) {
+              console.error('Method 3 exception:', err);
+            }
+          } else {
+            console.log('✅ Successfully added isDiscussion column using Method 2');
+          }
+        } catch (err) {
+          console.error('Method 2 exception:', err);
+        }
       } else {
-        console.log('Successfully created or verified users table');
+        console.log('✅ Successfully added isDiscussion column using Method 1');
       }
-    } catch (sqlErr) {
-      console.log('SQL execution error, likely the RPC does not exist:', sqlErr.message);
+    } catch (err) {
+      console.error('Method 1 exception:', err);
     }
-  } catch (e) {
-    console.error('CRITICAL ERROR connecting to Supabase:', e.message);
+    
+    // Verify if the column was added successfully
+    console.log('Verifying if isDiscussion column was added...');
+    
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('notes')
+      .select('*')
+      .limit(1);
+      
+    if (verifyError) {
+      console.error('❌ Error verifying column addition:', verifyError);
+    } else {
+      const sampleNote = verifyData[0] || {};
+      console.log('Updated note columns:', Object.keys(sampleNote).join(', '));
+      console.log('isDiscussion column now exists:', 'isDiscussion' in sampleNote);
+    }
+  } catch (error) {
+    console.error('❌ Unexpected error:', error);
   }
 }
 
-runTest();
+// Run the test
+runDirectSupabaseTest().then(() => {
+  console.log('Test completed.');
+});

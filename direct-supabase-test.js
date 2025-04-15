@@ -1,8 +1,12 @@
-// Direct test script to verify Supabase connection and write capabilities
+// Script to directly test and modify Supabase database
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 
-async function runDirectSupabaseTest() {
-  console.log('Starting direct Supabase test...');
+// Load environment variables
+dotenv.config();
+
+async function runTest() {
+  console.log('Running Supabase direct test and modification...');
   
   // Get Supabase credentials from environment variables
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -18,90 +22,97 @@ async function runDirectSupabaseTest() {
   // Create Supabase client with service role key (admin privileges)
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   
-  // Test with integer ID since UUID is failing
-  const testUserId = 12345678;
-  const testUsername = 'direct_test_user';
-  
   try {
-    console.log('Attempting to insert user directly to Supabase...');
+    // First check if isDiscussion column exists
+    console.log('Checking if isDiscussion column exists in notes table...');
     
-    // Insert a test user record
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .upsert({
-        id: testUserId,
-        username: testUsername,
-        password: 'test_password', // Adding a password since null is not allowed
-        lastOpenedProjectId: null
-      })
-      .select();
-    
-    if (userError) {
-      console.error('Failed to insert user:', userError);
-      return;
-    }
-    
-    console.log('Successfully inserted/updated user:', userData);
-    
-    // Try to insert a project
-    console.log('Attempting to insert project directly to Supabase...');
-    
-    const { data: projectData, error: projectError } = await supabase
-      .from('projects')
-      .insert({
-        userId: testUserId,
-        name: 'Direct Test Project',
-        startSlogan: 'Test Start',
-        endSlogan: 'Test End',
-        author: 'Direct Test',
-        lastViewedSlideIndex: 0,
-        isLocked: false,
-        createdAt: new Date().toISOString()
-      })
-      .select();
-    
-    if (projectError) {
-      console.error('Failed to insert project:', projectError);
-      return;
-    }
-    
-    console.log('Successfully inserted project:', projectData);
-    
-    // Try to insert a note
-    console.log('Attempting to insert note directly to Supabase...');
-    
-    const projectId = projectData[0].id;
-    
-    const { data: noteData, error: noteError } = await supabase
+    // This will list all columns in the notes table
+    const { data: columns, error: columnsError } = await supabase
       .from('notes')
-      .insert({
-        projectId: projectId,
-        parentId: null,
-        content: 'Direct test note content',
-        url: null,
-        linkText: null,
-        youtubeLink: null,
-        time: null,
-        isDiscussion: false,
-        images: [],
-        order: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      })
-      .select();
-    
-    if (noteError) {
-      console.error('Failed to insert note:', noteError);
-      return;
+      .select('isDiscussion')
+      .limit(1);
+      
+    if (columnsError) {
+      // If the error message contains "column" and "does not exist", then we know it's missing
+      if (columnsError.message && columnsError.message.includes('does not exist')) {
+        console.log('isDiscussion column does not exist. Adding it now...');
+        
+        // Use direct SQL to add the column
+        const { error: alterError } = await supabase.rpc('exec', { 
+          query: 'ALTER TABLE notes ADD COLUMN "isDiscussion" BOOLEAN DEFAULT FALSE;' 
+        });
+        
+        if (alterError) {
+          console.error('Error adding isDiscussion column:', alterError);
+          
+          // Try a different approach if the first one failed
+          console.log('Trying alternative approach with REST API...');
+          
+          try {
+            // Use PostgreSQL function to execute arbitrary SQL
+            const { error: execError } = await supabase.rpc('pg_execute', { 
+              statement: 'ALTER TABLE notes ADD COLUMN "isDiscussion" BOOLEAN DEFAULT FALSE;' 
+            });
+            
+            if (execError) {
+              console.error('Alternative approach also failed:', execError);
+              
+              // Try a third approach with direct SQL API
+              console.log('Trying third approach with direct SQL...');
+              const response = await fetch(`${supabaseUrl}/rest/v1/sql`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': supabaseServiceRoleKey,
+                  'Authorization': `Bearer ${supabaseServiceRoleKey}`
+                },
+                body: JSON.stringify({
+                  query: 'ALTER TABLE notes ADD COLUMN "isDiscussion" BOOLEAN DEFAULT FALSE;'
+                })
+              });
+              
+              if (!response.ok) {
+                const errorData = await response.text();
+                console.error('Third approach failed:', errorData);
+                return false;
+              }
+              
+              console.log('Successfully added isDiscussion column using direct SQL API');
+              return true;
+            } else {
+              console.log('Successfully added isDiscussion column using PostgreSQL function');
+              return true;
+            }
+          } catch (execErr) {
+            console.error('Error executing alternative approach:', execErr);
+            return false;
+          }
+        } else {
+          console.log('Successfully added isDiscussion column');
+          return true;
+        }
+      } else {
+        console.error('Error checking for isDiscussion column:', columnsError);
+        return false;
+      }
+    } else {
+      // If we got data back, the column exists
+      console.log('isDiscussion column already exists in the notes table');
+      return true;
     }
-    
-    console.log('Successfully inserted note:', noteData);
-    
-    console.log('Direct Supabase test completed successfully!');
   } catch (error) {
-    console.error('Unexpected error during direct Supabase test:', error);
+    console.error('Unexpected error:', error);
+    return false;
   }
 }
 
-// Run the test
-runDirectSupabaseTest();
+// Run the function and log the result
+runTest()
+  .then(result => {
+    console.log(`Operation ${result ? 'succeeded' : 'failed'}`);
+    process.exit(result ? 0 : 1);
+  })
+  .catch(err => {
+    console.error('Error running test:', err);
+    process.exit(1);
+  });

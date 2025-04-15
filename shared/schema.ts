@@ -2,9 +2,9 @@ import { pgTable, text, serial, integer, timestamp, jsonb, numeric, boolean } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table with integer ID based on actual Supabase table structure
+// Users table matching the actual Supabase table structure
 export const users = pgTable("users", {
-  id: integer("id").primaryKey(), // Supabase is using integer IDs, not UUID strings
+  id: text("id").primaryKey(), // Supabase is using text IDs (UUIDs)
   username: text("username").notNull().unique(),
   password: text("password"), // For Supabase auth users
   lastOpenedProjectId: integer("lastOpenedProjectId"),
@@ -13,14 +13,14 @@ export const users = pgTable("users", {
 // Projects table matching actual Supabase structure
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }), // Text type for UUID
   name: text("name").notNull(),
   startSlogan: text("startSlogan"),
   endSlogan: text("endSlogan"),
   author: text("author"),
   lastViewedSlideIndex: integer("lastViewedSlideIndex").default(0),
   isLocked: boolean("isLocked").default(false).notNull(),
-  // Removed createdAt as it doesn't exist in the actual Supabase table
+  // Note: createdAt exists in the actual table but we don't need it in our app
 });
 
 // Notes table matching actual Supabase structure
