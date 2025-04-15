@@ -40,6 +40,20 @@ export async function getSupabaseClient() {
   }
 }
 
+// Helper function: Convert UUID string to integer
+function hashStringToInteger(str: string): number {
+  // Simple hash function to convert UUID to a numeric ID
+  // Same implementation as in auth-supabase.ts and SupabaseStorage
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // Ensure positive number with reasonable range (0 to 2^31-1)
+  return Math.abs(hash) % 2147483647;
+}
+
 // Direct user operations with Supabase (bypassing RLS)
 export async function getSupabaseUser(userId: string): Promise<User | null> {
   try {
@@ -50,12 +64,14 @@ export async function getSupabaseUser(userId: string): Promise<User | null> {
       return null;
     }
     
-    console.log(`Fetching user ${userId} directly from Supabase using admin client`);
+    // Convert UUID string to numeric ID for database lookup
+    const numericUserId = hashStringToInteger(userId);
+    console.log(`Fetching user with numeric ID: ${numericUserId} (from UUID: ${userId}) using admin client`);
     
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('id', userId)
+      .eq('id', numericUserId)
       .single();
     
     if (error) {
@@ -64,17 +80,16 @@ export async function getSupabaseUser(userId: string): Promise<User | null> {
     }
     
     if (!data) {
-      console.log(`User ${userId} not found in Supabase`);
+      console.log(`User ${numericUserId} not found in Supabase`);
       return null;
     }
     
-    console.log(`User ${userId} found in Supabase:`, JSON.stringify(data));
+    console.log(`User ${numericUserId} found in Supabase:`, JSON.stringify(data));
     
     // Convert data to our User type
-    const safeId = data.id as string;
     return {
-      id: safeId,
-      username: data.username || `user_${safeId.substring(0, 8)}`,
+      id: numericUserId,
+      username: data.username || `user_${userId.substring(0, 8)}`,
       password: null,
       lastOpenedProjectId: data.lastopenedprojectid || null
     } as User;
@@ -94,12 +109,14 @@ export async function createSupabaseUser(userId: string, email: string | null, l
       return null;
     }
     
-    console.log(`Creating user ${userId} directly in Supabase using admin client`);
+    // Convert UUID string to numeric ID 
+    const numericUserId = hashStringToInteger(userId);
+    console.log(`Creating user with numeric ID: ${numericUserId} (from UUID: ${userId}) in Supabase using admin client`);
     
     const { data, error } = await supabase
       .from('users')
       .insert({
-        id: userId,
+        id: numericUserId, // Using the numeric ID for database consistency
         username: email || `user_${userId.substring(0, 8)}`,
         lastopenedprojectid: lastProjectId
       })
@@ -112,17 +129,16 @@ export async function createSupabaseUser(userId: string, email: string | null, l
     }
     
     if (!data) {
-      console.log(`Failed to create user ${userId} in Supabase`);
+      console.log(`Failed to create user ${numericUserId} in Supabase`);
       return null;
     }
     
-    console.log(`User ${userId} created in Supabase:`, JSON.stringify(data));
+    console.log(`User ${numericUserId} created in Supabase:`, JSON.stringify(data));
     
-    // Convert data to our User type
-    const safeId = data.id as string;
+    // Convert data to our User type with numeric ID
     return {
-      id: safeId,
-      username: data.username || `user_${safeId.substring(0, 8)}`,
+      id: numericUserId,
+      username: data.username || `user_${userId.substring(0, 8)}`,
       password: null,
       lastOpenedProjectId: data.lastopenedprojectid || null
     } as User;
