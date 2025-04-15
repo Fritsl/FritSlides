@@ -146,15 +146,15 @@ export class SupabaseStorage implements IStorage {
   private convertToSupabaseProject(project: InsertProject): any {
     console.log('Converting project to Supabase format:', JSON.stringify(project, null, 2));
     
-    // Use userId directly as string
+    // Use userId directly as string and camelCase for all column names (renamed in database)
     return {
-      userid: project.userId, // Use lowercase to match database column
+      userId: project.userId,
       name: project.name,
-      startslogan: project.startSlogan || '',
-      endslogan: project.endSlogan || '',
+      startSlogan: project.startSlogan || '',
+      endSlogan: project.endSlogan || '',
       author: project.author || '',
-      islocked: project.isLocked || false,
-      lastviewedslideindex: 0  // Default value for new projects
+      isLocked: project.isLocked || false,
+      lastViewedSlideIndex: 0  // Default value for new projects
     };
   }
   
@@ -162,11 +162,11 @@ export class SupabaseStorage implements IStorage {
   private convertToSupabaseProjectUpdate(project: UpdateProject): any {
     return {
       name: project.name,
-      startslogan: project.startSlogan, // lowercase to match database column
-      endslogan: project.endSlogan, // lowercase to match database column
+      startSlogan: project.startSlogan,
+      endSlogan: project.endSlogan,
       author: project.author,
-      islocked: project.isLocked, // lowercase to match database column
-      lastviewedslideindex: project.lastViewedSlideIndex // lowercase to match database column
+      isLocked: project.isLocked,
+      lastViewedSlideIndex: project.lastViewedSlideIndex
     };
   }
   
@@ -175,19 +175,19 @@ export class SupabaseStorage implements IStorage {
     const update: any = {};
     
     if (note.content !== undefined) update.content = note.content;
-    if (note.parentId !== undefined) update.parentid = note.parentId; // lowercase to match database column
+    if (note.parentId !== undefined) update.parentId = note.parentId; // camelCase to match database column
     if (note.url !== undefined) update.url = note.url;
-    if (note.linkText !== undefined) update.linktext = note.linkText; // lowercase to match database column
-    if (note.youtubeLink !== undefined) update.youtubelink = note.youtubeLink; // lowercase to match database column
+    if (note.linkText !== undefined) update.linkText = note.linkText; // camelCase to match database column
+    if (note.youtubeLink !== undefined) update.youtubeLink = note.youtubeLink; // camelCase to match database column
     if (note.time !== undefined) update.time = note.time;
-    if (note.isDiscussion !== undefined) update.isdiscussion = note.isDiscussion; // lowercase to match database column
+    if (note.isDiscussion !== undefined) update.isDiscussion = note.isDiscussion; // camelCase to match database column
     if (note.images !== undefined) update.images = note.images;
     if (note.order !== undefined) {
       update.order = typeof note.order === 'string' ? parseFloat(note.order) : note.order;
     }
     
     // Always update the updated_at timestamp
-    update.updatedat = new Date().toISOString(); // lowercase to match database column
+    update.updatedAt = new Date().toISOString(); // camelCase to match database column
     
     return update;
   }
