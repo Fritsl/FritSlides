@@ -1363,4 +1363,8 @@ export class MemStorage implements IStorage {
 }
 
 // Switch from memory storage to database storage
-export const storage = new DatabaseStorage();
+// Import the SupabaseStorage implementation
+import { SupabaseStorage } from './supabase-storage-adapter';
+
+// Use SupabaseStorage instead of DatabaseStorage for all data persistence
+export const storage = new SupabaseStorage();
