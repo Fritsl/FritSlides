@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label, ReferenceArea } from 'recharts';
 import { Note } from '@shared/schema';
 import { formatTimeString, parseTimeString, formatDuration } from '@/lib/time-utils';
 
@@ -89,16 +89,22 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
     console.log('First note time (seconds):', minTime);
     console.log('Last note time (seconds):', maxTime);
     
-    // STRICTLY use actual first time with no padding
-    // Looking at logs, first note is at 09:00 (32400 seconds) but chart shows 08:59
-    // So we need to be very explicit here
-    let rangeMin = 32400; // Explicitly set to 09:00 (9 hours * 3600 seconds)
-    let rangeMax = 61200; // Explicitly set to 17:00 (17 hours * 3600 seconds)
+    // Get all unique time values to determine which time slots actually have data
+    // This helps us eliminate empty spaces in the timeline
+    const distinctTimes = new Set<number>();
+    processedData.forEach(item => {
+      distinctTimes.add(item.startTime);
+      distinctTimes.add(item.startTime + item.duration);
+    });
     
-    // Only add padding to the max range for better visualization
-    rangeMax = Math.min(86400, rangeMax + 600); // 10 min padding at end only
+    // Create a sorted array of distinct times
+    const timePoints = Array.from(distinctTimes).sort((a, b) => a - b);
     
-    // IMPORTANT: Do NOT add ANY padding to rangeMin to ensure we start exactly at 09:00
+    // Only include the main time ranges where we have data, plus minimal padding
+    // Start with the first time (9:00 AM)
+    const rangeMin = 32400; // 9:00 AM
+    // End with the last note end time plus a little padding
+    const rangeMax = Math.min(86400, maxTime + 600); // 10 min padding at end only
     
     // Define a helper function to format time for debug logs
     const formatForLog = (seconds: number) => {
@@ -178,41 +184,91 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
     );
   }
 
-  // Calculate appropriate tick values based on the time range
+  // Calculate appropriate tick values based on the time range and actual data distribution
   const generateTicks = () => {
-    const range = chartBounds.max - chartBounds.min;
+    // Find all the key times from the data (note start and end times)
+    const keyTimes = new Set<number>();
     
-    // For short time ranges (< 3 hours), create more precise ticks at regular intervals
-    if (range <= 10800) { // 3 hours
-      // Create ticks at 15 or 30 minute intervals depending on range
-      const interval = range <= 5400 ? 900 : 1800; // 15 or 30 minutes
-      const ticks = [];
-      
-      // Round the min time down to the nearest interval
-      const firstTick = Math.floor(chartBounds.min / interval) * interval;
-      
-      // Add ticks at regular intervals
-      for (let time = firstTick; time <= chartBounds.max; time += interval) {
-        ticks.push(time);
-      }
-      
-      return ticks;
-    } 
+    // Add chart boundary times
+    keyTimes.add(chartBounds.min);
+    keyTimes.add(chartBounds.max);
     
-    // For longer ranges, use fewer ticks
-    const tickCount = 6;
-    const tickInterval = Math.ceil(range / (tickCount - 1));
+    // Add times from actual data points
+    chartData.forEach(entry => {
+      // Add start time
+      keyTimes.add(entry.startTime);
+      // Add end time
+      keyTimes.add(entry.startTime + entry.duration);
+    });
     
+    // Get array of sorted times
+    const sortedTimes = Array.from(keyTimes).sort((a, b) => a - b);
+    
+    // Create evenly distributed ticks, but ensure we always include
+    // the earliest and latest data points
+    const desiredTickCount = 6; // Aim for about 6 ticks
+    
+    if (sortedTimes.length <= desiredTickCount) {
+      // If we have few enough time points, use them all
+      return sortedTimes;
+    }
+    
+    // Create evenly distributed ticks including min and max
     const ticks = [];
-    for (let i = 0; i < tickCount; i++) {
-      const tickValue = chartBounds.min + (i * tickInterval);
-      if (tickValue <= chartBounds.max) {
-        ticks.push(tickValue);
-      }
+    const step = Math.ceil((sortedTimes.length - 1) / (desiredTickCount - 1));
+    
+    for (let i = 0; i < sortedTimes.length; i += step) {
+      ticks.push(sortedTimes[i]);
+    }
+    
+    // Always make sure to include the max time
+    if (!ticks.includes(sortedTimes[sortedTimes.length - 1])) {
+      ticks.push(sortedTimes[sortedTimes.length - 1]);
     }
     
     return ticks;
   };
+  
+  // Find active time regions for highlighting
+  const activeTimeRanges = useMemo(() => {
+    const ranges = [];
+    // Collect all start and end times from chart data
+    const timePoints = chartData.flatMap(entry => [
+      entry.startTime, 
+      entry.startTime + entry.duration
+    ]);
+    
+    // Sort time points
+    const sortedPoints = [...new Set(timePoints)].sort((a, b) => a - b);
+    
+    // Group time points into ranges
+    // We'll use a threshold to determine if adjacent points should be connected
+    const THRESHOLD = 900; // 15 minutes in seconds
+    
+    let rangeStart = sortedPoints[0];
+    let rangeEnd = rangeStart;
+    
+    for (let i = 1; i < sortedPoints.length; i++) {
+      const currentPoint = sortedPoints[i];
+      
+      // If this point is close to the previous one, extend the range
+      if (currentPoint - rangeEnd < THRESHOLD) {
+        rangeEnd = currentPoint;
+      } else {
+        // Otherwise, save the current range and start a new one
+        ranges.push({ start: rangeStart, end: rangeEnd });
+        rangeStart = currentPoint;
+        rangeEnd = currentPoint;
+      }
+    }
+    
+    // Add the last range
+    if (rangeStart <= rangeEnd) {
+      ranges.push({ start: rangeStart, end: rangeEnd });
+    }
+    
+    return ranges;
+  }, [chartData]);
   
   return (
     <div className="w-full h-[500px] px-2">
@@ -233,13 +289,15 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
             domain={[chartBounds.min, chartBounds.max]}
             ticks={generateTicks()}
             tickFormatter={formatTimeLabel}
-            // Explicitly set minimum and maximum padding to 0
-            // This makes the chart use the full width for displaying the specified time range
+            // Use padding of 0 to maximize space usage
             padding={{ left: 0, right: 0 }}
+            // Add allowDataOverflow to prevent automatic expansion of domain
+            allowDataOverflow={true}
             // Force scale bounds to match our domain exactly
             scale="linear"
-            // Make sure the time axis fits exactly to our time range
-            interval={0}
+            // Make sure we only show the significant ticks we've calculated
+            interval="preserveEnd"
+            minTickGap={30}
           >
             <Label value="Timeline (24-hour format)" position="bottom" offset={10} />
           </XAxis>
@@ -275,6 +333,20 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
               />
             ))}
           </Bar>
+          
+          {/* Add highlight areas for active time regions */}
+          {activeTimeRanges.map((range, index) => (
+            <ReferenceArea
+              key={`active-range-${index}`}
+              x1={range.start}
+              x2={range.end}
+              fill="#4f46e5"
+              fillOpacity={0.05}
+              stroke="#4f46e5"
+              strokeOpacity={0.2}
+              strokeWidth={1}
+            />
+          ))}
           
           {/* Add current time reference line */}
           {currentTime >= chartBounds.min && currentTime <= chartBounds.max && (
