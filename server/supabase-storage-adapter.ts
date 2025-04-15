@@ -135,7 +135,7 @@ export class SupabaseStorage implements IStorage {
       linkText: note.linkText || null, // now using camelCase to match database column
       youtubeLink: note.youtubeLink || null, // now using camelCase to match database column
       time: note.time || null,
-      isDiscussion: note.isDiscussion || false, // now using camelCase to match database column
+      isdiscussion: note.isDiscussion || false, // lowercase to match actual database column name
       images: note.images || [],
       order: typeof note.order === 'string' ? parseFloat(note.order) : (typeof note.order === 'number' ? note.order : 0)
     };
@@ -179,7 +179,7 @@ export class SupabaseStorage implements IStorage {
     if (note.linkText !== undefined) update.linkText = note.linkText; // camelCase to match database column
     if (note.youtubeLink !== undefined) update.youtubeLink = note.youtubeLink; // camelCase to match database column
     if (note.time !== undefined) update.time = note.time;
-    if (note.isDiscussion !== undefined) update.isDiscussion = note.isDiscussion; // camelCase to match database column
+    if (note.isDiscussion !== undefined) update.isdiscussion = note.isDiscussion; // lowercase to match database column
     if (note.images !== undefined) update.images = note.images;
     if (note.order !== undefined) {
       update.order = typeof note.order === 'string' ? parseFloat(note.order) : note.order;
