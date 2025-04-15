@@ -65,7 +65,7 @@ export function ImportDialog({
         
         // Set up a progress indicator that moves forward even if we don't get server updates
         // This ensures users always see something happening
-        let progressTimer = setInterval(() => {
+        let progressTimer: NodeJS.Timeout = setInterval(() => {
           setProgress((prev) => {
             // Only increment automatically up to 80% to leave room for actual completion
             if (prev < 80) {
@@ -228,7 +228,7 @@ export function ImportDialog({
           
           if (statusIntervalRef.current) {
             clearInterval(statusIntervalRef.current);
-            statusIntervalRef.current = null;
+            statusIntervalRef.current = undefined;
           }
           
           console.error("Error during import:", error);
@@ -315,7 +315,7 @@ export function ImportDialog({
     return () => {
       if (statusIntervalRef.current) {
         clearInterval(statusIntervalRef.current);
-        statusIntervalRef.current = null;
+        statusIntervalRef.current = undefined;
       }
     };
   }, []);
