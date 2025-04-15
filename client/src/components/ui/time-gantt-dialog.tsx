@@ -7,16 +7,16 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 import { Note } from "@shared/schema";
-import { TimeDistributionChart } from "./time-distribution-chart";
+import { TimeGanttChart } from "./time-gantt-chart";
 
-interface TimeDistributionDialogProps {
+interface TimeGanttDialogProps {
   isOpen: boolean;
   onClose: () => void;
   notes: Note[];
   projectName: string;
 }
 
-export const TimeDistributionDialog: React.FC<TimeDistributionDialogProps> = ({
+export const TimeGanttDialog: React.FC<TimeGanttDialogProps> = ({
   isOpen,
   onClose,
   notes,
@@ -26,14 +26,14 @@ export const TimeDistributionDialog: React.FC<TimeDistributionDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Time Distribution - {projectName}</DialogTitle>
+          <DialogTitle>Timeline View - {projectName}</DialogTitle>
           <DialogDescription>
-            This chart shows how presentation time is distributed across your content sections.
-            Each segment represents the time allocated between consecutive time markers.
+            This Gantt chart shows your presentation timeline with start and end times for each section.
+            Each bar represents the time allocated to a specific content section.
           </DialogDescription>
         </DialogHeader>
         
-        <TimeDistributionChart notes={notes} />
+        <TimeGanttChart notes={notes} />
       </DialogContent>
     </Dialog>
   );

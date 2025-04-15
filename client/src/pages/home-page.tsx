@@ -26,6 +26,7 @@ import { z } from "zod";
 import { ImportDialog } from "@/components/ui/import-dialog";
 import { SearchDialog } from "@/components/ui/search-dialog";
 import { TimeDistributionDialog } from "@/components/ui/time-distribution-dialog";
+import { TimeGanttDialog } from "@/components/ui/time-gantt-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Project } from "@shared/schema";
 import { User } from "@supabase/supabase-js";
