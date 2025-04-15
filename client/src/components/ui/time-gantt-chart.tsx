@@ -79,22 +79,30 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
       });
     }
     
-    // Force a smaller time range window (focusing only on the actual times used)
-    // This makes the chart display just the needed time range instead of full 24 hours
-    let rangeMin = minTime;
-    let rangeMax = maxTime;
+    // Force an extremely tight time range window - only showing times where there are notes
+    // This makes the chart display just the needed time range
     
-    // Add some padding (15 minutes before first note, 15 minutes after last note)
-    const padding = 900; // 15 minutes in seconds
-    rangeMin = Math.max(0, minTime - padding);
-    rangeMax = Math.min(86400, maxTime + padding);
+    // Find the earliest and latest actual timestamps in use with minimal padding
+    const firstNoteTime = minTime; 
+    const lastNoteTime = maxTime;
     
-    // Make sure we have a minimum visible window of 2 hours for very short timelines
-    if (rangeMax - rangeMin < 7200) {
+    // Minimal padding - just a few minutes on each side
+    const padding = 180; // 3 minutes in seconds
+    let rangeMin = Math.max(0, firstNoteTime - padding);
+    let rangeMax = Math.min(86400, lastNoteTime + padding);
+    
+    // Ensure we don't have strange cropping if the range is too small
+    if (rangeMax - rangeMin < 1200) { // If less than 20 minutes total range
       const midpoint = (rangeMin + rangeMax) / 2;
-      rangeMin = Math.max(0, midpoint - 3600);
-      rangeMax = Math.min(86400, midpoint + 3600);
+      rangeMin = Math.max(0, midpoint - 900); // 15 minutes before
+      rangeMax = Math.min(86400, midpoint + 900); // 15 minutes after
     }
+    
+    // Snap the boundary times to cleaner intervals for better tick placement
+    // Round down to the nearest 5 minutes for min
+    rangeMin = Math.floor(rangeMin / 300) * 300;
+    // Round up to the nearest 5 minutes for max
+    rangeMax = Math.ceil(rangeMax / 300) * 300;
     
     return { 
       // Reverse the data order to get earliest timed notes at the top (Gantt chart convention)
@@ -168,11 +176,29 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
   // Calculate appropriate tick values based on the time range
   const generateTicks = () => {
     const range = chartBounds.max - chartBounds.min;
-    const tickCount = range <= 7200 ? 6 : 8; // Fewer ticks for small ranges
     
-    const ticks = [];
+    // For short time ranges (< 3 hours), create more precise ticks at regular intervals
+    if (range <= 10800) { // 3 hours
+      // Create ticks at 15 or 30 minute intervals depending on range
+      const interval = range <= 5400 ? 900 : 1800; // 15 or 30 minutes
+      const ticks = [];
+      
+      // Round the min time down to the nearest interval
+      const firstTick = Math.floor(chartBounds.min / interval) * interval;
+      
+      // Add ticks at regular intervals
+      for (let time = firstTick; time <= chartBounds.max; time += interval) {
+        ticks.push(time);
+      }
+      
+      return ticks;
+    } 
+    
+    // For longer ranges, use fewer ticks
+    const tickCount = 6;
     const tickInterval = Math.ceil(range / (tickCount - 1));
     
+    const ticks = [];
     for (let i = 0; i < tickCount; i++) {
       const tickValue = chartBounds.min + (i * tickInterval);
       if (tickValue <= chartBounds.max) {
