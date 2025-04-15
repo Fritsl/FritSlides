@@ -1146,20 +1146,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       addStatus(`Phase 2: Starting parent relationship updates (${new Date().toLocaleTimeString()})`);
       
       const phase2Start = Date.now();
-      const notesWithParents = importData.notes.filter(note => 
-        typeof note.parentId === 'number' && 
-        idMap.has(note.parentId as number)
-      );
+      // Modified filter for notes with parents to be more inclusive
+      const notesWithParents = importData.notes.filter(note => {
+        // First check if parentId exists and is non-null
+        if (note.parentId === null || note.parentId === undefined) {
+          return false;
+        }
+        
+        // Handle both number and string parentIds (convert string to number if needed)
+        const parentIdNum = typeof note.parentId === 'string' ? 
+          parseInt(note.parentId, 10) : 
+          note.parentId as number;
+        
+        // Check if we have this parent ID in our mapping
+        const hasValidParent = !isNaN(parentIdNum) && idMap.has(parentIdNum);
+        
+        // Add debug logging
+        if (!hasValidParent && note.parentId !== null) {
+          console.log(`Note ${note.id} has parent ${note.parentId} (${typeof note.parentId}) but no mapping found`);
+        }
+        
+        return hasValidParent;
+      });
       
       // Group notes by parent ID to reduce database contention
       const notesByParent: Map<number, {id: number, parentId: number, order: number | string}[]> = new Map();
       
       for (let i = 0; i < notesWithParents.length; i++) {
         const note = notesWithParents[i];
-        const parentId = note.parentId as number; 
+        
+        // Handle both number and string parentIds
+        const parentIdNum = typeof note.parentId === 'string' ? 
+          parseInt(note.parentId, 10) : 
+          note.parentId as number;
         
         const newId = idMap.get(note.id);
-        const newParentId = idMap.get(parentId);
+        const newParentId = idMap.get(parentIdNum);
         
         if (newId !== undefined && newParentId !== undefined) {
           // Pass the original note's order if available, or derive from position
@@ -1191,15 +1213,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const totalParents = notesByParent.size;
         
         // Process each parent group one at a time
-        for (const [parentId, notes] of notesByParent.entries()) {
-          // Smaller batches for each parent group
-          const PARENT_BATCH_SIZE = 10;
+        // Sort parents to process them in a consistent order to reduce deadlocks
+        const sortedParents = Array.from(notesByParent.entries())
+          .sort((a, b) => a[0] - b[0]);
           
-          for (let i = 0; i < notes.length; i += PARENT_BATCH_SIZE) {
-            const batch = notes.slice(i, i + PARENT_BATCH_SIZE);
+        for (const [parentId, notes] of sortedParents) {
+          // Use smaller batches for better performance and fewer deadlocks
+          const PARENT_BATCH_SIZE = 5;
+          
+          // Ensure consistent processing order within each parent's children
+          const sortedNotes = [...notes].sort((a, b) => {
+            // First by order if available
+            if (typeof a.order === 'number' && typeof b.order === 'number') {
+              return a.order - b.order;
+            } 
+            // Then by ID
+            return a.id - b.id;
+          });
+          
+          addStatus(`Processing ${sortedNotes.length} children for parent ${parentId}`);
+          
+          for (let i = 0; i < sortedNotes.length; i += PARENT_BATCH_SIZE) {
+            const batch = sortedNotes.slice(i, i + PARENT_BATCH_SIZE);
             
-            // Process this small batch
-            const success = await storage.updateNoteParentsBatch(batch);
+            // Process this small batch with retries for deadlocks
+            let success = false;
+            let attempts = 0;
+            const MAX_ATTEMPTS = 3;
+            
+            while (!success && attempts < MAX_ATTEMPTS) {
+              try {
+                success = await storage.updateNoteParentsBatch(batch);
+                // Add a small delay to reduce contention
+                if (i + PARENT_BATCH_SIZE < sortedNotes.length) {
+                  await new Promise(resolve => setTimeout(resolve, 50));
+                }
+              } catch (err) {
+                attempts++;
+                console.error(`Batch update failed (attempt ${attempts}):`, err);
+                
+                // Wait longer before retrying
+                await new Promise(resolve => setTimeout(resolve, 100 * attempts));
+              }
+            }
             
             if (!success) {
               addStatus(`⚠️ Warning: Batch update for parent ${parentId} had issues - will continue with next batch`);

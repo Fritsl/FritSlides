@@ -168,11 +168,16 @@ export function ImportDialog({
       toast({
         title: "Import successful",
         description: `${data.count} notes have been imported in ${data.timeElapsed || '?'} seconds`,
+        duration: 5000,
       });
       
-      // Don't automatically close dialog so user can see the import log
-      // Just reset the file selection
+      // Reset the file selection
       setNoteCount(null);
+      
+      // Close the dialog after a short delay so the user can see the success state
+      setTimeout(() => {
+        onOpenChange(false);
+      }, 2000);
     },
     onError: (error: Error) => {
       // Reset status on error
@@ -333,16 +338,43 @@ export function ImportDialog({
                   onClick={(e) => {
                     e.stopPropagation();
                     const testData = {
+                      project: {
+                        name: "Sample Project"
+                      },
                       notes: [
                         {
                           id: 1,
-                          content: "Test note from sample import",
+                          content: "Parent note 1",
                           order: 0
                         },
                         {
                           id: 2,
-                          content: "Another test note",
+                          content: "Child note 1.1",
+                          parentId: 1, // This is a child of note with id=1
+                          order: 0
+                        },
+                        {
+                          id: 3,
+                          content: "Child note 1.2",
+                          parentId: 1, // This is a child of note with id=1
                           order: 1
+                        },
+                        {
+                          id: 4,
+                          content: "Parent note 2",
+                          order: 1
+                        },
+                        {
+                          id: 5,
+                          content: "Child note 2.1",
+                          parentId: 4, // This is a child of note with id=4
+                          order: 0
+                        },
+                        {
+                          id: 6,
+                          content: "Grandchild note 2.1.1",
+                          parentId: 5, // This is a child of note with id=5
+                          order: 0
                         }
                       ]
                     };

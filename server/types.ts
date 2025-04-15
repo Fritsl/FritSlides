@@ -48,7 +48,8 @@ export function convertImportedNoteToInsert(
   // Prepare the data with our type conversions
   const preparedData = {
     projectId,
-    parentId: null, // This will be updated in a second pass
+    // Keep the original parentId for parent relationship mapping, don't set to null
+    parentId: note.parentId !== undefined ? note.parentId : null,
     content: typeof note.content === 'string' ? note.content : "Imported note",
     url: typeof note.url === 'string' ? note.url : 
          typeof note.youtube_url === 'string' ? note.youtube_url : null,
