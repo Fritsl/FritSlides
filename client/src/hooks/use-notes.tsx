@@ -57,11 +57,10 @@ const createOptimisticNote = (note: Partial<InsertNote>, projectId: number, exis
     time: typeof note.time === 'string' ? note.time : null,
     isDiscussion: typeof note.isDiscussion === 'boolean' ? note.isDiscussion : null,
     images: Array.isArray(note.images) ? note.images.filter(img => typeof img === 'string') as string[] : null,
+    // Always ensure order is stored as a number
     order: typeof note.order === 'number' ? note.order : 
            typeof note.order === 'string' ? parseFloat(note.order) || newOrder : 
-           newOrder,
-    createdAt: now,
-    updatedAt: now
+           newOrder
   };
 };
 
@@ -404,7 +403,7 @@ export function useNotes(projectId: number | null) {
   });
 
   const updateNoteParent = useMutation({
-    mutationFn: async ({ noteId, parentId, order }: { noteId: number; parentId: number | null; order?: string }) => {
+    mutationFn: async ({ noteId, parentId, order }: { noteId: number; parentId: number | null; order?: number }) => {
       await apiRequest("PUT", `/api/notes/${noteId}/parent`, { parentId, order });
     },
     onMutate: async ({ noteId, parentId, order }) => {
@@ -426,7 +425,8 @@ export function useNotes(projectId: number | null) {
           const updatedSourceNote: Note = {
             ...sourceNote,
             parentId,
-            order: order !== undefined ? String(order) : sourceNote.order,
+            order: order !== undefined ? order : 
+                   (typeof sourceNote.order === 'string' ? parseFloat(sourceNote.order) : sourceNote.order),
             updatedAt: new Date()
           };
           
@@ -460,7 +460,7 @@ export function useNotes(projectId: number | null) {
   });
 
   const updateNoteOrder = useMutation({
-    mutationFn: async ({ noteId, order }: { noteId: number; order: string }) => {
+    mutationFn: async ({ noteId, order }: { noteId: number; order: number }) => {
       await apiRequest("PUT", `/api/notes/${noteId}/order`, { order });
     },
     onMutate: async ({ noteId, order }) => {
@@ -481,7 +481,7 @@ export function useNotes(projectId: number | null) {
           // Create an updated version of the source note
           const updatedSourceNote: Note = {
             ...sourceNote,
-            order: String(order),
+            order: order,
             updatedAt: new Date()
           };
           
