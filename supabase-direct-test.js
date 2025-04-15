@@ -27,6 +27,8 @@ async function runTest() {
     
     // FIRST: Let's check the actual schema to see what columns exist
     console.log('\n--- CHECKING DATABASE SCHEMA ---');
+    
+    // Check users table
     console.log('\nFetching users table information...');
     const { data: usersData, error: usersError } = await supabase
       .from('users')
@@ -41,16 +43,47 @@ async function runTest() {
       console.log('Available columns:', Object.keys(usersData[0] || {}));
     }
     
+    // Check projects table
+    console.log('\nFetching projects table information...');
+    const { data: projectsData, error: projectsError } = await supabase
+      .from('projects')
+      .select('*')
+      .limit(1);
+    
+    if (projectsError) {
+      console.error('ERROR fetching projects table:', projectsError);
+    } else {
+      console.log('Projects table schema sample:', projectsData);
+      // Look at column names in first row or use introspection endpoint
+      console.log('Available columns:', Object.keys(projectsData[0] || {}));
+    }
+    
+    // Check notes table
+    console.log('\nFetching notes table information...');
+    const { data: notesData, error: notesError } = await supabase
+      .from('notes')
+      .select('*')
+      .limit(1);
+    
+    if (notesError) {
+      console.error('ERROR fetching notes table:', notesError);
+    } else {
+      console.log('Notes table schema sample:', notesData);
+      // Look at column names in first row or use introspection endpoint
+      console.log('Available columns:', Object.keys(notesData[0] || {}));
+    }
+    
     // Simple write test without creating actual entities
     console.log('\n--- TESTING WRITE CAPABILITY ---');
     console.log('\nCreating a test table entry to verify write access...');
     
-    // Simplest possible test - no complex schemas
-    // Create a test user with minimal required fields
+    // We now know the users table has an INTEGER id (not UUID string)
+    // And uses camelCase column names (not lowercase)
     const testUser = {
-      id: 'test-' + Date.now(),
-      username: 'testuser-' + Date.now()
-      // No other fields until we know exactly what the schema is
+      // Let's not specify id, let it auto-increment
+      username: 'testuser-' + Date.now(),
+      password: 'test-password', // Password is NOT NULL in the database
+      lastOpenedProjectId: null
     };
     
     console.log('Attempting to create test user with minimal fields:', testUser);
@@ -65,11 +98,16 @@ async function runTest() {
     } else {
       console.log('SUCCESS! Test user created:', userData);
       
-      // 2. Second test: Create a test project
+      // 2. Second test: Create a test project with the new user ID
       const testProject = {
-        userid: testUser.id,
+        userId: userData[0].id, // Use the auto-generated ID from the successful user creation
         name: 'Test Project ' + Date.now(),
-        createdat: new Date().toISOString()
+        createdAt: new Date().toISOString(), // CamelCase matches what we saw in users table
+        author: 'Test Author',
+        startSlogan: 'Test slogan',
+        endSlogan: 'Test end slogan',
+        lastViewedSlideIndex: 0,
+        isLocked: false
       };
       
       console.log('Attempting to create test project:', testProject);
@@ -86,11 +124,12 @@ async function runTest() {
         
         // 3. Third test: Create a test note
         const testNote = {
-          projectid: projectData[0].id,
+          projectId: projectData[0].id, // camelCase column names consistent with users table
           content: 'Test note content ' + Date.now(),
-          createdat: new Date().toISOString(),
-          updatedat: new Date().toISOString(),
-          order: 0
+          createdAt: new Date().toISOString(), // camelCase
+          updatedAt: new Date().toISOString(), // camelCase
+          order: 0,
+          images: []
         };
         
         console.log('Attempting to create test note:', testNote);
