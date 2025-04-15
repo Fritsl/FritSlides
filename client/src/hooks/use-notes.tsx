@@ -515,24 +515,58 @@ export function useNotes(projectId: number | null) {
   const uploadImage = useMutation({
     mutationFn: async (file: File) => {
       try {
-        // Import the storage utility - dynamic import to avoid circular dependencies
-        const { uploadToSupabaseStorage } = await import("@/lib/supabase-storage");
+        // Get Supabase authentication headers
+        const supabase = await getSupabaseClient();
+        const { data } = await supabase.auth.getSession();
         
-        // Upload directly to Supabase storage
-        console.log('Uploading image to Supabase storage...');
-        const imageUrl = await uploadToSupabaseStorage(file);
-        console.log('Image uploaded successfully:', imageUrl);
+        // Create FormData and append the file
+        const formData = new FormData();
+        formData.append("image", file);
         
-        // Return the image URL in the same format expected by consumers
-        return { imageUrl };
+        // Set up headers with authentication
+        const headers: Record<string, string> = {};
+        
+        // Add Supabase auth headers
+        if (data.session) {
+          headers['x-supabase-user-id'] = data.session.user.id;
+          if (data.session.user.email) {
+            headers['x-supabase-user-email'] = data.session.user.email;
+          }
+        }
+        
+        console.log('Uploading image via server API...');
+        
+        // Make the request with proper headers
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers,
+          body: formData,
+          credentials: "include",
+        });
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('Upload failed:', errorText);
+          throw new Error(errorText || "Failed to upload image");
+        }
+        
+        const result = await res.json();
+        console.log('Image uploaded successfully, storage type:', result.storedIn || 'unknown');
+        return result;
       } catch (error) {
-        console.error('Failed to upload image to Supabase storage:', error);
-        throw new Error(error instanceof Error ? error.message : "Failed to upload image to Supabase storage");
+        console.error('Failed to upload image:', error);
+        throw new Error(error instanceof Error ? error.message : "Failed to upload image");
       }
     },
     onSuccess: (data) => {
       console.log('Image upload success, URL:', data.imageUrl);
-      // No toast for successful upload to avoid cluttering the UI
+      toast({
+        title: "Image uploaded successfully",
+        description: data.storedIn === 'supabase' 
+          ? "Image stored in cloud storage for persistence" 
+          : "Image stored temporarily",
+        duration: 3000,
+      });
     },
     onError: (error) => {
       console.error('Upload error:', error);

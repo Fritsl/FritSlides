@@ -741,14 +741,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image upload
-  app.post("/api/upload", isAuthenticated, upload.single("image"), (req, res) => {
+  app.post("/api/upload", isAuthenticated, upload.single("image"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
       
-      const imageUrl = `/api/images/${req.file.filename}`;
-      return res.status(201).json({ imageUrl });
+      // First store locally as before, so we have backward compatibility
+      const localImageUrl = `/api/images/${req.file.filename}`;
+      
+      // Try to upload to Supabase storage if available
+      try {
+        // Dynamic import to avoid circular dependencies
+        const { uploadToSupabaseStorage } = await import('./supabase-storage');
+        
+        // Upload the file to Supabase
+        const supabaseUrl = await uploadToSupabaseStorage(req.file.path);
+        
+        // If successful, return the Supabase URL
+        if (supabaseUrl) {
+          console.log(`Image uploaded to Supabase storage: ${supabaseUrl}`);
+          return res.status(201).json({ 
+            imageUrl: supabaseUrl,
+            storedIn: 'supabase' 
+          });
+        }
+      } catch (supabaseError) {
+        // Log the error but don't fail - fall back to local storage
+        console.error("Error uploading to Supabase (falling back to local):", supabaseError);
+      }
+      
+      // Fall back to local URL if Supabase upload fails
+      console.log(`Image stored locally: ${localImageUrl}`);
+      return res.status(201).json({ 
+        imageUrl: localImageUrl,
+        storedIn: 'local' 
+      });
     } catch (err) {
       console.error("Error uploading image:", err);
       return res.status(500).json({ message: "Failed to upload image" });
