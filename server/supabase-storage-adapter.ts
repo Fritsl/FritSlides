@@ -127,18 +127,31 @@ export class SupabaseStorage implements IStorage {
   private convertToSupabaseNote(note: InsertNote): any {
     console.log('Converting note to Supabase format:', JSON.stringify(note, null, 2));
     
-    return {
-      projectId: note.projectId, // now using camelCase to match database column
-      parentId: note.parentId, // now using camelCase to match database column
-      content: note.content || '',
-      url: note.url || null,
-      linkText: note.linkText || null, // now using camelCase to match database column
-      youtubeLink: note.youtubeLink || null, // now using camelCase to match database column
-      time: note.time || null,
-      isDiscussion: note.isDiscussion || false, // camelCase as shown in database schema
-      images: note.images || [],
-      order: typeof note.order === 'string' ? parseFloat(note.order) : (typeof note.order === 'number' ? note.order : 0)
+    // Create a minimal object with only required fields and explicit column quoting
+    const minimalNote = {
+      "projectId": note.projectId,
+      "content": note.content || ''
     };
+    
+    // For debugging - try an approach with minimal fields first
+    console.log('Using minimal note object with explicitly quoted field names:', JSON.stringify(minimalNote, null, 2));
+    
+    // Then add optional fields one by one
+    if (note.parentId !== undefined) minimalNote["parentId"] = note.parentId;
+    if (note.url) minimalNote["url"] = note.url;
+    if (note.linkText) minimalNote["linkText"] = note.linkText;
+    if (note.youtubeLink) minimalNote["youtubeLink"] = note.youtubeLink;
+    if (note.time) minimalNote["time"] = note.time;
+    if (note.isDiscussion !== undefined) minimalNote["isDiscussion"] = note.isDiscussion;
+    if (note.images) minimalNote["images"] = note.images;
+    if (note.order !== undefined) {
+      minimalNote["order"] = typeof note.order === 'string' ? parseFloat(note.order) : 
+                            (typeof note.order === 'number' ? note.order : 0);
+    }
+    
+    console.log('Final note object with all fields:', JSON.stringify(minimalNote, null, 2));
+    
+    return minimalNote;
   }
   
   // Helper: Convert our schema project to Supabase format
@@ -960,25 +973,31 @@ export class SupabaseStorage implements IStorage {
       if (!supabase) throw new Error('Failed to get Supabase client');
       
       // First get all notes for this project
+      console.log('Starting normalizeAllProjectNotes with database-verified camelCase columns');
       const { data, error } = await supabase
         .from('notes')
-        .select('id, parentid') // lowercase to match database column
-        .eq('projectid', projectId); // lowercase to match database column
+        .select('id, "parentId"') // camelCase confirmed in database schema
+        .eq('"projectId"', projectId); // camelCase confirmed in database schema
       
       if (error) {
         console.error('Error getting project notes for normalization from Supabase:', error);
+        console.error('Error details:', error);
         return false;
       }
       
       if (!data || data.length === 0) {
+        console.log('No notes found for normalization');
         return true; // No notes to normalize
       }
+      
+      console.log(`Found ${data.length} notes to normalize`);
       
       // Get all unique parent IDs
       const parentIds = new Set<number | null>();
       data.forEach(note => {
-        if (note && note.parentid !== undefined) { // lowercase to match database column
-          parentIds.add(note.parentid as number | null); // lowercase to match database column
+        console.log('Processing note:', note);
+        if (note && note.parentId !== undefined) { // camelCase confirmed in database schema
+          parentIds.add(note.parentId as number | null); // camelCase confirmed in database schema
         }
       });
       
