@@ -136,8 +136,13 @@ export class SupabaseStorage implements IStorage {
   private convertToSupabaseProject(project: InsertProject): any {
     console.log('Converting project to Supabase format:', JSON.stringify(project, null, 2));
     
+    // Handle the userId - ensuring it's numeric
+    const userId = typeof project.userId === 'string' 
+      ? this.hashStringToInteger(project.userId) 
+      : project.userId;
+      
     return {
-      userId: project.userId,
+      userId: userId,
       name: project.name,
       startSlogan: project.startSlogan || '',
       endSlogan: project.endSlogan || '',
@@ -241,13 +246,14 @@ export class SupabaseStorage implements IStorage {
       const supabase = await getSupabaseClient();
       if (!supabase) throw new Error('Failed to get Supabase client');
       
-      // Create a new user record with the Supabase user ID
-      console.log(`Creating user record with ID: ${user.id}`);
+      // Convert string ID to integer for Supabase DB if it's a UUID string
+      const userId = typeof user.id === 'string' ? this.hashStringToInteger(user.id) : user.id;
+      console.log(`Creating user record with ID: ${userId} (converted from: ${user.id})`);
       
       const { data, error } = await supabase
         .from('users')
         .insert({
-          id: user.id, // Use provided id if there is one (for Supabase auth)
+          id: userId, // Use converted ID that works with our integer schema
           username: user.username,
           lastOpenedProjectId: user.lastOpenedProjectId
         })
@@ -275,14 +281,14 @@ export class SupabaseStorage implements IStorage {
       const supabase = await getSupabaseClient();
       if (!supabase) throw new Error('Failed to get Supabase client');
       
-      // Make sure userId is a string for Supabase users table
-      const supabaseUserId = String(userId);
-      console.log(`Updating last opened project for user ${supabaseUserId} to project ${projectId}`);
+      // Convert string ID to integer using our hash function
+      const numericUserId = typeof userId === 'string' ? this.hashStringToInteger(userId) : userId;
+      console.log(`Updating last opened project for user ${numericUserId} (converted from: ${userId}) to project ${projectId}`);
       
       const { error } = await supabase
         .from('users')
         .update({ lastOpenedProjectId: projectId })
-        .eq('id', supabaseUserId);
+        .eq('id', numericUserId);
       
       if (error) {
         console.error('Error updating last opened project in Supabase:', error);
@@ -302,14 +308,14 @@ export class SupabaseStorage implements IStorage {
       const supabase = await getSupabaseClient();
       if (!supabase) throw new Error('Failed to get Supabase client');
       
-      // Make sure userId is a string for Supabase (UUID format)
-      const supabaseUserId = String(userId);
-      console.log(`Getting projects for user ${supabaseUserId} (${typeof supabaseUserId})`);
+      // Convert string ID to integer using our hash function
+      const numericUserId = typeof userId === 'string' ? this.hashStringToInteger(userId) : userId;
+      console.log(`Getting projects for user ${numericUserId} (converted from: ${userId})`);
       
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('userId', supabaseUserId)
+        .eq('userId', numericUserId)
         .order('createdAt', { ascending: false });
       
       if (error) {
