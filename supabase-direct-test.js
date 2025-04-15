@@ -99,15 +99,11 @@ async function runTest() {
       console.log('SUCCESS! Test user created:', userData);
       
       // 2. Second test: Create a test project with the new user ID
+      // Let's try with only required fields to avoid schema cache issues
       const testProject = {
-        userId: userData[0].id, // Use the auto-generated ID from the successful user creation
-        name: 'Test Project ' + Date.now(),
-        createdAt: new Date().toISOString(), // CamelCase matches what we saw in users table
-        author: 'Test Author',
-        startSlogan: 'Test slogan',
-        endSlogan: 'Test end slogan',
-        lastViewedSlideIndex: 0,
-        isLocked: false
+        userid: userData[0].id, // lowercase column name - required
+        name: 'Test Project ' + Date.now(), // required
+        islocked: false // required
       };
       
       console.log('Attempting to create test project:', testProject);
@@ -123,13 +119,11 @@ async function runTest() {
         console.log('SUCCESS! Test project created:', projectData);
         
         // 3. Third test: Create a test note
+        // Let's try with only the required fields
         const testNote = {
-          projectId: projectData[0].id, // camelCase column names consistent with users table
-          content: 'Test note content ' + Date.now(),
-          createdAt: new Date().toISOString(), // camelCase
-          updatedAt: new Date().toISOString(), // camelCase
-          order: 0,
-          images: []
+          projectid: projectData[0].id, // lowercase column name - required
+          content: 'Test note content ' + Date.now(), // required
+          order: 0 // required
         };
         
         console.log('Attempting to create test note:', testNote);
