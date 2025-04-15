@@ -145,10 +145,7 @@ export const TimeDistributionChart: React.FC<TimeDistributionChartProps> = ({ no
             innerRadius={60}
             dataKey="minutes"
             nameKey="name"
-            label={(entry) => {
-              const percentage = (entry.value / totalMinutes * 100).toFixed(0);
-              return `${entry.name} (${percentage}%)`;
-            }}
+            label={false}
             labelLine={false}
           >
             {timeSegments.map((entry, index) => (
@@ -156,7 +153,16 @@ export const TimeDistributionChart: React.FC<TimeDistributionChartProps> = ({ no
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
-          <Legend layout="vertical" align="right" verticalAlign="middle" />
+          <Legend 
+            layout="vertical" 
+            align="right" 
+            verticalAlign="middle"
+            formatter={(value, entry, index) => {
+              const item = timeSegments[index];
+              const percentage = (item.minutes / totalMinutes * 100).toFixed(0);
+              return <span className="text-sm">{value} ({percentage}%)</span>;
+            }}
+          />
         </PieChart>
       </ResponsiveContainer>
     </div>
