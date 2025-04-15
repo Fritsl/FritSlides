@@ -137,7 +137,7 @@ export class SupabaseStorage implements IStorage {
       time: note.time || null,
       isDiscussion: note.isDiscussion || false, // now using camelCase to match database column
       images: note.images || [],
-      order: typeof note.order === 'string' ? parseFloat(note.order) : (note.order || 0)
+      order: typeof note.order === 'string' ? parseFloat(note.order) : (typeof note.order === 'number' ? note.order : 0)
     };
   }
   
