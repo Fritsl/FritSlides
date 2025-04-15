@@ -890,7 +890,7 @@ export default function NoteItem({
                         projectId: note.projectId,
                         parentId: note.parentId,
                         content: "",
-                        order: (Number(note.order) + 1).toString(),
+                        order: Number(note.order) + 1,
                         url: "",
                         linkText: "",
                         youtubeLink: "",
@@ -928,7 +928,7 @@ export default function NoteItem({
                       }
                       
                       // Use an order value higher than any existing child note
-                      const newOrderValue = (maxOrder + 1).toString();
+                      const newOrderValue = maxOrder + 1;
                       console.log(`Creating new child note with order ${newOrderValue} (max child order was ${maxOrder})`);
                       
                       (createNote.mutate as any)({
