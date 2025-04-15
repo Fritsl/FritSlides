@@ -39,18 +39,67 @@ async function runTest() {
       console.log('UNCERTAIN: Got a response but not the expected error code');
     }
     
-    // Try a more direct approach
-    console.log('\nTesting with a system table query...');
-    const { data: schemaTables, error: schemaError } = await supabase
-      .from('pg_tables')
-      .select('tablename')
-      .limit(5);
-    
-    if (schemaError) {
-      console.error('FAILED: Error querying system tables:', schemaError.message);
+    // Check for existing tables
+    console.log('\nChecking for existing tables in Supabase...');
+    console.log('Looking for users table:');
+    const { data: usersTable, error: usersError } = await supabase
+      .from('users')
+      .select('*')
+      .limit(1);
+      
+    if (usersError) {
+      console.log('Users table error:', usersError.message);
     } else {
-      console.log('SUCCESS: Retrieved tables from Supabase:');
-      console.log(schemaTables);
+      console.log('Users table exists!', usersTable);
+    }
+    
+    console.log('\nLooking for projects table:');
+    const { data: projectsTable, error: projectsError } = await supabase
+      .from('projects')
+      .select('*')
+      .limit(1);
+      
+    if (projectsError) {
+      console.log('Projects table error:', projectsError.message);
+    } else {
+      console.log('Projects table exists!', projectsTable);
+    }
+    
+    console.log('\nLooking for notes table:');
+    const { data: notesTable, error: notesError } = await supabase
+      .from('notes')
+      .select('*')
+      .limit(1);
+      
+    if (notesError) {
+      console.log('Notes table error:', notesError.message);
+    } else {
+      console.log('Notes table exists!', notesTable);
+    }
+    
+    // Create a test table if needed
+    console.log('\nTrying to create a users table:');
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT UNIQUE,
+        password TEXT,
+        "lastOpenedProjectId" INTEGER
+      )
+    `;
+    
+    try {
+      const { error: createError } = await supabase.rpc('exec_sql', { 
+        sql: createTableSQL 
+      });
+      
+      if (createError) {
+        console.log('Error creating table:', createError.message);
+      } else {
+        console.log('Successfully created or verified users table');
+      }
+    } catch (sqlErr) {
+      console.log('SQL execution error, likely the RPC does not exist:', sqlErr.message);
     }
   } catch (e) {
     console.error('CRITICAL ERROR connecting to Supabase:', e.message);
