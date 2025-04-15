@@ -79,18 +79,43 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
         startTime: startTime,           // When the bar should start
         duration: duration,             // How long the bar should be
         startPos: startTime,            // A separate property to use for positioning 
-        displayTime: formatTimeString(currentNote.time),
-        content: currentNote.content,
+        displayTime: formatTimeString(currentNote.time || ''),
         title: noteTitle || `Note ${currentNote.id}`
       });
     }
     
-    // Calculate chart bounds with padding
+    // Calculate chart bounds with intelligent padding
     const range = maxTime - minTime;
-    const padding = Math.max(1800, range * 0.1); // At least 30 min padding
     
+    // Use different padding strategies based on the time range
+    let padding;
+    
+    if (range < 3600) { // Less than 1 hour
+      padding = 600; // 10 minutes padding
+    } else if (range < 7200) { // 1-2 hours
+      padding = 900; // 15 minutes padding
+    } else if (range < 14400) { // 2-4 hours
+      padding = 1800; // 30 minutes padding
+    } else {
+      padding = Math.max(1800, range * 0.1); // Larger padding for longer timelines
+    }
+    
+    // Ensure we don't exceed the day boundaries
     const minBound = Math.max(0, minTime - padding);
-    const maxBound = maxTime + padding;
+    const maxBound = Math.min(86400, maxTime + padding); // Don't go beyond 24 hours
+    
+    // If the timeline is very short, expand it slightly to make it more visible
+    const displayRange = maxBound - minBound;
+    if (displayRange < 3600) { // If less than 1 hour visible
+      const midpoint = (minBound + maxBound) / 2;
+      return { 
+        chartData: processedData, 
+        chartBounds: { 
+          min: Math.max(0, midpoint - 1800),    // At least 30 min before
+          max: Math.min(86400, midpoint + 1800) // At least 30 min after
+        } 
+      };
+    }
     
     return { 
       chartData: processedData, 
@@ -109,9 +134,18 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
   // Format end time
   const formatEndTime = (startTimeStr: string, durationSec: number): string => {
     try {
-      const startDate = new Date(`2023-01-01T${startTimeStr}`);
-      const endDate = new Date(startDate.getTime() + durationSec * 1000);
-      return formatTimeString(endDate.toTimeString().slice(0, 5));
+      const startTimeParts = startTimeStr.split(':').map(Number);
+      if (startTimeParts.length < 2) return "Unknown";
+      
+      // Calculate end time in seconds
+      const startSeconds = startTimeParts[0] * 3600 + startTimeParts[1] * 60;
+      const endSeconds = startSeconds + durationSec;
+      
+      // Format as HH:MM
+      const endHours = Math.floor(endSeconds / 3600) % 24;
+      const endMinutes = Math.floor((endSeconds % 3600) / 60);
+      
+      return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`;
     } catch (e) {
       return "Unknown";
     }
