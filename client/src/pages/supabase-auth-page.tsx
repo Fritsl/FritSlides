@@ -63,7 +63,7 @@ export default function SupabaseAuthPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      setLocation("/migrate");
+      setLocation("/"); // Redirect to home page after login
     }
   }, [user, setLocation]);
 
