@@ -270,6 +270,7 @@ export default function PresentMode() {
     // Sort child notes by order for proper presentation
     notesMap.forEach(note => {
       if (note.childNotes && note.childNotes.length > 0) {
+        // Consistent numeric sorting to match the Notes view
         note.childNotes.sort((a, b) => Number(a.order) - Number(b.order));
       }
     });
@@ -300,8 +301,8 @@ export default function PresentMode() {
       result.push(startSlide);
     }
     
-    // Sort root notes by order
-    rootNotesArray.sort((a, b) => String(a.order).localeCompare(String(b.order)));
+    // Sort root notes by order - using numeric sorting to match Notes view
+    rootNotesArray.sort((a, b) => Number(a.order) - Number(b.order));
     
     // Set the root notes for use in the start slide
     setRootNotes(rootNotesArray);
@@ -315,9 +316,9 @@ export default function PresentMode() {
       // Check if this note has children
       const hasChildren = note.childNotes && note.childNotes.length > 0;
       
-      // Sort children by order if any exist
+      // Sort children by order if any exist - using numeric sorting to match Notes view
       const sortedChildren = hasChildren 
-        ? [...note.childNotes!].sort((a, b) => String(a.order).localeCompare(String(b.order)))
+        ? [...note.childNotes!].sort((a, b) => Number(a.order) - Number(b.order))
         : [];
       
       // Process based on note level and whether it has children
