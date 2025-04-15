@@ -116,7 +116,7 @@ export class SupabaseStorage implements IStorage {
       linkText: data.linktext || null, // lowercase to match database column
       youtubeLink: data.youtubelink || null, // lowercase to match database column
       time: data.time || null,
-      isDiscussion: typeof data.isdiscussion === 'boolean' ? data.isdiscussion : false, // lowercase to match database column
+      isDiscussion: typeof data.isDiscussion === 'boolean' ? data.isDiscussion : false, // camelCase to match database column
       images: Array.isArray(data.images) ? data.images : [],
       order: data.order !== null && data.order !== undefined ? Number(data.order) : 0 // Keep as number consistently
       // Removed createdAt and updatedAt as they don't exist in the Supabase table
@@ -189,7 +189,7 @@ export class SupabaseStorage implements IStorage {
     if (note.linkText !== undefined) update.linkText = note.linkText; // camelCase to match database column
     if (note.youtubeLink !== undefined) update.youtubeLink = note.youtubeLink; // camelCase to match database column
     if (note.time !== undefined) update.time = note.time;
-    // REMOVED isDiscussion field as it doesn't exist in the database
+    if (note.isDiscussion !== undefined) update.isDiscussion = note.isDiscussion; // camelCase to match database column
     if (note.images !== undefined) update.images = note.images;
     if (note.order !== undefined) {
       update.order = typeof note.order === 'string' ? parseFloat(note.order) : note.order;

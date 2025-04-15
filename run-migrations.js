@@ -25,7 +25,8 @@ async function runMigrations() {
     const migrationFiles = [
       '001_initial_schema.sql',
       '001_fix_column_names.sql',
-      '002_update_user_id_type.sql'
+      '002_update_user_id_type.sql',
+      '003_add_isDiscussion_column.sql'
     ];
     
     for (const file of migrationFiles) {
