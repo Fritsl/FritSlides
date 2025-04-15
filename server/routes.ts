@@ -51,6 +51,12 @@ function isAuthenticated(req: Request, res: Response, next: Function) {
   // For Supabase authentication, we'll check if the request contains a valid user ID in a header
   // This is a temporary solution until we fully implement Supabase authentication on the server
   
+  // Log all headers for debugging (except sensitive ones)
+  const safeHeaders = { ...req.headers };
+  delete safeHeaders.authorization;
+  delete safeHeaders.cookie;
+  console.log(`Authentication headers:`, JSON.stringify(safeHeaders));
+  
   if (req.headers['x-supabase-user-id']) {
     // If Supabase user ID is provided in header, use it
     const supabaseUserId = req.headers['x-supabase-user-id'] as string;
@@ -68,9 +74,11 @@ function isAuthenticated(req: Request, res: Response, next: Function) {
   } 
   else if (req.isAuthenticated && req.isAuthenticated()) {
     // Fallback to local passport authentication (will be removed in the future)
+    console.log("Authenticated with passport authentication");
     return next();
   }
   
+  console.log("Authentication failed - no valid auth method found");
   return res.status(401).json({ message: "Unauthorized - No valid authentication found" });
 }
 

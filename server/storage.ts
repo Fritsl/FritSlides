@@ -61,8 +61,20 @@ export class DatabaseStorage implements IStorage {
 
   // User operations - updated for Supabase
   async getUser(id: string | number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, String(id)));
-    return user;
+    console.log(`Getting user with ID: ${id} (type: ${typeof id})`);
+    
+    // Convert to string to ensure proper comparison with database
+    const idStr = String(id);
+    console.log(`Converted ID: ${idStr}`);
+    
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, idStr));
+      console.log(`User lookup result: ${user ? 'User found' : 'User NOT found'}`);
+      return user;
+    } catch (error) {
+      console.error(`Error getting user with ID ${idStr}:`, error);
+      throw error;
+    }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
