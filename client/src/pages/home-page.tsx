@@ -8,6 +8,7 @@ import Header from "@/components/ui/header";
 import NoteTree from "@/components/ui/note-tree";
 import { Button } from "@/components/ui/button";
 import { Loader2, FolderPlus, FileText, FileJson } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   Dialog, 
   DialogContent, 
@@ -252,8 +253,8 @@ export default function HomePage() {
       downloadLinkRef.current = link;
     }
     
-    // Fetch the export data
-    fetch(`/api/projects/${selectedProjectId}/export`)
+    // Fetch the export data with authentication
+    apiRequest("GET", `/api/projects/${selectedProjectId}/export`)
       .then(response => {
         if (!response.ok) {
           throw new Error("Failed to export notes");
@@ -314,8 +315,8 @@ export default function HomePage() {
       description: "Please wait while we format your notes...",
     });
     
-    // Fetch the export data as text
-    fetch(`/api/projects/${selectedProjectId}/export-text`)
+    // Fetch the export data as text with authentication
+    apiRequest("GET", `/api/projects/${selectedProjectId}/export-text`)
       .then(response => {
         if (!response.ok) {
           throw new Error("Failed to export notes as text");
