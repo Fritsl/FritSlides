@@ -25,7 +25,7 @@ const passwordChangeSchema = z.object({
 type PasswordChangeValues = z.infer<typeof passwordChangeSchema>;
 
 export default function AccountSettingsPage() {
-  const [_, navigate] = useLocation();
+  const [_, setLocation] = useLocation();
   const { user, session, signOut } = useSupabaseAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);

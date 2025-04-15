@@ -83,7 +83,7 @@ export default function Header({
   onShowTimeDistribution,
   onShowTimeGantt
 }: HeaderProps) {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const { user: supabaseUser, signOut: supabaseSignOut } = useSupabaseAuth();
   const { toast } = useToast();
   const { editingNoteId, setEditingNoteId, isEditing } = useNoteEditing();
@@ -292,7 +292,7 @@ export default function Header({
                     {supabaseUser?.email || "User"}
                   </span></span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/account-settings")}>
+                <DropdownMenuItem onClick={() => setLocation("/account-settings")}>
                   <Settings className="h-4 w-4 mr-2" />
                   <span>Account Settings</span>
                 </DropdownMenuItem>
