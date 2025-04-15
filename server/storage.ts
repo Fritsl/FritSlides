@@ -68,9 +68,26 @@ export class DatabaseStorage implements IStorage {
     console.log(`Converted ID: ${idStr}`);
     
     try {
-      const [user] = await db.select().from(users).where(eq(users.id, idStr));
-      console.log(`User lookup result: ${user ? 'User found' : 'User NOT found'}`);
-      return user;
+      // Using raw SQL for more direct debugging and to bypass any potential issues with the ORM
+      const result = await db.execute(sql`
+        SELECT * FROM users WHERE id = ${idStr}
+      `);
+      
+      // The result type depends on the driver, handle both possibilities
+      const rows = 'rows' in result ? result.rows : (result as any);
+      const rowCount = Array.isArray(rows) ? rows.length : 0;
+      
+      console.log(`User lookup raw SQL result: ${rowCount} rows found`);
+      
+      // If we found a user, convert it to the User type
+      if (rowCount > 0) {
+        const user = Array.isArray(rows) ? rows[0] as User : (rows as User);
+        console.log(`User found via SQL: ${user.id}`);
+        return user;
+      }
+      
+      console.log(`User NOT found via SQL for ID: ${idStr}`);
+      return undefined;
     } catch (error) {
       console.error(`Error getting user with ID ${idStr}:`, error);
       throw error;

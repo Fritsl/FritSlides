@@ -3,6 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import multer from "multer";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
+import { User } from "../shared/schema";
 
 // Helper function to escape special characters in strings used in regular expressions
 function escapeRegExp(string: string): string {
@@ -98,7 +101,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Manual SQL query for debugging - use the execute method directly
       console.log("DEBUGGING: Running direct SQL query to find user");
       const directResult = await db.execute(sql`SELECT * FROM users WHERE id = ${userId}`);
-      console.log("DEBUGGING: Direct SQL query result:", directResult.rows.length > 0 ? "User found" : "User NOT found");
+      
+      // The result type depends on the driver, handle both possibilities
+      const rows = 'rows' in directResult ? directResult.rows : (directResult as any);
+      const rowCount = Array.isArray(rows) ? rows.length : 0;
+      
+      console.log("DEBUGGING: Direct SQL query result:", rowCount > 0 ? "User found" : "User NOT found");
       
       // Try to get user through normal method
       let user = await storage.getUser(userId);
@@ -111,9 +119,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           // First check again with direct SQL to avoid race conditions
           const checkAgain = await db.execute(sql`SELECT * FROM users WHERE id = ${userId}`);
-          if (checkAgain.rows.length > 0) {
+          
+          // The result type depends on the driver, handle both possibilities
+          const checkRows = 'rows' in checkAgain ? checkAgain.rows : (checkAgain as any);
+          const checkRowCount = Array.isArray(checkRows) ? checkRows.length : 0;
+          
+          if (checkRowCount > 0) {
             console.log("DEBUGGING: User found in direct check before creation, using that instead");
-            user = checkAgain.rows[0] as User;
+            user = Array.isArray(checkRows) ? checkRows[0] as User : (checkRows as User);
           } else {
             // User truly doesn't exist, create them
             user = await storage.createUser({
@@ -133,9 +146,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Try direct SQL again
             const finalCheck = await db.execute(sql`SELECT * FROM users WHERE id = ${userId}`);
-            if (finalCheck.rows.length > 0) {
+            
+            // The result type depends on the driver, handle both possibilities
+            const finalRows = 'rows' in finalCheck ? finalCheck.rows : (finalCheck as any);
+            const finalRowCount = Array.isArray(finalRows) ? finalRows.length : 0;
+            
+            if (finalRowCount > 0) {
               console.log("DEBUGGING: Found user with direct SQL after duplicate key error");
-              user = finalCheck.rows[0] as User;
+              user = Array.isArray(finalRows) ? finalRows[0] as User : (finalRows as User);
             } else {
               // One more try with storage method
               user = await storage.getUser(userId);
