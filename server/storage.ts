@@ -1367,4 +1367,5 @@ export class MemStorage implements IStorage {
 import { SupabaseStorage } from './supabase-storage-adapter';
 
 // Use SupabaseStorage instead of DatabaseStorage for all data persistence
-export const storage = new SupabaseStorage();
+// Use the DatabaseStorage instead of SupabaseStorage
+export const storage = new DatabaseStorage();
