@@ -91,9 +91,9 @@ export function setupAuth(app: Express) {
               .from('users')
               .insert({
                 id: supabaseUserId,
-                email: userEmail || `user_${supabaseUserId.substring(0, 8)}@example.com`, 
-                created_at: new Date().toISOString(),
-                last_opened_project_id: null
+                username: userEmail || `user_${supabaseUserId.substring(0, 8)}@example.com`, 
+                // Using our schema column names instead of Supabase defaults
+                lastOpenedProjectId: null
               })
               .select()
               .single();
