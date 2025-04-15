@@ -75,9 +75,11 @@ export function setupAuth(app: Express) {
           // Using the UUID directly (database stores IDs as text)
           console.log(`Looking up user with UUID: ${supabaseUserId}`);
           
-          // Use direct SQL query to verify user exists (bypassing schema cache issues)
+          // Use direct query instead of RPC function
           const { data: userData, error } = await supabase
-            .rpc('get_user_by_id', { user_id: supabaseUserId });
+            .from('users')
+            .select('*')
+            .eq('id', supabaseUserId);
           
           if (error) {
             console.error("Error verifying user with Supabase admin client:", error);
