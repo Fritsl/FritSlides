@@ -99,8 +99,8 @@ export async function createSupabaseUser(userId: string, email: string | null, l
       .from('users')
       .insert({
         id: userId,
-        email: email || `user_${userId.substring(0, 8)}@example.com`,
-        last_opened_project_id: lastProjectId
+        username: email || `user_${userId.substring(0, 8)}@example.com`,
+        lastopenedprojectid: lastProjectId
       })
       .select()
       .single();

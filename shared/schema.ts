@@ -2,42 +2,42 @@ import { pgTable, text, serial, integer, timestamp, jsonb, numeric, boolean } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Define tables with foreign key references - updated for Supabase
+// Define tables with foreign key references - updated for Supabase with lowercase column names
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // Supabase uses UUID strings
   username: text("username").notNull().unique(),
   password: text("password"),  // Optional for Supabase auth
-  lastOpenedProjectId: integer("lastOpenedProjectId"),
+  lastOpenedProjectId: integer("lastopenedprojectid"),
 });
 
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("userid").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  startSlogan: text("startSlogan"),
-  endSlogan: text("endSlogan"),
+  startSlogan: text("startslogan"),
+  endSlogan: text("endslogan"),
   author: text("author"),
-  lastViewedSlideIndex: integer("lastViewedSlideIndex").default(0),
-  isLocked: boolean("isLocked").default(false).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastViewedSlideIndex: integer("lastviewedslideindex").default(0),
+  isLocked: boolean("islocked").default(false).notNull(),
+  createdAt: timestamp("createdat").defaultNow().notNull(),
   // No updatedAt field in the database
 });
 
 // Fixed the notes table with proper type annotation to avoid self-reference error
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
-  projectId: integer("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  parentId: integer("parentId").references((): any => notes.id, { onDelete: "set null" }),
+  projectId: integer("projectid").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  parentId: integer("parentid").references((): any => notes.id, { onDelete: "set null" }),
   content: text("content").notNull(),
   url: text("url"),
-  linkText: text("linkText"),
-  youtubeLink: text("youtubeLink"),
+  linkText: text("linktext"),
+  youtubeLink: text("youtubelink"),
   time: text("time"),
-  isDiscussion: boolean("isDiscussion").default(false),
+  isDiscussion: boolean("isdiscussion").default(false),
   images: jsonb("images").$type<string[]>().default([]),
   order: numeric("order", { precision: 10, scale: 2 }).notNull().default("0"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdat").defaultNow().notNull(),
+  updatedAt: timestamp("updatedat").defaultNow().notNull(),
 });
 
 // Define schemas for data insertion/validation
