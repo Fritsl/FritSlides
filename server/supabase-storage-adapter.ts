@@ -118,7 +118,7 @@ export class SupabaseStorage implements IStorage {
       time: data.time || null,
       isDiscussion: typeof data.isdiscussion === 'boolean' ? data.isdiscussion : false, // lowercase to match database column
       images: Array.isArray(data.images) ? data.images : [],
-      order: data.order ? data.order.toString() : "0" // Convert to string as our schema expects
+      order: data.order !== null && data.order !== undefined ? Number(data.order) : 0 // Keep as number consistently
       // Removed createdAt and updatedAt as they don't exist in the Supabase table
     };
   }
