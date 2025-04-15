@@ -20,6 +20,7 @@ export const projects = pgTable("projects", {
   lastViewedSlideIndex: integer("lastViewedSlideIndex").default(0),
   isLocked: boolean("isLocked").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  // No updatedAt field in the database
 });
 
 export const notes = pgTable("notes", {

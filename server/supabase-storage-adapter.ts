@@ -357,9 +357,7 @@ export class SupabaseStorage implements IStorage {
       
       const supabaseData = this.convertToSupabaseProjectUpdate(data);
       
-      // Add updated timestamp
-      supabaseData.updatedAt = new Date().toISOString();
-      
+      // updatedAt doesn't exist in projects table
       console.log('Updating project with data:', JSON.stringify(supabaseData, null, 2));
       
       const { data: updatedData, error } = await supabase
@@ -391,8 +389,8 @@ export class SupabaseStorage implements IStorage {
       const { error } = await supabase
         .from('projects')
         .update({ 
-          lastViewedSlideIndex: slideIndex,
-          updatedAt: new Date().toISOString()
+          lastViewedSlideIndex: slideIndex
+          // No updatedAt field in projects table
         })
         .eq('id', projectId);
       
@@ -416,8 +414,8 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('projects')
         .update({ 
-          isLocked: lockStatus.isLocked,
-          updatedAt: new Date().toISOString()
+          isLocked: lockStatus.isLocked
+          // No updatedAt field in projects table
         })
         .eq('id', id)
         .select()
