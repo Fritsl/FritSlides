@@ -514,7 +514,7 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('projects')
         .update({ 
-          islocked: lockStatus.isLocked // lowercase to match database column
+          "isLocked": lockStatus.isLocked // camelCase to match database column
           // No updatedAt field in projects table
         })
         .eq('id', id)
@@ -578,8 +578,8 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('notes')
         .select('*')
-        .eq('projectid', projectId) // lowercase to match database column
-        .order('order', { ascending: true });
+        .eq('"projectId"', projectId) // camelCase to match database column
+        .order('"order"', { ascending: true });
       
       if (error) {
         console.error('Error getting notes from Supabase:', error);
@@ -625,9 +625,9 @@ export class SupabaseStorage implements IStorage {
       
       const supabaseNote = this.convertToSupabaseNote(note);
       
-      // Add timestamps - lowercase to match database column names
-      supabaseNote.createdat = new Date().toISOString();
-      supabaseNote.updatedat = new Date().toISOString();
+      // Add timestamps with camelCase names to match database column names
+      supabaseNote["createdAt"] = new Date().toISOString();
+      supabaseNote["updatedAt"] = new Date().toISOString();
       
       const { data, error } = await supabase
         .from('notes')
@@ -704,8 +704,8 @@ export class SupabaseStorage implements IStorage {
         // If not deleting children, set their parentId to null
         const { error: updateError } = await supabase
           .from('notes')
-          .update({ parentid: null }) // lowercase to match database column
-          .eq('parentid', id); // lowercase to match database column
+          .update({ "parentId": null }) // camelCase to match database column
+          .eq('"parentId"', id); // camelCase to match database column
         
         if (updateError) {
           console.error('Error updating child notes in Supabase:', updateError);
@@ -736,7 +736,7 @@ export class SupabaseStorage implements IStorage {
     const { data, error } = await supabase
       .from('notes')
       .select('id')
-      .eq('parentid', parentId); // lowercase to match database column
+      .eq('"parentId"', parentId); // camelCase to match database column
     
     if (error || !data) {
       console.error('Error getting child notes:', error);
@@ -764,8 +764,8 @@ export class SupabaseStorage implements IStorage {
       const { error } = await supabase
         .from('notes')
         .update({ 
-          order: numericOrder,
-          updatedat: new Date().toISOString() // lowercase to match database column
+          "order": numericOrder,
+          "updatedAt": new Date().toISOString() // camelCase to match database column
         })
         .eq('id', id);
       
@@ -787,8 +787,8 @@ export class SupabaseStorage implements IStorage {
       if (!supabase) throw new Error('Failed to get Supabase client');
       
       const update: any = {
-        parentid: parentId, // lowercase to match database column
-        updatedat: new Date().toISOString() // lowercase to match database column
+        "parentId": parentId, // camelCase to match database column
+        "updatedAt": new Date().toISOString() // camelCase to match database column
       };
       
       if (order !== undefined) {
@@ -820,8 +820,8 @@ export class SupabaseStorage implements IStorage {
       // Unfortunately, Supabase doesn't support batch updates directly, so we need to do them one by one
       for (const update of updates) {
         const supabaseUpdate: any = {
-          parentid: update.parentId, // lowercase to match database column
-          updatedat: new Date().toISOString() // lowercase to match database column
+          "parentId": update.parentId, // camelCase to match database column
+          "updatedAt": new Date().toISOString() // camelCase to match database column
         };
         
         if (update.order !== undefined) {
@@ -859,9 +859,9 @@ export class SupabaseStorage implements IStorage {
         
       // Use IS NULL for null values, eq for non-null values
       if (parentId === null) {
-        query = query.is('parentid', null); // lowercase to match database column
+        query = query.is('"parentId"', null); // camelCase to match database column
       } else {
-        query = query.eq('parentid', parentId); // lowercase to match database column
+        query = query.eq('"parentId"', parentId); // camelCase to match database column
       }
       
       const { data, error } = await query;
@@ -882,8 +882,8 @@ export class SupabaseStorage implements IStorage {
         // Type-safe update
         if (data[i] && data[i].id) {
           const noteUpdate: Record<string, any> = { 
-            order: newOrder,
-            updatedat: new Date().toISOString()
+            "order": newOrder,
+            "updatedAt": new Date().toISOString()
           };
           
           const { error: updateError } = await supabase
