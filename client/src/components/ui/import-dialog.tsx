@@ -66,12 +66,7 @@ export function ImportDialog({
           // Start the import process
           console.log("Sending import data:", JSON.stringify(data, null, 2).substring(0, 200) + "...");
           
-          const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data, {
-            // Add extra headers for debugging
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          });
+          const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
           
           // Log response status for debugging
           console.log("Import response status:", res.status);
@@ -332,6 +327,33 @@ export function ImportDialog({
                 <p className="text-xs text-muted-foreground mt-1">
                   Supports JSON files exported from FritSlides
                 </p>
+                <Button 
+                  variant="link" 
+                  className="text-xs text-muted-foreground p-0 h-auto mt-2 underline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const testData = {
+                      notes: [
+                        {
+                          id: 1,
+                          content: "Test note from sample import",
+                          order: 0
+                        },
+                        {
+                          id: 2,
+                          content: "Another test note",
+                          order: 1
+                        }
+                      ]
+                    };
+                    const blob = new Blob([JSON.stringify(testData, null, 2)], {type: 'application/json'});
+                    const file = new File([blob], 'test-import.json', {type: 'application/json'});
+                    setSelectedFile(file);
+                    setParseError(null);
+                  }}
+                >
+                  Create sample file
+                </Button>
               </div>
             )}
           </div>

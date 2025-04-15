@@ -1026,7 +1026,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Import request received with user:", req.user ? `ID: ${req.user.id}` : "Not authenticated");
       console.log("Request body type:", typeof req.body);
+      console.log("Request body:", JSON.stringify(req.body).substring(0, 300) + "...");
       console.log("Request body has notes array:", req.body && Array.isArray(req.body.notes));
+      console.log("Headers:", JSON.stringify(req.headers));
       
       const projectId = parseInt(req.params.projectId);
       console.log("Project ID from params:", projectId);
@@ -1075,8 +1077,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const importData = req.body as ImportData;
       
       // Validate the import data has the correct structure
-      if (!importData || !Array.isArray(importData.notes)) {
-        return res.status(400).json({ message: "Invalid import data" });
+      if (!importData || !importData.notes || !Array.isArray(importData.notes)) {
+        console.error("Invalid import data format:", importData);
+        return res.status(400).json({ message: "Invalid import data format - missing notes array" });
       }
       
       // Create a mapping of old ids to new ids for proper parent references

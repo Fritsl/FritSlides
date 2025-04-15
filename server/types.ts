@@ -68,6 +68,35 @@ export function convertImportedNoteToInsert(
            "0"
   };
   
-  // Validate and return the data through our schema
-  return noteConversionSchema.parse(preparedData);
+  try {
+    // Validate and return the data through our schema
+    return noteConversionSchema.parse(preparedData);
+  } catch (error) {
+    console.error("Error converting note to insert format:", error);
+    console.error("Problematic note data:", JSON.stringify(note));
+    console.error("Prepared data:", JSON.stringify(preparedData));
+    
+    try {
+      // Return a fallback with minimal required properties
+      return noteConversionSchema.parse({
+        projectId,
+        content: "Import error - could not parse note content",
+        parentId: null,
+        order: "0",
+        isDiscussion: false,
+        images: []
+      });
+    } catch (fallbackError) {
+      console.error("Even fallback processing failed:", fallbackError);
+      // Last resort fallback
+      return {
+        projectId,
+        content: "Import error",
+        parentId: null,
+        order: "0",
+        isDiscussion: false,
+        images: []
+      } as unknown as InsertNote;
+    }
+  }
 }
