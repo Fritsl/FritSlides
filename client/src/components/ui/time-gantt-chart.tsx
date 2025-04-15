@@ -8,24 +8,21 @@ interface TimeGanttChartProps {
   projectName: string;
 }
 
-// The core issue with Gantt charts in Recharts is that bars always start at zero
-// and the value determines their length. To make it work as a Gantt chart:
-// 1. For each time slot, create a "dummy" bar with zero value from 0 to start time
-// 2. Stack the actual data on top of that bar, which positions it at the right start time
-
 export default function TimeGanttChart({ notes, projectName }: TimeGanttChartProps) {
   // Prepare data for the Gantt chart
   const { chartData, chartBounds } = useMemo(() => {
-    // Filter notes with time values and sort by time
+    // Filter notes with time values
     const timedNotes = notes
       .filter(note => note.time && note.time.trim() !== '')
       .sort((a, b) => {
         const timeA = a.time ? parseTimeString(a.time)?.seconds || 0 : 0;
         const timeB = b.time ? parseTimeString(b.time)?.seconds || 0 : 0;
-        return timeA - timeB;
+        return timeA - timeB; // Sort by time (ascending)
       });
 
-    if (timedNotes.length === 0) return { chartData: [], chartBounds: { min: 0, max: 86400 } };
+    if (timedNotes.length === 0) {
+      return { chartData: [], chartBounds: { min: 0, max: 3600 } };
+    }
 
     const processedData = [];
     let minTime = Number.MAX_SAFE_INTEGER;
@@ -75,51 +72,34 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
       processedData.push({
         name: displayTitle,
         id: currentNote.id,
-        // These properties are the key for Gantt positioning:
-        startTime: startTime,           // When the bar should start
-        duration: duration,             // How long the bar should be
-        startPos: startTime,            // A separate property to use for positioning 
+        startTime: startTime,
+        duration: duration,
         displayTime: formatTimeString(currentNote.time || ''),
         title: noteTitle || `Note ${currentNote.id}`
       });
     }
     
-    // Calculate chart bounds with intelligent padding
-    const range = maxTime - minTime;
+    // Force a smaller time range window (focusing only on the actual times used)
+    // This makes the chart display just the needed time range instead of full 24 hours
+    let rangeMin = minTime;
+    let rangeMax = maxTime;
     
-    // Use different padding strategies based on the time range
-    let padding;
+    // Add some padding (15 minutes before first note, 15 minutes after last note)
+    const padding = 900; // 15 minutes in seconds
+    rangeMin = Math.max(0, minTime - padding);
+    rangeMax = Math.min(86400, maxTime + padding);
     
-    if (range < 3600) { // Less than 1 hour
-      padding = 600; // 10 minutes padding
-    } else if (range < 7200) { // 1-2 hours
-      padding = 900; // 15 minutes padding
-    } else if (range < 14400) { // 2-4 hours
-      padding = 1800; // 30 minutes padding
-    } else {
-      padding = Math.max(1800, range * 0.1); // Larger padding for longer timelines
-    }
-    
-    // Ensure we don't exceed the day boundaries
-    const minBound = Math.max(0, minTime - padding);
-    const maxBound = Math.min(86400, maxTime + padding); // Don't go beyond 24 hours
-    
-    // If the timeline is very short, expand it slightly to make it more visible
-    const displayRange = maxBound - minBound;
-    if (displayRange < 3600) { // If less than 1 hour visible
-      const midpoint = (minBound + maxBound) / 2;
-      return { 
-        chartData: processedData, 
-        chartBounds: { 
-          min: Math.max(0, midpoint - 1800),    // At least 30 min before
-          max: Math.min(86400, midpoint + 1800) // At least 30 min after
-        } 
-      };
+    // Make sure we have a minimum visible window of 2 hours for very short timelines
+    if (rangeMax - rangeMin < 7200) {
+      const midpoint = (rangeMin + rangeMax) / 2;
+      rangeMin = Math.max(0, midpoint - 3600);
+      rangeMax = Math.min(86400, midpoint + 3600);
     }
     
     return { 
-      chartData: processedData, 
-      chartBounds: { min: minBound, max: maxBound } 
+      // Reverse the data order to get earliest timed notes at the top (Gantt chart convention)
+      chartData: processedData.slice().reverse(), 
+      chartBounds: { min: rangeMin, max: rangeMax } 
     };
   }, [notes]);
 
@@ -185,9 +165,23 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
     );
   }
 
-  // This is the simpler approach - we don't try to position bars at their startTime
-  // Instead, we create a simple horizontal bar chart with time axis
-  // This isn't a true Gantt chart, but it's more reliable with Recharts
+  // Calculate appropriate tick values based on the time range
+  const generateTicks = () => {
+    const range = chartBounds.max - chartBounds.min;
+    const tickCount = range <= 7200 ? 6 : 8; // Fewer ticks for small ranges
+    
+    const ticks = [];
+    const tickInterval = Math.ceil(range / (tickCount - 1));
+    
+    for (let i = 0; i < tickCount; i++) {
+      const tickValue = chartBounds.min + (i * tickInterval);
+      if (tickValue <= chartBounds.max) {
+        ticks.push(tickValue);
+      }
+    }
+    
+    return ticks;
+  };
   
   return (
     <div className="w-full h-[500px] px-2">
@@ -205,7 +199,8 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             type="number" 
-            domain={[chartBounds.min, chartBounds.max]} 
+            domain={[chartBounds.min, chartBounds.max]}
+            ticks={generateTicks()}
             tickFormatter={formatTimeLabel}
             padding={{ left: 20, right: 20 }}
           >
@@ -253,7 +248,7 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
               strokeDasharray="3 3"
               label={{ 
                 value: 'Current Time', 
-                position: 'insideBottomRight', 
+                position: 'insideTopRight', 
                 fill: 'red',
                 fontSize: 12
               }} 
