@@ -3,6 +3,7 @@ import { Note, InsertNote, UpdateNote } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useCallback, createContext, useContext } from "react";
+import { getSupabaseClient } from "@/lib/supabase";
 
 // Helper function to find a note by ID in a list
 const findNoteById = (notes: Note[], id: number): Note | undefined => {
@@ -513,23 +514,43 @@ export function useNotes(projectId: number | null) {
 
   const uploadImage = useMutation({
     mutationFn: async (file: File) => {
+      // Get Supabase authentication headers
+      const supabase = await getSupabaseClient();
+      const { data } = await supabase.auth.getSession();
+      
+      // Create FormData and append the file
       const formData = new FormData();
       formData.append("image", file);
       
+      // Set up headers with authentication
+      const headers: Record<string, string> = {};
+      
+      // Add Supabase auth headers
+      if (data.session) {
+        headers['x-supabase-user-id'] = data.session.user.id;
+        if (data.session.user.email) {
+          headers['x-supabase-user-email'] = data.session.user.email;
+        }
+      }
+      
+      // Make the request with proper headers
       const res = await fetch("/api/upload", {
         method: "POST",
+        headers,
         body: formData,
         credentials: "include",
       });
       
       if (!res.ok) {
         const errorText = await res.text();
+        console.error('Upload failed:', errorText);
         throw new Error(errorText || "Failed to upload image");
       }
       
       return res.json();
     },
     onError: (error) => {
+      console.error('Upload error:', error);
       toast({
         title: "Failed to upload image",
         description: error.message,
