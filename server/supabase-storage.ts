@@ -158,21 +158,23 @@ export async function updateSupabaseUserLastProject(userId: string, projectId: n
       return false;
     }
     
-    console.log(`Updating lastOpenedProject for user ${userId} to ${projectId} in Supabase using admin client`);
+    // Convert UUID string to numeric ID
+    const numericUserId = hashStringToInteger(userId);
+    console.log(`Updating lastOpenedProject for user ${numericUserId} (from UUID: ${userId}) to ${projectId} in Supabase`);
     
     const { error } = await supabase
       .from('users')
       .update({
         lastopenedprojectid: projectId
       })
-      .eq('id', userId);
+      .eq('id', numericUserId);
     
     if (error) {
       console.error('Error updating user in Supabase:', error);
       return false;
     }
     
-    console.log(`Successfully updated lastOpenedProject for user ${userId} to ${projectId}`);
+    console.log(`Successfully updated lastOpenedProject for user ${numericUserId} to ${projectId}`);
     return true;
   } catch (error) {
     console.error('Exception in updateSupabaseUserLastProject:', error);

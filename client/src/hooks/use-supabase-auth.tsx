@@ -51,8 +51,10 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           setUser(session.user);
           
           // Set user data for APIs that expect the user to be in the query cache
+          // Note: We pass the UUID directly here, but the server will convert it to a numeric ID
+          // This is only for client-side state management
           queryClient.setQueryData(["/api/user"], {
-            id: session.user.id,
+            id: session.user.id, // The ID conversion happens server-side
             username: session.user.email,
             lastOpenedProjectId: null // We'll update this later from Supabase
           });
@@ -79,8 +81,10 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             
             if (session) {
               // Update user in query cache
+              // Note: We pass the UUID directly here, but the server will convert it to a numeric ID
+              // This is only for client-side state management
               queryClient.setQueryData(["/api/user"], {
-                id: session.user.id,
+                id: session.user.id, // The ID conversion happens server-side
                 username: session.user.email,
                 lastOpenedProjectId: null
               });
