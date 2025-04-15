@@ -118,6 +118,7 @@ export async function createSupabaseUser(userId: string, email: string | null, l
       .insert({
         id: numericUserId, // Using the numeric ID for database consistency
         username: email || `user_${userId.substring(0, 8)}`,
+        password: 'supabase_auth_user', // Required non-null value (we don't use this for Supabase auth)
         lastopenedprojectid: lastProjectId
       })
       .select()

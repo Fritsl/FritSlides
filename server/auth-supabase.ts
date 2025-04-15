@@ -114,6 +114,7 @@ export function setupAuth(app: Express) {
                 id: numericUserId, // Using the numeric ID for database consistency
                 username: userEmail || `user_${supabaseUserId.substring(0, 8)}@example.com`, 
                 // Using our schema column names instead of Supabase defaults
+                password: 'supabase_auth_user', // Required non-null value (we don't use this for Supabase auth)
                 lastOpenedProjectId: null
               })
               .select()
