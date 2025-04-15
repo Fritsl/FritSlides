@@ -64,7 +64,18 @@ export function ImportDialog({
         
         try {
           // Start the import process
-          const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
+          console.log("Sending import data:", JSON.stringify(data, null, 2).substring(0, 200) + "...");
+          
+          const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data, {
+            // Add extra headers for debugging
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          });
+          
+          // Log response status for debugging
+          console.log("Import response status:", res.status);
+          
           const importData = await res.json();
           
           console.log("Import started with response:", importData);
