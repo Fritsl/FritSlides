@@ -20,6 +20,12 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
         return timeA - timeB; // Sort by time (ascending)
       });
 
+    // Debug output of note times
+    if (timedNotes.length > 0) {
+      console.log('First timed note:', timedNotes[0].time);
+      console.log('Last timed note:', timedNotes[timedNotes.length - 1].time);
+    }
+
     if (timedNotes.length === 0) {
       return { chartData: [], chartBounds: { min: 0, max: 3600 } };
     }
@@ -79,30 +85,36 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
       });
     }
     
-    // Force an extremely tight time range window - only showing times where there are notes
-    // This makes the chart display just the needed time range
+    // Debug logs: show the first and last times in seconds
+    console.log('First note time (seconds):', minTime);
+    console.log('Last note time (seconds):', maxTime);
     
-    // Find the earliest and latest actual timestamps in use with minimal padding
-    const firstNoteTime = minTime; 
-    const lastNoteTime = maxTime;
+    // Use the actual first note time as the minimum with no padding
+    // This solves the issue with empty space at the beginning
+    let rangeMin = minTime;
+    let rangeMax = maxTime;
     
-    // Minimal padding - just a few minutes on each side
-    const padding = 180; // 3 minutes in seconds
-    let rangeMin = Math.max(0, firstNoteTime - padding);
-    let rangeMax = Math.min(86400, lastNoteTime + padding);
+    // Only add minimal right padding (1 minute)
+    rangeMax = Math.min(86400, rangeMax + 60);
     
-    // Ensure we don't have strange cropping if the range is too small
-    if (rangeMax - rangeMin < 1200) { // If less than 20 minutes total range
-      const midpoint = (rangeMin + rangeMax) / 2;
-      rangeMin = Math.max(0, midpoint - 900); // 15 minutes before
-      rangeMax = Math.min(86400, midpoint + 900); // 15 minutes after
-    }
+    // For cleaner tick marks, round the start and end times
+    // Round down to the nearest minute for min time
+    rangeMin = Math.floor(rangeMin / 60) * 60;
+    // Round up to the nearest minute for max time
+    rangeMax = Math.ceil(rangeMax / 60) * 60;
     
-    // Snap the boundary times to cleaner intervals for better tick placement
-    // Round down to the nearest 5 minutes for min
-    rangeMin = Math.floor(rangeMin / 300) * 300;
-    // Round up to the nearest 5 minutes for max
-    rangeMax = Math.ceil(rangeMax / 300) * 300;
+    // For XAxis padding, move the minimum just a bit earlier to avoid
+    // cutting off the first bar
+    rangeMin = Math.max(0, rangeMin - 30); // 30 seconds earlier
+    
+    // Define a helper function to format time for debug logs
+    const formatForLog = (seconds: number) => {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    };
+    
+    console.log('Chart bounds:', formatForLog(rangeMin), 'to', formatForLog(rangeMax));
     
     return { 
       // Reverse the data order to get earliest timed notes at the top (Gantt chart convention)
