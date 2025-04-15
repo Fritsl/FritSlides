@@ -129,14 +129,14 @@ export class SupabaseStorage implements IStorage {
     console.log('Converting note to Supabase format:', JSON.stringify(note, null, 2));
     
     return {
-      projectid: note.projectId, // lowercase to match database column
-      parentid: note.parentId, // lowercase to match database column
+      projectId: note.projectId, // now using camelCase to match database column
+      parentId: note.parentId, // now using camelCase to match database column
       content: note.content || '',
       url: note.url || null,
-      linktext: note.linkText || null, // lowercase to match database column
-      youtubelink: note.youtubeLink || null, // lowercase to match database column
+      linkText: note.linkText || null, // now using camelCase to match database column
+      youtubeLink: note.youtubeLink || null, // now using camelCase to match database column
       time: note.time || null,
-      isdiscussion: note.isDiscussion || false, // lowercase to match database column
+      isDiscussion: note.isDiscussion || false, // now using camelCase to match database column
       images: note.images || [],
       order: typeof note.order === 'string' ? parseFloat(note.order) : (note.order || 0)
     };
@@ -544,7 +544,7 @@ export class SupabaseStorage implements IStorage {
       const notesResponse = await supabase
         .from('notes')
         .delete()
-        .eq('projectid', id); // lowercase to match database column
+        .eq('"projectId"', id); // now using camelCase to match database column
       
       if (notesResponse.error) {
         console.error('Error deleting project notes from Supabase:', notesResponse.error);
