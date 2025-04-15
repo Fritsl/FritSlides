@@ -4,8 +4,20 @@ import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { getSupabaseClient } from "./supabase-storage";
 
-// Note: We no longer need to convert UUIDs to integers
-// The database stores IDs as text, so we can use the UUID directly
+// IMPORTANT: Supabase uses UUIDs for auth, but our database uses integers for user IDs
+// We need to convert the UUID to a stable integer for use in our database
+
+// Function to convert UUID to a stable integer value 
+function hashStringToInteger(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // Ensure positive number
+  return Math.abs(hash);
+}
 
 declare global {
   namespace Express {
@@ -72,14 +84,15 @@ export function setupAuth(app: Express) {
         if (supabase) {
           console.log("SUPABASE_SERVICE_ROLE_KEY is available and Supabase client created");
           
-          // Using the UUID directly (database stores IDs as text)
-          console.log(`Looking up user with UUID: ${supabaseUserId}`);
+          // Convert UUID to numerical ID
+          const numericId = hashStringToInteger(supabaseUserId);
+          console.log(`Looking up user with UUID: ${supabaseUserId} (converted to numeric ID: ${numericId})`);
           
-          // Use direct query instead of RPC function
+          // Use direct query with numeric ID
           const { data: userData, error } = await supabase
             .from('users')
             .select('*')
-            .eq('id', supabaseUserId);
+            .eq('id', numericId);
           
           if (error) {
             console.error("Error verifying user with Supabase admin client:", error);
@@ -91,15 +104,15 @@ export function setupAuth(app: Express) {
           if (!userData) {
             console.log(`User ${supabaseUserId} not found in Supabase database, creating new user record`);
             
-            // Create the user in Supabase with the UUID directly
+            // Create the user in Supabase with numeric ID from UUID
             const { data: newUser, error: createError } = await supabase
               .from('users')
               .insert({
-                id: supabaseUserId, // Using the UUID directly as the database uses text type for id
+                id: numericId, // Using numeric ID converted from UUID
                 username: userEmail || `user_${supabaseUserId.substring(0, 8)}@example.com`, 
-                // Using our schema column names instead of Supabase defaults
-                password: null, // Password is optional now for Supabase auth users
-                lastopenedprojectid: null // Using lowercase to match database
+                // Using our schema column names
+                password: null, // Password is optional for Supabase auth users
+                lastOpenedProjectId: null
               })
               .select()
               .single();
@@ -118,9 +131,10 @@ export function setupAuth(app: Express) {
       }
       
       // Set up the user object that the rest of the code expects
-      // Use UUID directly as text
+      // Convert UUID to numeric ID to match database schema
+      const userId = hashStringToInteger(supabaseUserId);
       req.user = {
-        id: supabaseUserId, // Using UUID directly since database uses text type for id
+        id: userId, // Use numeric ID converted from UUID
         username: userEmail || supabaseUserId,
         password: null, // Password not needed for Supabase users
         lastOpenedProjectId: null

@@ -2,28 +2,28 @@ import { pgTable, text, serial, integer, timestamp, jsonb, numeric, boolean } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Users table with text ID for Supabase (UUID) compatibility
+// Users table with integer ID based on actual Supabase table structure
 export const users = pgTable("users", {
-  id: text("id").primaryKey(), // Supabase uses UUID strings (text) for user IDs
+  id: integer("id").primaryKey(), // Supabase is using integer IDs, not UUID strings
   username: text("username").notNull().unique(),
-  password: text("password"), // Make password nullable for Supabase auth users
+  password: text("password"), // For Supabase auth users
   lastOpenedProjectId: integer("lastOpenedProjectId"),
 });
 
-// Projects table
+// Projects table matching actual Supabase structure
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   startSlogan: text("startSlogan"),
   endSlogan: text("endSlogan"),
   author: text("author"),
   lastViewedSlideIndex: integer("lastViewedSlideIndex").default(0),
   isLocked: boolean("isLocked").default(false).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  // Removed createdAt as it doesn't exist in the actual Supabase table
 });
 
-// Notes table
+// Notes table matching actual Supabase structure
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
   projectId: integer("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
@@ -33,16 +33,16 @@ export const notes = pgTable("notes", {
   linkText: text("linkText"),
   youtubeLink: text("youtubeLink"),
   time: text("time"),
-  isDiscussion: boolean("isDiscussion").default(false),
-  images: jsonb("images").$type<string[]>().default([]),
-  order: numeric("order", { precision: 10, scale: 2 }).notNull().default("0"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  isDiscussion: boolean("isDiscussion"),
+  images: jsonb("images").$type<string[]>(),
+  order: integer("order"), // Changed from numeric to integer based on Supabase test results
+  // Removed createdAt and updatedAt as they don't exist in the actual Supabase table
 });
 
 // Define schemas for data insertion/validation
 export const insertUserSchema = createInsertSchema(users).extend({
-  id: z.string().optional(), // Use string directly for UUID compatibility 
+  // ID is now a number, not a UUID string
+  id: z.number().optional(), 
   password: z.string().nullable().optional() // Make password optional for Supabase auth
 });
 
@@ -55,11 +55,17 @@ export const insertProjectSchema = createInsertSchema(projects).pick({
   isLocked: true,
 });
 
-export const insertNoteSchema = createInsertSchema(notes).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
+export const insertNoteSchema = z.object({
+  projectId: z.number(),
+  parentId: z.number().nullable().optional(),
+  content: z.string(),
+  url: z.string().nullable().optional(),
+  linkText: z.string().nullable().optional(),
+  youtubeLink: z.string().nullable().optional(),
+  time: z.string().nullable().optional(),
+  isDiscussion: z.boolean().nullable().optional(),
+  images: z.array(z.string()).nullable().optional(),
+  order: z.number().nullable().optional(),
   // Additional flags for optimizing operations (not stored in DB)
   fastCreate: z.boolean().optional(),
 });
@@ -67,7 +73,6 @@ export const insertNoteSchema = createInsertSchema(notes).omit({
 export const updateProjectSchema = createInsertSchema(projects).omit({
   id: true,
   userId: true,
-  createdAt: true,
 });
 
 // Special schema just for toggling lock status (to be more explicit in the API)
@@ -75,11 +80,16 @@ export const toggleProjectLockSchema = z.object({
   isLocked: z.boolean(),
 });
 
-export const updateNoteSchema = createInsertSchema(notes).omit({
-  id: true,
-  projectId: true,
-  createdAt: true,
-  updatedAt: true,
+export const updateNoteSchema = z.object({
+  parentId: z.number().nullable().optional(),
+  content: z.string().optional(),
+  url: z.string().nullable().optional(),
+  linkText: z.string().nullable().optional(),
+  youtubeLink: z.string().nullable().optional(),
+  time: z.string().nullable().optional(),
+  isDiscussion: z.boolean().nullable().optional(),
+  images: z.array(z.string()).nullable().optional(),
+  order: z.number().nullable().optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
