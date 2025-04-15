@@ -194,21 +194,74 @@ export class SupabaseStorage implements IStorage {
       // Use UUID string directly (database stores IDs as text)
       const userId = typeof id === 'string' ? id : String(id);
       console.log(`Getting user with ID: ${userId} (type: ${typeof userId})`);
+      console.log(`Converted ID: ${userId}`);
       
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      // Use direct SQL query to avoid schema cache issues
+      const { data, error } = await supabase.rpc('get_user_by_id', { 
+        user_id: userId 
+      });
       
       if (error) {
-        console.error('Error getting user from Supabase:', error);
+        console.error('Error getting user from Supabase with RPC:', error);
+        
+        // Fallback to direct query instead of SQL
+        const { data: sqlResult, error: sqlError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId);
+          
+        if (sqlError) {
+          console.error('Error in fallback direct SQL query:', sqlError);
+          
+          // Try one more direct approach with JSON
+          try {
+            console.log('User lookup raw SQL result:', sqlResult ? `${sqlResult.length} rows found` : '0 rows found');
+            
+            if (sqlResult && sqlResult.length > 0) {
+              console.log('User found via SQL:', userId);
+              return this.convertSupabaseUser(sqlResult[0]);
+            } else {
+              console.log('User NOT found via SQL for ID:', userId);
+              
+              // Create the user if not found
+              console.log(`User ${userId} not found in Supabase - creating new user record`);
+              
+              const newUser = await this.createUser({
+                id: userId,
+                username: `user_${userId.substring(0, 8)}`,
+                password: null
+              });
+              
+              return newUser;
+            }
+          } catch (e) {
+            console.error('Exception in SQL analysis:', e);
+            return undefined;
+          }
+        }
+        
+        if (sqlResult && sqlResult.length > 0) {
+          console.log('User found via direct SQL:', userId);
+          return this.convertSupabaseUser(sqlResult[0]);
+        }
+        
         return undefined;
       }
       
-      if (!data) return undefined;
+      if (!data || data.length === 0) {
+        // Create the user if not found
+        console.log(`User ${userId} not found in Supabase - creating new user record`);
+        
+        const newUser = await this.createUser({
+          id: userId,
+          username: `user_${userId.substring(0, 8)}`,
+          password: null
+        });
+        
+        return newUser;
+      }
       
-      return this.convertSupabaseUser(data);
+      return this.convertSupabaseUser(data[0]);
     } catch (error) {
       console.error('Exception in getUser:', error);
       return undefined;

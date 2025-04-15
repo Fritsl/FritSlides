@@ -1134,11 +1134,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Use helper function to convert imported note to insert format
           const noteToInsert = convertImportedNoteToInsert(note, projectId);
           
-          // Create a new note without parent reference
-          const newNote = await storage.createNote(noteToInsert);
+          // Ensure we don't include parent ID in the initial creation
+          // We'll update these references in the second pass
+          const noteWithoutParent = {
+            ...noteToInsert,
+            parentId: null // Temporarily set parent to null to avoid FK violations
+          };
           
-          // Store the mapping from original id to new id
-          idMap.set(note.id, newNote.id);
+          try {
+            // Create a new note without parent reference
+            const newNote = await storage.createNote(noteWithoutParent);
+            
+            // Store the mapping from original id to new id
+            idMap.set(note.id, newNote.id);
+            
+            return newNote;
+          } catch (err) {
+            console.error(`Error creating note: ${err}`);
+            throw err;
+          }
         });
         
         // Wait for all notes in this batch to be created
