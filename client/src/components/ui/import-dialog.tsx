@@ -38,7 +38,7 @@ export function ImportDialog({
   const logContainerRef = useRef<HTMLDivElement>(null);
   
   // Create a ref to hold the status update interval
-  const statusIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const statusIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
   
   // State for import ID from server
   const [importId, setImportId] = useState<string | null>(null);
@@ -46,45 +46,69 @@ export function ImportDialog({
   const importMutation = useMutation({
     mutationFn: async (data: any) => {
       // Reset progress and save the note count for tracking
-      setProgress(0);
+      setProgress(5); // Start with some visible progress immediately
       setStatusLog([]);
       setImportId(null);
       
       // Clear any existing intervals
       if (statusIntervalRef.current) {
         clearInterval(statusIntervalRef.current);
-        statusIntervalRef.current = null;
+        statusIntervalRef.current = undefined;
       }
       
       if (data.notes && Array.isArray(data.notes)) {
         setNoteCount(data.notes.length);
         // Add first status message
-        setCurrentStatus(`Starting import of ${data.notes.length} notes...`);
-        setStatusLog(prev => [...prev, `Starting import of ${data.notes.length} notes...`]);
+        const startMsg = `Preparing to import ${data.notes.length} notes...`;
+        setCurrentStatus(startMsg);
+        setStatusLog([startMsg]);
+        
+        // Set up a progress indicator that moves forward even if we don't get server updates
+        // This ensures users always see something happening
+        let progressTimer = setInterval(() => {
+          setProgress((prev) => {
+            // Only increment automatically up to 80% to leave room for actual completion
+            if (prev < 80) {
+              return prev + 0.5; // Slow, steady progress
+            }
+            return prev;
+          });
+        }, 500);
         
         try {
           // Start the import process
           console.log("Sending import data:", JSON.stringify(data, null, 2).substring(0, 200) + "...");
+          setCurrentStatus(`Sending data to server...`);
+          setStatusLog(prev => [...prev, `Sending ${data.notes.length} notes to server...`]);
           
           // Set a longer timeout for large imports (3 minutes)
           const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data, {
             timeout: 180000 // 3 minutes timeout
           });
           
+          // Set progress to indicate successful server contact
+          setProgress(15);
+          setCurrentStatus(`Server processing started...`);
+          setStatusLog(prev => [...prev, `Server has started processing the import...`]);
+          
           // Log response status for debugging
           console.log("Import response status:", res.status);
           
           const importData = await res.json();
-          
           console.log("Import started with response:", importData);
           
           // Check if the server returned an import ID for status polling
           if (importData.importId) {
             console.log("Got import ID:", importData.importId);
             setImportId(importData.importId);
+            setCurrentStatus(`Processing import job #${importData.importId}...`);
+            setStatusLog(prev => [...prev, `Created import job #${importData.importId} - processing started`]);
             
-            // Set initial progress to show something is happening
-            setProgress(5);
+            // Set progress to indicate active processing
+            setProgress(20);
+            
+            // Track last progress update time to handle stalled imports
+            let lastProgressUpdate = Date.now();
             
             // Start polling for real-time status updates
             statusIntervalRef.current = setInterval(async () => {
@@ -96,28 +120,60 @@ export function ImportDialog({
                   `/api/projects/${projectId}/import/${importData.importId}/status`
                 );
                 const statusData = await statusRes.json();
-                console.log("Status update received:", statusData);
+                
+                // Reset stall detection timer since we got a response
+                lastProgressUpdate = Date.now();
                 
                 // Update our UI with the server's status information
                 if (statusData.statusLog && Array.isArray(statusData.statusLog)) {
                   setStatusLog(statusData.statusLog);
+                  
+                  // If we have new log entries, update the current status message
+                  if (statusData.statusLog.length > 0) {
+                    setCurrentStatus(statusData.statusLog[statusData.statusLog.length - 1]);
+                  }
                 }
                 
-                if (statusData.status) {
-                  setCurrentStatus(statusData.status);
-                }
-                
+                // Update progress bar from server data if available
                 if (typeof statusData.progress === 'number') {
-                  setProgress(statusData.progress);
+                  // Ensure progress is at least 20% once we're actively processing
+                  const serverProgress = Math.max(statusData.progress, 20);
+                  setProgress(serverProgress);
+                  
+                  // If we're making progress, clear the automatic progress timer
+                  if (serverProgress > 20 && progressTimer) {
+                    clearInterval(progressTimer);
+                    progressTimer = undefined;
+                  }
+                }
+                
+                // Add estimated completion time for large imports
+                if (statusData.processedNotes && noteCount && noteCount > 50) {
+                  const percentComplete = statusData.processedNotes / noteCount;
+                  if (percentComplete > 0.1) { // Only show estimate after 10% complete
+                    const elapsedMs = Date.now() - lastProgressUpdate;
+                    if (elapsedMs > 5000) { // If no updates for 5 seconds, show a message
+                      setStatusLog(prev => [...prev, `Still working... ${Math.round(percentComplete * 100)}% complete`]);
+                    }
+                  }
                 }
                 
                 // If import is completed, clear the polling interval and finish up
                 if (statusData.completed) {
                   console.log("Import completed, stopping polling");
                   
+                  // Clear all intervals
+                  if (progressTimer) {
+                    clearInterval(progressTimer);
+                    progressTimer = undefined;
+                  }
+                  
                   // Set progress to 100%
                   setProgress(100);
-                  setCurrentStatus("Import completed!");
+                  setCurrentStatus("Import completed successfully!");
+                  
+                  // Add final success message to log
+                  setStatusLog(prev => [...prev, `✓ Import completed successfully!`]);
                   
                   // Force invalidate the notes query to refresh the UI
                   queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
@@ -125,7 +181,7 @@ export function ImportDialog({
                   // Clean up
                   if (statusIntervalRef.current) {
                     clearInterval(statusIntervalRef.current);
-                    statusIntervalRef.current = null;
+                    statusIntervalRef.current = undefined;
                   }
                   
                   // Auto close the dialog after a delay
@@ -142,30 +198,46 @@ export function ImportDialog({
                 }
               } catch (pollError) {
                 console.error("Error polling import status:", pollError);
+                
+                // Check if we haven't had progress updates for a while
+                const timeSinceLastUpdate = Date.now() - lastProgressUpdate;
+                if (timeSinceLastUpdate > 15000) { // 15 seconds without updates
+                  setStatusLog(prev => [...prev, `Still working... The import is taking longer than expected.`]);
+                  lastProgressUpdate = Date.now(); // Reset to avoid multiple messages
+                }
               }
             }, 1000); // Poll every second
           } else {
             console.warn("No import ID received from server");
-            // Fallback to basic progress if no import ID is provided
-            setProgress(10);
-            // Just simulate progress as a fallback
-            let progressInterval = setInterval(() => {
-              setProgress(prev => {
-                if (prev < 90) return prev + 5;
-                clearInterval(progressInterval);
-                return prev;
-              });
-            }, 2000);
+            
+            // Even without an import ID, show that progress is happening
+            setCurrentStatus(`Processing import (no status updates available)...`);
+            setStatusLog(prev => [...prev, `Import in progress - please wait...`]);
+            
+            // Keep the automatic progress going
+            setProgress(25);
           }
           
           return importData;
-        } catch (error) {
-          // Clear any intervals on error
+        } catch (error: any) {
+          // Clear all intervals
+          if (progressTimer) {
+            clearInterval(progressTimer);
+            progressTimer = undefined;
+          }
+          
           if (statusIntervalRef.current) {
             clearInterval(statusIntervalRef.current);
             statusIntervalRef.current = null;
           }
+          
           console.error("Error during import:", error);
+          
+          // Add error to the status log with error message, handling different error types
+          const errorMessage = error?.message || (typeof error === 'string' ? error : 'Unknown error');
+          setCurrentStatus(`Import failed: ${errorMessage}`);
+          setStatusLog(prev => [...prev, `❌ Error: ${errorMessage}`]);
+          
           throw error;
         }
       } else {
@@ -367,21 +439,33 @@ export function ImportDialog({
             </div>
           )}
           
-          {/* Progress indicator during import */}
-          {((importMutation.isPending && noteCount) || (progress === 100)) && (
-            <div className="pt-2">
+          {/* Enhanced progress indicator during import */}
+          {((importMutation.isPending && noteCount) || (progress > 0)) && (
+            <div className="pt-3">
               <div className="flex justify-between items-center mb-2 text-sm">
-                <span className={progress === 100 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
-                  {progress === 100 ? "Import completed!" : "Importing notes..."}
+                <span className={progress === 100 ? "text-green-600 dark:text-green-400 font-medium" : "text-primary font-medium"}>
+                  {progress === 100 
+                    ? "Import completed!" 
+                    : `Importing notes... ${Math.round(progress)}%`}
                 </span>
                 <span className="text-muted-foreground">
                   {noteCount ? `${noteCount} notes total` : ""}
                 </span>
               </div>
-              <Progress 
-                value={progress} 
-                className={`h-2 ${progress === 100 ? "bg-green-100 dark:bg-green-900/20" : ""}`} 
-              />
+              {/* Multi-colored progress bar with animated gradient for better visual feedback */}
+              <div className="relative w-full h-3 bg-muted/30 rounded-full overflow-hidden">
+                <div 
+                  className={`absolute top-0 left-0 bottom-0 rounded-full transition-all duration-300 ease-out
+                    ${progress === 100 
+                      ? "bg-green-500" 
+                      : progress > 75 
+                        ? "bg-blue-500" 
+                        : progress > 40 
+                          ? "bg-blue-400" 
+                          : "bg-gradient-to-r from-blue-300 to-blue-400 bg-[length:200%_100%] animate-gradient"}`}
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
               
               {/* Import status and log section */}
               <div className="mt-2">
