@@ -4,7 +4,7 @@ import { z } from "zod";
 
 // Define tables with foreign key references - updated for Supabase with lowercase column names
 export const users = pgTable("users", {
-  id: text("id").primaryKey(), // Supabase uses UUID strings
+  id: integer("id").primaryKey(), // Supabase seems to expect integer IDs
   username: text("username").notNull().unique(),
   password: text("password"),  // Optional for Supabase auth
   lastOpenedProjectId: integer("lastopenedprojectid"),
@@ -12,7 +12,7 @@ export const users = pgTable("users", {
 
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: text("userid").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("userid").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   startSlogan: text("startslogan"),
   endSlogan: text("endslogan"),
@@ -42,7 +42,7 @@ export const notes = pgTable("notes", {
 
 // Define schemas for data insertion/validation
 export const insertUserSchema = createInsertSchema(users).extend({
-  id: z.string().optional(), // Allow explicit ID for Supabase users
+  id: z.union([z.number(), z.string().transform(id => parseInt(id, 10))]).optional(), // Handle both string and number IDs
   password: z.string().nullable().optional() // Make password optional for Supabase auth
 });
 

@@ -42,13 +42,29 @@ export class SupabaseStorage implements IStorage {
       console.error('Null or undefined data passed to convertSupabaseUser');
       throw new Error('Invalid user data');
     }
-    const userId = data.id as string;
+    // Supabase Auth gives UUID strings, but our DB expects integers
+    // This will convert UUID strings to integers using a simple hash function
+    const userId = typeof data.id === 'number' ? data.id : this.hashStringToInteger(String(data.id));
     return {
-      id: userId || '',
-      username: data.username || `user_${typeof userId === 'string' ? userId.substring(0, 8) : 'unknown'}`,
+      id: userId,
+      username: data.username || `user_${userId}`,
       password: data.password || null, // May be null when using Supabase Auth
       lastOpenedProjectId: data.lastopenedprojectid || null
     };
+  }
+  
+  // Helper: Hash a string to a positive integer (for converting UUIDs to integers)
+  private hashStringToInteger(str: string): number {
+    // Simple hash function to convert UUID to a numeric ID
+    // For production, we would want a more sophisticated approach
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    // Ensure positive number with reasonable range (0 to 2^31-1)
+    return Math.abs(hash) % 2147483647;
   }
   
   // Helper: Convert project from Supabase format to our schema format
@@ -57,9 +73,14 @@ export class SupabaseStorage implements IStorage {
       console.error('Null or undefined data passed to convertSupabaseProject');
       throw new Error('Invalid project data');
     }
+    // Convert userId to number if it's a string (in case of UUID)
+    let userId = data.userid;
+    if (typeof userId === 'string') {
+      userId = this.hashStringToInteger(userId);
+    }
     return {
       id: data.id || 0,
-      userId: data.userid || '',
+      userId: userId || 0,
       name: data.name || '',
       startSlogan: data.startslogan || '',
       endSlogan: data.endslogan || '',
@@ -166,9 +187,9 @@ export class SupabaseStorage implements IStorage {
       const supabase = await getSupabaseClient();
       if (!supabase) throw new Error('Failed to get Supabase client');
       
-      // Make sure id is a string for Supabase users table
-      const userId = String(id);
-      console.log(`Getting user with ID: ${userId} (type: ${typeof userId})`);
+      // Convert string id to integer using our hash function
+      const userId = typeof id === 'string' ? this.hashStringToInteger(id) : id;
+      console.log(`Getting user with ID: ${userId} (converted from: ${id})`);
       
       const { data, error } = await supabase
         .from('users')
