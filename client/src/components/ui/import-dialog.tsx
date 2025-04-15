@@ -66,7 +66,10 @@ export function ImportDialog({
           // Start the import process
           console.log("Sending import data:", JSON.stringify(data, null, 2).substring(0, 200) + "...");
           
-          const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data);
+          // Set a longer timeout for large imports (3 minutes)
+          const res = await apiRequest("POST", `/api/projects/${projectId}/import`, data, {
+            timeout: 180000 // 3 minutes timeout
+          });
           
           // Log response status for debugging
           console.log("Import response status:", res.status);
@@ -90,7 +93,7 @@ export function ImportDialog({
                 console.log("Polling status for import ID:", importData.importId);
                 const statusRes = await apiRequest(
                   "GET", 
-                  `/api/projects/${projectId}/import-status?id=${importData.importId}`
+                  `/api/projects/${projectId}/import/${importData.importId}/status`
                 );
                 const statusData = await statusRes.json();
                 console.log("Status update received:", statusData);
@@ -108,13 +111,34 @@ export function ImportDialog({
                   setProgress(statusData.progress);
                 }
                 
-                // If import is completed, clear the polling interval
+                // If import is completed, clear the polling interval and finish up
                 if (statusData.completed) {
                   console.log("Import completed, stopping polling");
+                  
+                  // Set progress to 100%
+                  setProgress(100);
+                  setCurrentStatus("Import completed!");
+                  
+                  // Force invalidate the notes query to refresh the UI
+                  queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/notes`] });
+                  
+                  // Clean up
                   if (statusIntervalRef.current) {
                     clearInterval(statusIntervalRef.current);
                     statusIntervalRef.current = null;
                   }
+                  
+                  // Auto close the dialog after a delay
+                  setTimeout(() => {
+                    onOpenChange(false);
+                  }, 2000);
+                  
+                  // Show success toast
+                  toast({
+                    title: "Import successful",
+                    description: `${statusData.processedNotes || noteCount} notes imported successfully`,
+                    duration: 5000,
+                  });
                 }
               } catch (pollError) {
                 console.error("Error polling import status:", pollError);
