@@ -223,7 +223,7 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
         <BarChart
           layout="vertical"
           data={chartData}
-          margin={{ top: 30, right: 30, left: 150, bottom: 30 }}
+          margin={{ top: 20, right: 20, left: 120, bottom: 30 }}
           barGap={0}
           barCategoryGap={8}
         >
@@ -233,15 +233,21 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
             domain={[chartBounds.min, chartBounds.max]}
             ticks={generateTicks()}
             tickFormatter={formatTimeLabel}
-            padding={{ left: 20, right: 20 }}
+            // Explicitly set minimum and maximum padding to 0
+            // This makes the chart use the full width for displaying the specified time range
+            padding={{ left: 0, right: 0 }}
+            // Force scale bounds to match our domain exactly
+            scale="linear"
+            // Make sure the time axis fits exactly to our time range
+            interval={0}
           >
             <Label value="Timeline (24-hour format)" position="bottom" offset={10} />
           </XAxis>
           <YAxis 
             type="category" 
             dataKey="name" 
-            width={150}
-            tick={{ fontSize: 12 }}
+            width={120}
+            tick={{ fontSize: 11 }}
           />
           <Tooltip content={<CustomTooltip />} />
           

@@ -25,7 +25,7 @@ export default function TimeGanttDialog({ isOpen, onClose, notes, projectName }:
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-[95vw] w-[95vw] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Timeline View: {projectName}</span>
@@ -38,12 +38,14 @@ export default function TimeGanttDialog({ isOpen, onClose, notes, projectName }:
           </DialogDescription>
         </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto min-h-[400px]">
+        <div className="flex-1 overflow-y-auto min-h-[400px] w-full">
           {timedNotes.length > 0 ? (
-            <TimeGanttChart 
-              notes={notes} 
-              projectName={projectName} 
-            />
+            <div className="w-full">
+              <TimeGanttChart 
+                notes={notes} 
+                projectName={projectName} 
+              />
+            </div>
           ) : (
             <div className="flex items-center justify-center h-80 text-slate-500">
               No timed notes found in this project. Add time values to your notes to see them in the timeline.
