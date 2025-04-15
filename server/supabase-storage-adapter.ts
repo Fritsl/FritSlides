@@ -153,10 +153,14 @@ export class SupabaseStorage implements IStorage {
       const supabase = await getSupabaseClient();
       if (!supabase) throw new Error('Failed to get Supabase client');
       
+      // Make sure id is a string for Supabase users table
+      const userId = String(id);
+      console.log(`Getting user with ID: ${userId} (type: ${typeof userId})`);
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('id', id)
+        .eq('id', userId)
         .single();
       
       if (error) {
@@ -237,12 +241,14 @@ export class SupabaseStorage implements IStorage {
       const supabase = await getSupabaseClient();
       if (!supabase) throw new Error('Failed to get Supabase client');
       
-      console.log(`Updating last opened project for user ${userId} to project ${projectId}`);
+      // Make sure userId is a string for Supabase users table
+      const supabaseUserId = String(userId);
+      console.log(`Updating last opened project for user ${supabaseUserId} to project ${projectId}`);
       
       const { error } = await supabase
         .from('users')
         .update({ lastOpenedProjectId: projectId })
-        .eq('id', userId);
+        .eq('id', supabaseUserId);
       
       if (error) {
         console.error('Error updating last opened project in Supabase:', error);
@@ -262,12 +268,14 @@ export class SupabaseStorage implements IStorage {
       const supabase = await getSupabaseClient();
       if (!supabase) throw new Error('Failed to get Supabase client');
       
-      console.log(`Getting projects for user ${userId} (${typeof userId})`);
+      // Make sure userId is a string for Supabase (UUID format)
+      const supabaseUserId = String(userId);
+      console.log(`Getting projects for user ${supabaseUserId} (${typeof supabaseUserId})`);
       
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('userId', userId)
+        .eq('userId', supabaseUserId)
         .order('createdAt', { ascending: false });
       
       if (error) {
