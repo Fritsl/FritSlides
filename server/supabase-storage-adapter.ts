@@ -87,17 +87,17 @@ export class SupabaseStorage implements IStorage {
       console.error('Null or undefined data passed to convertSupabaseProject');
       throw new Error('Invalid project data');
     }
-    // Use userId directly as string (as the database uses text type for userid)
+    // Use userId directly as string (as the database uses text type for userId)
     return {
       id: data.id || 0,
-      userId: data.userid || '', // Use string directly
+      userId: data.userId || '', // camelCase to match database column
       name: data.name || '',
-      startSlogan: data.startslogan || '',
-      endSlogan: data.endslogan || '',
+      startSlogan: data.startSlogan || '', // camelCase to match database column
+      endSlogan: data.endSlogan || '', // camelCase to match database column
       author: data.author || '',
-      lastViewedSlideIndex: typeof data.lastviewedslideindex === 'number' ? data.lastviewedslideindex : 0,
-      isLocked: typeof data.islocked === 'boolean' ? data.islocked : false,
-      createdAt: data.createdat ? new Date(data.createdat) : new Date()
+      lastViewedSlideIndex: typeof data.lastViewedSlideIndex === 'number' ? data.lastViewedSlideIndex : 0, // camelCase to match database column
+      isLocked: typeof data.isLocked === 'boolean' ? data.isLocked : false, // camelCase to match database column
+      createdAt: data.createdAt ? new Date(data.createdAt) : new Date() // camelCase to match database column
     };
   }
   
