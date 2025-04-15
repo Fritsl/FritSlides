@@ -356,6 +356,9 @@ export default function HomePage() {
   // State for export format dialog
   const [isExportFormatDialogOpen, setIsExportFormatDialogOpen] = useState(false);
   
+  // State for time distribution dialog
+  const [isTimeDistributionOpen, setIsTimeDistributionOpen] = useState(false);
+  
   // Main export function that will show a dialog to choose format
   const handleExportNotes = () => {
     if (!selectedProjectId || !selectedProject) {
@@ -399,6 +402,30 @@ export default function HomePage() {
     // Navigate to the presentation mode route with the selected project ID
     setLocation(`/present/${selectedProjectId}`);
   };
+  
+  // Show time distribution dialog
+  const showTimeDistribution = () => {
+    if (!selectedProjectId || !selectedProject) {
+      toast({
+        title: "No project selected",
+        description: "Please select a project to view time distribution",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!notes || notes.length === 0 || !notes.some(note => note.time)) {
+      toast({
+        title: "No timed notes",
+        description: "This project has no notes with time information",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Open the time distribution dialog
+    setIsTimeDistributionOpen(true);
+  };
 
   // Display loading state
   if (isLoadingProjects) {
@@ -414,6 +441,7 @@ export default function HomePage() {
           onExportNotes={() => {}}
           onImportNotes={() => {}}
           onPresentMode={() => {}}
+          onShowTimeDistribution={() => {}}
         />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -437,6 +465,7 @@ export default function HomePage() {
           onExportNotes={() => {}}
           onImportNotes={() => {}}
           onPresentMode={() => {}}
+          onShowTimeDistribution={() => {}}
         />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center p-8 max-w-md">
@@ -486,6 +515,7 @@ export default function HomePage() {
           }
         }}
         showOnlyTimedNotes={showOnlyTimedNotes}
+        onShowTimeDistribution={showTimeDistribution}
       />
       
       <div className="flex-1 flex overflow-hidden">
@@ -606,6 +636,16 @@ export default function HomePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Time Distribution Dialog */}
+      {selectedProjectId && selectedProject && notes && (
+        <TimeDistributionDialog
+          isOpen={isTimeDistributionOpen}
+          onClose={() => setIsTimeDistributionOpen(false)}
+          notes={notes}
+          projectName={selectedProject.name}
+        />
+      )}
 
       {/* Hidden download anchor for exports */}
       <div style={{ display: 'none' }}>
