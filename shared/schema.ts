@@ -65,7 +65,10 @@ export const insertNoteSchema = z.object({
   time: z.string().nullable().optional(),
   isDiscussion: z.boolean().nullable().optional(),
   images: z.array(z.string()).nullable().optional(),
-  order: z.number().nullable().optional(),
+  order: z.union([
+    z.number(), 
+    z.string().transform(val => parseFloat(val) || 0)
+  ]).nullable().optional(),
   // Additional flags for optimizing operations (not stored in DB)
   fastCreate: z.boolean().optional(),
 });
@@ -89,7 +92,10 @@ export const updateNoteSchema = z.object({
   time: z.string().nullable().optional(),
   isDiscussion: z.boolean().nullable().optional(),
   images: z.array(z.string()).nullable().optional(),
-  order: z.number().nullable().optional(),
+  order: z.union([
+    z.number(), 
+    z.string().transform(val => parseFloat(val) || 0)
+  ]).nullable().optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

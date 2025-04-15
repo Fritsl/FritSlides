@@ -26,7 +26,7 @@ type PasswordChangeValues = z.infer<typeof passwordChangeSchema>;
 
 export default function AccountSettingsPage() {
   const [_, setLocation] = useLocation();
-  const { user, session, signOut } = useSupabaseAuth();
+  const { user, session, signOut, updatePassword } = useSupabaseAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -57,11 +57,9 @@ export default function AccountSettingsPage() {
       setIsLoading(true);
       setError(null);
       setIsSuccess(false);
-
-      // Get the updatePassword function from our auth hook
-      const { updatePassword } = useSupabaseAuth();
       
-      // Update password through our auth context
+      // Update password through our auth context - don't call useSupabaseAuth() inside the handler
+      // Use the hook value that's already available from the component scope
       await updatePassword(data.currentPassword, data.newPassword);
 
       // Show success state
