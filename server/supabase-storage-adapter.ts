@@ -82,29 +82,34 @@ export class SupabaseStorage implements IStorage {
   
   // Helper: Convert our schema note to Supabase format
   private convertToSupabaseNote(note: InsertNote): any {
+    console.log('Converting note to Supabase format:', JSON.stringify(note, null, 2));
+    
     return {
       projectId: note.projectId,
       parentId: note.parentId,
-      content: note.content,
-      url: note.url,
-      linkText: note.linkText,
-      youtubeLink: note.youtubeLink,
-      time: note.time,
-      isDiscussion: note.isDiscussion,
-      images: note.images,
-      order: typeof note.order === 'string' ? parseFloat(note.order) : note.order
+      content: note.content || '',
+      url: note.url || null,
+      linkText: note.linkText || null,
+      youtubeLink: note.youtubeLink || null,
+      time: note.time || null,
+      isDiscussion: note.isDiscussion || false,
+      images: note.images || [],
+      order: typeof note.order === 'string' ? parseFloat(note.order) : (note.order || 0)
     };
   }
   
   // Helper: Convert our schema project to Supabase format
   private convertToSupabaseProject(project: InsertProject): any {
+    console.log('Converting project to Supabase format:', JSON.stringify(project, null, 2));
+    
     return {
       userId: project.userId,
       name: project.name,
-      startSlogan: project.startSlogan,
-      endSlogan: project.endSlogan,
-      author: project.author,
-      isLocked: project.isLocked
+      startSlogan: project.startSlogan || '',
+      endSlogan: project.endSlogan || '',
+      author: project.author || '',
+      isLocked: project.isLocked || false,
+      lastViewedSlideIndex: 0  // Default value for new projects
     };
   }
   
@@ -309,6 +314,12 @@ export class SupabaseStorage implements IStorage {
       
       const supabaseProject = this.convertToSupabaseProject(project);
       
+      // Add timestamps
+      supabaseProject.createdAt = new Date().toISOString();
+      supabaseProject.updatedAt = new Date().toISOString();
+      
+      console.log('Creating project with data:', JSON.stringify(supabaseProject, null, 2));
+      
       const { data, error } = await supabase
         .from('projects')
         .insert(supabaseProject)
@@ -338,6 +349,11 @@ export class SupabaseStorage implements IStorage {
       
       const supabaseData = this.convertToSupabaseProjectUpdate(data);
       
+      // Add updated timestamp
+      supabaseData.updatedAt = new Date().toISOString();
+      
+      console.log('Updating project with data:', JSON.stringify(supabaseData, null, 2));
+      
       const { data: updatedData, error } = await supabase
         .from('projects')
         .update(supabaseData)
@@ -366,7 +382,10 @@ export class SupabaseStorage implements IStorage {
       
       const { error } = await supabase
         .from('projects')
-        .update({ lastViewedSlideIndex: slideIndex })
+        .update({ 
+          lastViewedSlideIndex: slideIndex,
+          updatedAt: new Date().toISOString()
+        })
         .eq('id', projectId);
       
       if (error) {
@@ -388,7 +407,10 @@ export class SupabaseStorage implements IStorage {
       
       const { data, error } = await supabase
         .from('projects')
-        .update({ isLocked: lockStatus.isLocked })
+        .update({ 
+          isLocked: lockStatus.isLocked,
+          updatedAt: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single();
