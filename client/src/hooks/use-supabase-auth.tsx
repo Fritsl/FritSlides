@@ -12,6 +12,7 @@ type SupabaseAuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 };
 
 export const SupabaseAuthContext = createContext<SupabaseAuthContextType>({
@@ -22,6 +23,7 @@ export const SupabaseAuthContext = createContext<SupabaseAuthContextType>({
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
+  updatePassword: async () => {},
 });
 
 export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
@@ -220,6 +222,56 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      setIsLoading(true);
+      const supabase = await getSupabaseClient();
+      
+      if (!user || !user.email) {
+        throw new Error("You must be logged in to update your password");
+      }
+      
+      // First verify the current password is correct by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+      
+      if (signInError) {
+        throw new Error("Current password is incorrect");
+      }
+      
+      // Update the password
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (updateError) {
+        throw updateError;
+      }
+      
+      toast({
+        title: "Password updated",
+        description: "Your password has been successfully updated."
+      });
+      
+      return;
+    } catch (error: any) {
+      console.error("Password update error:", error);
+      setError(error);
+      
+      toast({
+        title: "Password update failed",
+        description: error.message || "Could not update password",
+        variant: "destructive",
+      });
+      
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <SupabaseAuthContext.Provider
       value={{
@@ -230,6 +282,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
+        updatePassword,
       }}
     >
       {children}
