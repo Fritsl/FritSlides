@@ -15,6 +15,7 @@ import { getSupabaseClient } from './supabase-storage';
 import memorystore from 'memorystore';
 import session from 'express-session';
 import { Database } from '../types/supabase';
+import pg_session_factory from 'connect-pg-simple';
 
 /**
  * SupabaseStorage - A complete implementation of the IStorage interface that uses Supabase
@@ -34,7 +35,7 @@ export class SupabaseStorage implements IStorage {
     };
     
     // Use PostgreSQL to store sessions for persistence between deployments
-    const PgSession = require('connect-pg-simple')(session);
+    const PgSession = pg_session_factory(session);
     this.sessionStore = new PgSession({
       conObject: pgPool,
       tableName: 'session', // Default is 'session'
@@ -65,12 +66,18 @@ export class SupabaseStorage implements IStorage {
       console.error('Null or undefined data passed to convertSupabaseUser');
       throw new Error('Invalid user data');
     }
+    
+    // Make sure we work with clean data
+    const id = String(data.id || ''); // Ensure id is a string
+    const username = data.username || `user_${id.substring(0, 8)}`;
+    const lastProjectId = data.lastopenedprojectid ? Number(data.lastopenedprojectid) : null;
+    
     // Use UUID string directly as the database uses text type for id
     return {
-      id: String(data.id), // Ensure id is a string
-      username: data.username || `user_${data.id.substring(0, 8)}`,
-      password: data.password || 'supabase_auth_user', // NOT NULL in database schema
-      lastOpenedProjectId: data.lastopenedprojectid || null
+      id: id,
+      username: username,
+      password: data.password || null, // Can be null in Supabase auth
+      lastOpenedProjectId: lastProjectId
     };
   }
   

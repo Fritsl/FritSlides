@@ -7,37 +7,37 @@ export const users = pgTable("users", {
   id: text("id").primaryKey(), // Supabase uses UUID strings (text) for user IDs
   username: text("username").notNull().unique(),
   password: text("password"), // Make password nullable for Supabase auth users
-  lastOpenedProjectId: integer("lastopenedprojectid"),
+  lastOpenedProjectId: integer("lastOpenedProjectId"),
 });
 
-// Projects table with consistent naming
+// Projects table
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: text("userid").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  startSlogan: text("startslogan"),
-  endSlogan: text("endslogan"),
+  startSlogan: text("startSlogan"),
+  endSlogan: text("endSlogan"),
   author: text("author"),
-  lastViewedSlideIndex: integer("lastviewedslideindex").default(0),
-  isLocked: boolean("islocked").default(false).notNull(),
-  createdAt: timestamp("createdat").defaultNow().notNull(),
+  lastViewedSlideIndex: integer("lastViewedSlideIndex").default(0),
+  isLocked: boolean("isLocked").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-// Notes table with consistent lowercase column names
+// Notes table
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
-  projectId: integer("projectid").notNull().references(() => projects.id, { onDelete: "cascade" }),
-  parentId: integer("parentid").references((): any => notes.id, { onDelete: "set null" }),
+  projectId: integer("projectId").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  parentId: integer("parentId").references((): any => notes.id, { onDelete: "set null" }),
   content: text("content").notNull(),
   url: text("url"),
-  linkText: text("linktext"),
-  youtubeLink: text("youtubelink"),
+  linkText: text("linkText"),
+  youtubeLink: text("youtubeLink"),
   time: text("time"),
-  isDiscussion: boolean("isdiscussion").default(false),
+  isDiscussion: boolean("isDiscussion").default(false),
   images: jsonb("images").$type<string[]>().default([]),
   order: numeric("order", { precision: 10, scale: 2 }).notNull().default("0"),
-  createdAt: timestamp("createdat").defaultNow().notNull(),
-  updatedAt: timestamp("updatedat").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 // Define schemas for data insertion/validation
