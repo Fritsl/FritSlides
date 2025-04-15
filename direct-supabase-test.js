@@ -18,8 +18,8 @@ async function runDirectSupabaseTest() {
   // Create Supabase client with service role key (admin privileges)
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   
-  // Test user ID (UUID format)
-  const testUserId = '3090be80-dec5-4e64-8d9f-fb87a94282c9';
+  // Test with integer ID since UUID is failing
+  const testUserId = 12345678;
   const testUsername = 'direct_test_user';
   
   try {
@@ -31,7 +31,7 @@ async function runDirectSupabaseTest() {
       .upsert({
         id: testUserId,
         username: testUsername,
-        password: null,
+        password: 'test_password', // Adding a password since null is not allowed
         lastOpenedProjectId: null
       })
       .select();
