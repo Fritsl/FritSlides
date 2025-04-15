@@ -95,27 +95,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log the user ID for debugging
       console.log(`Getting last project for user: ${userId} (${typeof userId})`);
       
+      // Manual SQL query for debugging - use the execute method directly
+      console.log("DEBUGGING: Running direct SQL query to find user");
+      const directResult = await db.execute(sql`SELECT * FROM users WHERE id = ${userId}`);
+      console.log("DEBUGGING: Direct SQL query result:", directResult.rows.length > 0 ? "User found" : "User NOT found");
+      
+      // Try to get user through normal method
       let user = await storage.getUser(userId);
+      console.log("DEBUGGING: Storage getUser result:", user ? "User found" : "User NOT found");
       
       // For Supabase users who don't exist in our database yet, create them
       if (!user && req.headers['x-supabase-user-id']) {
         console.log(`User ${userId} not found in database - creating new user record`);
         
         try {
-          user = await storage.createUser({
-            id: userId,
-            username: `user_${userId.substring(0, 8)}`,
-            password: null, // Password not needed for Supabase users
-            lastOpenedProjectId: null
-          });
-          
-          console.log(`Successfully created user with ID: ${user.id}`);
+          // First check again with direct SQL to avoid race conditions
+          const checkAgain = await db.execute(sql`SELECT * FROM users WHERE id = ${userId}`);
+          if (checkAgain.rows.length > 0) {
+            console.log("DEBUGGING: User found in direct check before creation, using that instead");
+            user = checkAgain.rows[0] as User;
+          } else {
+            // User truly doesn't exist, create them
+            user = await storage.createUser({
+              id: userId,
+              username: `user_${userId.substring(0, 8)}`,
+              password: null, // Password not needed for Supabase users
+              lastOpenedProjectId: null
+            });
+            console.log(`Successfully created user with ID: ${user.id}`);
+          }
         } catch (createErr: any) {
           // If error is a duplicate key violation, try to fetch the user again
           // as it might have been created in a race condition
+          console.error("Error creating user:", createErr);
           if (createErr.message && createErr.message.includes('duplicate key')) {
             console.log('User creation failed due to duplicate key - attempting to fetch existing user');
-            user = await storage.getUser(userId);
+            
+            // Try direct SQL again
+            const finalCheck = await db.execute(sql`SELECT * FROM users WHERE id = ${userId}`);
+            if (finalCheck.rows.length > 0) {
+              console.log("DEBUGGING: Found user with direct SQL after duplicate key error");
+              user = finalCheck.rows[0] as User;
+            } else {
+              // One more try with storage method
+              user = await storage.getUser(userId);
+            }
           } else {
             console.error("Error creating user from Supabase auth:", createErr);
             return res.status(500).json({ message: "Failed to create user" });
@@ -125,7 +149,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user) {
         console.log(`User ${userId} still not found after creation attempt`);
-        return res.status(404).json({ message: "User not found" });
+        // For debugging purposes, return a 404 with more details
+        return res.status(404).json({ 
+          message: "User not found", 
+          userId: userId,
+          debug: "User could not be found in database after multiple attempts"
+        });
       }
       
       // Log the result for debugging
@@ -134,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ lastOpenedProjectId: user.lastOpenedProjectId });
     } catch (err) {
       console.error("Error getting last project:", err);
-      res.status(500).json({ message: "Failed to get last opened project" });
+      res.status(500).json({ message: "Failed to get last opened project", error: String(err) });
     }
   });
 
