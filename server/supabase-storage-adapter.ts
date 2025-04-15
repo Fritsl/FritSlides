@@ -133,20 +133,20 @@ export class SupabaseStorage implements IStorage {
       content: note.content || ''
     };
     
-    // Then add optional fields one by one - SKIPPING isDiscussion as it doesn't exist in the database
+    // Then add optional fields one by one
     if (note.parentId !== undefined) minimalNote.parentId = note.parentId;
     if (note.url) minimalNote.url = note.url;
     if (note.linkText) minimalNote.linkText = note.linkText;
     if (note.youtubeLink) minimalNote.youtubeLink = note.youtubeLink;
     if (note.time) minimalNote.time = note.time;
-    // REMOVED isDiscussion field as it doesn't exist in the database
+    // Skip isDiscussion only for insert operations - we'll handle it in the app logic
     if (note.images) minimalNote.images = note.images;
     if (note.order !== undefined) {
       minimalNote.order = typeof note.order === 'string' ? parseFloat(note.order) : 
                         (typeof note.order === 'number' ? note.order : 0);
     }
     
-    console.log('Final note object with isDiscussion REMOVED:', JSON.stringify(minimalNote, null, 2));
+    console.log('Final note object for database insert:', JSON.stringify(minimalNote, null, 2));
     
     return minimalNote;
   }
@@ -189,7 +189,7 @@ export class SupabaseStorage implements IStorage {
     if (note.linkText !== undefined) update.linkText = note.linkText; // camelCase to match database column
     if (note.youtubeLink !== undefined) update.youtubeLink = note.youtubeLink; // camelCase to match database column
     if (note.time !== undefined) update.time = note.time;
-    if (note.isDiscussion !== undefined) update.isDiscussion = note.isDiscussion; // camelCase as shown in database schema
+    // REMOVED isDiscussion field as it doesn't exist in the database
     if (note.images !== undefined) update.images = note.images;
     if (note.order !== undefined) {
       update.order = typeof note.order === 'string' ? parseFloat(note.order) : note.order;
