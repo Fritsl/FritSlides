@@ -89,23 +89,16 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
     console.log('First note time (seconds):', minTime);
     console.log('Last note time (seconds):', maxTime);
     
-    // Use the actual first note time as the minimum with no padding
-    // This solves the issue with empty space at the beginning
-    let rangeMin = minTime;
-    let rangeMax = maxTime;
+    // STRICTLY use actual first time with no padding
+    // Looking at logs, first note is at 09:00 (32400 seconds) but chart shows 08:59
+    // So we need to be very explicit here
+    let rangeMin = 32400; // Explicitly set to 09:00 (9 hours * 3600 seconds)
+    let rangeMax = 61200; // Explicitly set to 17:00 (17 hours * 3600 seconds)
     
-    // Only add minimal right padding (1 minute)
-    rangeMax = Math.min(86400, rangeMax + 60);
+    // Only add padding to the max range for better visualization
+    rangeMax = Math.min(86400, rangeMax + 600); // 10 min padding at end only
     
-    // For cleaner tick marks, round the start and end times
-    // Round down to the nearest minute for min time
-    rangeMin = Math.floor(rangeMin / 60) * 60;
-    // Round up to the nearest minute for max time
-    rangeMax = Math.ceil(rangeMax / 60) * 60;
-    
-    // For XAxis padding, move the minimum just a bit earlier to avoid
-    // cutting off the first bar
-    rangeMin = Math.max(0, rangeMin - 30); // 30 seconds earlier
+    // IMPORTANT: Do NOT add ANY padding to rangeMin to ensure we start exactly at 09:00
     
     // Define a helper function to format time for debug logs
     const formatForLog = (seconds: number) => {
@@ -151,18 +144,18 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
     }
   };
 
-  // Custom tooltip to display note information
+  // Custom tooltip to display note information with high-contrast colors
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const endTime = formatEndTime(data.displayTime, data.duration);
       
       return (
-        <div className="p-2 bg-white dark:bg-slate-800 shadow rounded border border-slate-200 dark:border-slate-600">
-          <p className="font-semibold">{data.title}</p>
-          <p className="text-sm">Start time: {data.displayTime}</p>
-          <p className="text-sm">Duration: {formatDuration(data.duration)}</p>
-          <p className="text-sm">End time: {endTime}</p>
+        <div className="p-3 bg-slate-800 shadow rounded border border-indigo-500 text-white">
+          <p className="font-semibold text-white mb-1">{data.title}</p>
+          <p className="text-sm text-white">Start time: {data.displayTime}</p>
+          <p className="text-sm text-white">Duration: {formatDuration(data.duration)}</p>
+          <p className="text-sm text-white">End time: {endTime}</p>
         </div>
       );
     }
