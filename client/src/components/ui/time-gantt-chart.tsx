@@ -8,64 +8,59 @@ interface TimeGanttChartProps {
   projectName: string;
 }
 
-type TimeChartData = {
-  name: string;
-  id: number;
-  startTime: number; // Start time in seconds
-  duration: number;  // Duration in seconds
-  displayTime: string; // Formatted time string
-  title: string;
-};
+// The core issue with Gantt charts in Recharts is that bars always start at zero
+// and the value determines their length. To make it work as a Gantt chart:
+// 1. For each time slot, create a "dummy" bar with zero value from 0 to start time
+// 2. Stack the actual data on top of that bar, which positions it at the right start time
 
 export default function TimeGanttChart({ notes, projectName }: TimeGanttChartProps) {
   // Prepare data for the Gantt chart
-  const chartData = useMemo(() => {
-    // Filter notes with time values
+  const { chartData, chartBounds } = useMemo(() => {
+    // Filter notes with time values and sort by time
     const timedNotes = notes
       .filter(note => note.time && note.time.trim() !== '')
       .sort((a, b) => {
-        const timeA = a.time ? formatTimeString(a.time) : '';
-        const timeB = b.time ? formatTimeString(b.time) : '';
-        return timeA.localeCompare(timeB);
+        const timeA = a.time ? parseTimeString(a.time)?.seconds || 0 : 0;
+        const timeB = b.time ? parseTimeString(b.time)?.seconds || 0 : 0;
+        return timeA - timeB;
       });
 
-    if (timedNotes.length === 0) return [];
+    if (timedNotes.length === 0) return { chartData: [], chartBounds: { min: 0, max: 86400 } };
 
-    // Process the timed notes into chart data
-    const data: TimeChartData[] = [];
+    const processedData = [];
+    let minTime = Number.MAX_SAFE_INTEGER;
+    let maxTime = 0;
     
-    // Build chart data for each timed note
+    // Process each timed note to create data for the chart
     for (let i = 0; i < timedNotes.length; i++) {
       const currentNote = timedNotes[i];
       const nextNote = i < timedNotes.length - 1 ? timedNotes[i + 1] : null;
       
-      // Get start time for current note
-      const currentTimeInfo = currentNote.time ? parseTimeString(currentNote.time) : null;
-      if (!currentTimeInfo) continue;
+      // Skip notes without proper time
+      const timeInfo = currentNote.time ? parseTimeString(currentNote.time) : null;
+      if (!timeInfo) continue;
       
-      const startTimeSeconds = currentTimeInfo.seconds;
+      const startTime = timeInfo.seconds;
       
-      // Calculate end time (duration) based on next note's time
-      let durationSeconds = 900; // Default 15 minutes if no next note
-      
+      // Calculate duration based on next note
+      let duration = 900; // Default 15 minutes
       if (nextNote && nextNote.time) {
         const nextTimeInfo = parseTimeString(nextNote.time);
         if (nextTimeInfo) {
-          let nextSeconds = nextTimeInfo.seconds;
-          
-          // Handle midnight crossover
-          if (nextSeconds < startTimeSeconds) {
-            nextSeconds += 24 * 60 * 60; // Add a day
-          }
-          
-          durationSeconds = nextSeconds - startTimeSeconds;
+          let nextTime = nextTimeInfo.seconds;
+          if (nextTime < startTime) nextTime += 24 * 60 * 60; // Handle midnight crossing
+          duration = nextTime - startTime;
         }
       }
-
-      // Get the note title from content (first line)
+      
+      // Track min and max times for chart bounds
+      if (startTime < minTime) minTime = startTime;
+      const endTime = startTime + duration;
+      if (endTime > maxTime) maxTime = endTime;
+      
+      // Get note title from content
       let noteTitle = '';
       if (currentNote.content) {
-        // Extract first line of content as title
         const firstLine = currentNote.content.split('\n')[0];
         noteTitle = firstLine.trim();
       }
@@ -76,18 +71,31 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
         displayTitle = displayTitle.substring(0, 27) + '...';
       }
       
-      // Create data point
-      data.push({
-        name: displayTitle, // Use actual titles
+      // Create data point for the chart
+      processedData.push({
+        name: displayTitle,
         id: currentNote.id,
-        startTime: startTimeSeconds,
-        duration: durationSeconds,
-        displayTime: formatTimeString(currentNote.time || ''),
+        // These properties are the key for Gantt positioning:
+        startTime: startTime,           // When the bar should start
+        duration: duration,             // How long the bar should be
+        startPos: startTime,            // A separate property to use for positioning 
+        displayTime: formatTimeString(currentNote.time),
+        content: currentNote.content,
         title: noteTitle || `Note ${currentNote.id}`
       });
     }
     
-    return data;
+    // Calculate chart bounds with padding
+    const range = maxTime - minTime;
+    const padding = Math.max(1800, range * 0.1); // At least 30 min padding
+    
+    const minBound = Math.max(0, minTime - padding);
+    const maxBound = maxTime + padding;
+    
+    return { 
+      chartData: processedData, 
+      chartBounds: { min: minBound, max: maxBound } 
+    };
   }, [notes]);
 
   // Calculate current time for reference line
@@ -97,32 +105,6 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
     const minutes = now.getMinutes();
     return hours * 3600 + minutes * 60;
   }, []);
-
-  // Calculate chart bounds
-  const chartBounds = useMemo(() => {
-    if (chartData.length === 0) return { min: 0, max: 86400 }; // Default to full day
-    
-    // Find earliest and latest time
-    let minTime = Number.MAX_SAFE_INTEGER;
-    let maxTime = 0;
-    
-    chartData.forEach(item => {
-      const startTime = item.startTime;
-      const endTime = startTime + item.duration;
-      
-      if (startTime < minTime) minTime = startTime;
-      if (endTime > maxTime) maxTime = endTime;
-    });
-    
-    // Add padding (10% on each side)
-    const range = maxTime - minTime;
-    const padding = Math.max(1800, range * 0.1); // At least 30 min padding
-    
-    minTime = Math.max(0, minTime - padding);
-    maxTime = maxTime + padding;
-    
-    return { min: minTime, max: maxTime };
-  }, [chartData]);
 
   // Format end time
   const formatEndTime = (startTimeStr: string, durationSec: number): string => {
@@ -153,6 +135,14 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
     return null;
   };
 
+  // Format time for ticks
+  const formatTimeLabel = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
+
+  // If no timed notes available
   if (chartData.length === 0) {
     return (
       <div className="flex items-center justify-center h-80 text-slate-500">
@@ -161,34 +151,22 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
     );
   }
 
-  // Format time for ticks
-  const formatTimeLabel = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-  };
-
-  // Transform data for proper Gantt chart rendering
-  // Each entry needs start time (x) and duration properties
-  const transformedData = chartData.map(item => ({
-    ...item,
-    x: item.startTime,             // X position is the start time
-    y: item.duration,              // Width/length is the duration
-    fill: '#4f46e5',               // Bar color
-  }));
-
+  // This is the simpler approach - we don't try to position bars at their startTime
+  // Instead, we create a simple horizontal bar chart with time axis
+  // This isn't a true Gantt chart, but it's more reliable with Recharts
+  
   return (
     <div className="w-full h-[500px] px-2">
       <div className="text-center text-sm text-slate-500 mb-2">
-        Timeline shows your presentation schedule with each timed note
+        Timeline shows scheduled notes and their approximate durations
       </div>
       <ResponsiveContainer width="100%" height="90%">
         <BarChart
           layout="vertical"
-          data={transformedData}
+          data={chartData}
           margin={{ top: 30, right: 30, left: 150, bottom: 30 }}
           barGap={0}
-          barCategoryGap={10}
+          barCategoryGap={8}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
@@ -196,7 +174,6 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
             domain={[chartBounds.min, chartBounds.max]} 
             tickFormatter={formatTimeLabel}
             padding={{ left: 20, right: 20 }}
-            allowDataOverflow={true}
           >
             <Label value="Timeline (24-hour format)" position="bottom" offset={10} />
           </XAxis>
@@ -208,26 +185,22 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
           />
           <Tooltip content={<CustomTooltip />} />
           
-          {/* This is the key change: use startTime for X position */}
+          {/* Create "start position" bars that set the starting point */}
           <Bar 
-            dataKey="duration"
-            background={{ fill: '#eee' }} 
-            barSize={28}
+            dataKey="startTime" 
+            stackId="stack" 
+            fill="transparent" 
+            barSize={30}
+          />
+          
+          {/* Main duration bars */}
+          <Bar 
+            dataKey="duration" 
+            stackId="stack" 
+            barSize={30}
             radius={[4, 4, 4, 4]}
-            // This makes the bar position at the startTime
-            stackId="stack"
-            fill="#4f46e5"
-            // The x position is the critical part for a Gantt chart
-            data={transformedData.map(item => ({
-              ...item,
-              // These properties ensure the bar starts at the right time
-              x: item.startTime,
-              width: item.duration,
-              // The base property is set to 0 (bottom)
-              y: 0
-            }))}
           >
-            {transformedData.map((entry, index) => (
+            {chartData.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`} 
                 fill={index % 2 === 0 ? '#4f46e5' : '#6366f1'} 
@@ -237,7 +210,7 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
             ))}
           </Bar>
           
-          {/* Add current time reference line if it's within chart bounds */}
+          {/* Add current time reference line */}
           {currentTime >= chartBounds.min && currentTime <= chartBounds.max && (
             <ReferenceLine 
               x={currentTime} 
