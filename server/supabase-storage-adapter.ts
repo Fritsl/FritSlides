@@ -236,7 +236,7 @@ export class SupabaseStorage implements IStorage {
       
       const { error } = await supabase
         .from('users')
-        .update({ last_opened_project_id: projectId })
+        .update({ lastOpenedProjectId: projectId })
         .eq('id', userId);
       
       if (error) {
@@ -366,7 +366,7 @@ export class SupabaseStorage implements IStorage {
       
       const { error } = await supabase
         .from('projects')
-        .update({ last_viewed_slide_index: slideIndex })
+        .update({ lastViewedSlideIndex: slideIndex })
         .eq('id', projectId);
       
       if (error) {
@@ -388,7 +388,7 @@ export class SupabaseStorage implements IStorage {
       
       const { data, error } = await supabase
         .from('projects')
-        .update({ is_locked: lockStatus.isLocked })
+        .update({ isLocked: lockStatus.isLocked })
         .eq('id', id)
         .select()
         .single();
@@ -416,7 +416,7 @@ export class SupabaseStorage implements IStorage {
       const notesResponse = await supabase
         .from('notes')
         .delete()
-        .eq('project_id', id);
+        .eq('projectId', id);
       
       if (notesResponse.error) {
         console.error('Error deleting project notes from Supabase:', notesResponse.error);
@@ -450,7 +450,7 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('notes')
         .select('*')
-        .eq('project_id', projectId)
+        .eq('projectId', projectId)
         .order('order', { ascending: true });
       
       if (error) {
@@ -498,8 +498,8 @@ export class SupabaseStorage implements IStorage {
       const supabaseNote = this.convertToSupabaseNote(note);
       
       // Add timestamps
-      supabaseNote.created_at = new Date().toISOString();
-      supabaseNote.updated_at = new Date().toISOString();
+      supabaseNote.createdAt = new Date().toISOString();
+      supabaseNote.updatedAt = new Date().toISOString();
       
       const { data, error } = await supabase
         .from('notes')
@@ -573,11 +573,11 @@ export class SupabaseStorage implements IStorage {
           }
         }
       } else {
-        // If not deleting children, set their parent_id to null
+        // If not deleting children, set their parentId to null
         const { error: updateError } = await supabase
           .from('notes')
-          .update({ parent_id: null })
-          .eq('parent_id', id);
+          .update({ parentId: null })
+          .eq('parentId', id);
         
         if (updateError) {
           console.error('Error updating child notes in Supabase:', updateError);
@@ -608,7 +608,7 @@ export class SupabaseStorage implements IStorage {
     const { data, error } = await supabase
       .from('notes')
       .select('id')
-      .eq('parent_id', parentId);
+      .eq('parentId', parentId);
     
     if (error || !data) {
       console.error('Error getting child notes:', error);
@@ -637,7 +637,7 @@ export class SupabaseStorage implements IStorage {
         .from('notes')
         .update({ 
           order: numericOrder,
-          updated_at: new Date().toISOString()
+          updatedAt: new Date().toISOString()
         })
         .eq('id', id);
       
@@ -659,8 +659,8 @@ export class SupabaseStorage implements IStorage {
       if (!supabase) throw new Error('Failed to get Supabase client');
       
       const update: any = {
-        parent_id: parentId,
-        updated_at: new Date().toISOString()
+        parentId: parentId,
+        updatedAt: new Date().toISOString()
       };
       
       if (order !== undefined) {
@@ -692,8 +692,8 @@ export class SupabaseStorage implements IStorage {
       // Unfortunately, Supabase doesn't support batch updates directly, so we need to do them one by one
       for (const update of updates) {
         const supabaseUpdate: any = {
-          parent_id: update.parentId,
-          updated_at: new Date().toISOString()
+          parentId: update.parentId,
+          updatedAt: new Date().toISOString()
         };
         
         if (update.order !== undefined) {
@@ -727,7 +727,7 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('notes')
         .select('*')
-        .eq('parent_id', parentId)
+        .eq('parentId', parentId)
         .order('order', { ascending: true });
       
       if (error) {
@@ -747,7 +747,7 @@ export class SupabaseStorage implements IStorage {
           .from('notes')
           .update({ 
             order: newOrder,
-            updated_at: new Date().toISOString()
+            updatedAt: new Date().toISOString()
           })
           .eq('id', data[i].id);
         
@@ -772,8 +772,8 @@ export class SupabaseStorage implements IStorage {
       // First get all notes for this project
       const { data, error } = await supabase
         .from('notes')
-        .select('id, parent_id')
-        .eq('project_id', projectId);
+        .select('id, parentId')
+        .eq('projectId', projectId);
       
       if (error) {
         console.error('Error getting project notes for normalization from Supabase:', error);
@@ -786,7 +786,7 @@ export class SupabaseStorage implements IStorage {
       
       // Get all unique parent IDs
       const parentIds = new Set<number | null>();
-      data.forEach(note => parentIds.add(note.parent_id));
+      data.forEach(note => parentIds.add(note.parentId));
       
       // Normalize each parent group
       for (const parentId of parentIds) {
