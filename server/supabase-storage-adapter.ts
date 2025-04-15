@@ -27,13 +27,22 @@ export class SupabaseStorage implements IStorage {
   sessionStore: any;
   
   constructor() {
-    // Create a memory store for sessions - we could replace this with a DB-backed store
-    const MemoryStore = memorystore(session);
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000 // Clear expired sessions every 24h
+    // Use PostgreSQL session store for persistence
+    const pgPool = {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    };
+    
+    // Use PostgreSQL to store sessions for persistence between deployments
+    const PgSession = require('connect-pg-simple')(session);
+    this.sessionStore = new PgSession({
+      conObject: pgPool,
+      tableName: 'session', // Default is 'session'
+      createTableIfMissing: true,
+      pruneSessionInterval: 60 * 60 // Prune expired sessions every hour
     });
     
-    console.log('Initialized SupabaseStorage adapter');
+    console.log('Initialized SupabaseStorage adapter with PostgreSQL session store');
   }
   
   // Remove this method when all references have been updated to use direct UUIDs
