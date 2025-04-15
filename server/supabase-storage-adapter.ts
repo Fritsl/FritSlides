@@ -87,17 +87,17 @@ export class SupabaseStorage implements IStorage {
       console.error('Null or undefined data passed to convertSupabaseProject');
       throw new Error('Invalid project data');
     }
-    // Use userId directly as string (as the database uses text type for userId)
+    // Use userId as number (as the database uses integer type for userId)
     return {
       id: data.id || 0,
-      userId: data.userId || '', // camelCase to match database column
+      userId: data.userId || 0, 
       name: data.name || '',
-      startSlogan: data.startSlogan || '', // camelCase to match database column
-      endSlogan: data.endSlogan || '', // camelCase to match database column
-      author: data.author || '',
-      lastViewedSlideIndex: typeof data.lastViewedSlideIndex === 'number' ? data.lastViewedSlideIndex : 0, // camelCase to match database column
-      isLocked: typeof data.isLocked === 'boolean' ? data.isLocked : false, // camelCase to match database column
-      createdAt: data.createdAt ? new Date(data.createdAt) : new Date() // camelCase to match database column
+      startSlogan: data.startSlogan || null,
+      endSlogan: data.endSlogan || null,
+      author: data.author || null,
+      lastViewedSlideIndex: typeof data.lastViewedSlideIndex === 'number' ? data.lastViewedSlideIndex : null,
+      isLocked: typeof data.isLocked === 'boolean' ? data.isLocked : false
+      // Removed createdAt as it doesn't exist in the Supabase table
     };
   }
   
@@ -118,9 +118,8 @@ export class SupabaseStorage implements IStorage {
       time: data.time || null,
       isDiscussion: typeof data.isdiscussion === 'boolean' ? data.isdiscussion : false, // lowercase to match database column
       images: Array.isArray(data.images) ? data.images : [],
-      order: data.order ? data.order.toString() : "0", // Convert to string as our schema expects
-      createdAt: data.createdat ? new Date(data.createdat) : new Date(), // lowercase to match database column
-      updatedAt: data.updatedat ? new Date(data.updatedat) : new Date() // lowercase to match database column
+      order: data.order ? data.order.toString() : "0" // Convert to string as our schema expects
+      // Removed createdAt and updatedAt as they don't exist in the Supabase table
     };
   }
   
@@ -186,8 +185,7 @@ export class SupabaseStorage implements IStorage {
       update.order = typeof note.order === 'string' ? parseFloat(note.order) : note.order;
     }
     
-    // Always update the updated_at timestamp
-    update.updatedAt = new Date().toISOString(); // camelCase to match database column
+    // Removed updatedAt as it doesn't exist in the Supabase tables
     
     return update;
   }
@@ -375,8 +373,8 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('"userId"', stringUserId) // Using camelCase to match database column
-        .order('"createdAt"', { ascending: false }); // Using camelCase to match database column
+        .eq('"userId"', stringUserId); // Using camelCase to match database column
+        // Removed order by createdAt as it doesn't exist in the table
       
       if (error) {
         console.error('Error getting projects from Supabase:', error);
@@ -422,9 +420,7 @@ export class SupabaseStorage implements IStorage {
       
       const supabaseProject = this.convertToSupabaseProject(project);
       
-      // Add timestamps with camelCase names to match database columns
-      supabaseProject["createdAt"] = new Date().toISOString();
-      // createdAt is the only timestamp column in the projects table
+      // Removed createdAt as it doesn't exist in the Supabase table
       
       console.log('Creating project with data:', JSON.stringify(supabaseProject, null, 2));
       
@@ -625,9 +621,7 @@ export class SupabaseStorage implements IStorage {
       
       const supabaseNote = this.convertToSupabaseNote(note);
       
-      // Add timestamps with camelCase names to match database column names
-      supabaseNote["createdAt"] = new Date().toISOString();
-      supabaseNote["updatedAt"] = new Date().toISOString();
+      // Removed createdAt and updatedAt timestamps as they don't exist in the Supabase table
       
       const { data, error } = await supabase
         .from('notes')
@@ -764,8 +758,8 @@ export class SupabaseStorage implements IStorage {
       const { error } = await supabase
         .from('notes')
         .update({ 
-          "order": numericOrder,
-          "updatedAt": new Date().toISOString() // camelCase to match database column
+          "order": numericOrder
+          // Removed updatedAt as it doesn't exist in Supabase table
         })
         .eq('id', id);
       
@@ -787,8 +781,8 @@ export class SupabaseStorage implements IStorage {
       if (!supabase) throw new Error('Failed to get Supabase client');
       
       const update: any = {
-        "parentId": parentId, // camelCase to match database column
-        "updatedAt": new Date().toISOString() // camelCase to match database column
+        "parentId": parentId // camelCase to match database column
+        // Removed updatedAt as it doesn't exist in Supabase table
       };
       
       if (order !== undefined) {
