@@ -667,7 +667,7 @@ export class SupabaseStorage implements IStorage {
     const { data, error } = await supabase
       .from('notes')
       .select('id')
-      .eq('parentId', parentId);
+      .eq('parentid', parentId); // lowercase to match database column
     
     if (error || !data) {
       console.error('Error getting child notes:', error);
@@ -718,8 +718,8 @@ export class SupabaseStorage implements IStorage {
       if (!supabase) throw new Error('Failed to get Supabase client');
       
       const update: any = {
-        parentId: parentId,
-        updatedAt: new Date().toISOString()
+        parentid: parentId, // lowercase to match database column
+        updatedat: new Date().toISOString() // lowercase to match database column
       };
       
       if (order !== undefined) {
@@ -751,8 +751,8 @@ export class SupabaseStorage implements IStorage {
       // Unfortunately, Supabase doesn't support batch updates directly, so we need to do them one by one
       for (const update of updates) {
         const supabaseUpdate: any = {
-          parentId: update.parentId,
-          updatedAt: new Date().toISOString()
+          parentid: update.parentId, // lowercase to match database column
+          updatedat: new Date().toISOString() // lowercase to match database column
         };
         
         if (update.order !== undefined) {
@@ -790,9 +790,9 @@ export class SupabaseStorage implements IStorage {
         
       // Use IS NULL for null values, eq for non-null values
       if (parentId === null) {
-        query = query.is('parentId', null);
+        query = query.is('parentid', null); // lowercase to match database column
       } else {
-        query = query.eq('parentId', parentId);
+        query = query.eq('parentid', parentId); // lowercase to match database column
       }
       
       const { data, error } = await query;
@@ -847,8 +847,8 @@ export class SupabaseStorage implements IStorage {
       // First get all notes for this project
       const { data, error } = await supabase
         .from('notes')
-        .select('id, parentId')
-        .eq('projectId', projectId);
+        .select('id, parentid') // lowercase to match database column
+        .eq('projectid', projectId); // lowercase to match database column
       
       if (error) {
         console.error('Error getting project notes for normalization from Supabase:', error);
