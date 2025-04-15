@@ -34,7 +34,8 @@ import {
   RotateCcw,
   Lock,
   Unlock,
-  Database
+  Database,
+  PieChart
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "./confirmation-dialog";
@@ -58,6 +59,7 @@ interface HeaderProps {
   onPresentMode?: () => void; // For entering presentation mode
   onToggleTimedNotes?: () => void; // For toggling timed notes filter
   showOnlyTimedNotes?: boolean; // Current state of timed notes filter
+  onShowTimeDistribution?: () => void; // For showing time distribution chart
 }
 
 export default function Header({ 
@@ -74,7 +76,8 @@ export default function Header({
   onImportNotes,
   onPresentMode,
   onToggleTimedNotes,
-  showOnlyTimedNotes = false
+  showOnlyTimedNotes = false,
+  onShowTimeDistribution
 }: HeaderProps) {
   const { user: supabaseUser, signOut: supabaseSignOut } = useSupabaseAuth();
   const { toast } = useToast();
@@ -436,6 +439,26 @@ export default function Header({
                     <Presentation className="h-4 w-4 mr-2" />
                     <span>Presentation Mode</span>
                   </DropdownMenuItem>
+                  
+                  {/* Show Time Distribution */}
+                  {currentProject && notes && notes.length > 0 && notes.some(note => note.time) && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (currentProject && onShowTimeDistribution) {
+                          onShowTimeDistribution();
+                        } else if (!currentProject) {
+                          toast({
+                            title: "Select a project first",
+                            description: "You need to select a project before viewing time distribution",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <PieChart className="h-4 w-4 mr-2" />
+                      <span>Show Time as Cake Diagram</span>
+                    </DropdownMenuItem>
+                  )}
                   
                   {/* Reset Editing State */}
                   <DropdownMenuItem 
