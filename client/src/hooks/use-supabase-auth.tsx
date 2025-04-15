@@ -189,14 +189,9 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     try {
       setIsLoading(true);
-      const supabase = await getSupabaseClient();
+      console.log("Signing out - clearing client state first");
       
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        throw error;
-      }
-      
+      // Clear client-side state first before making API call
       setSession(null);
       setUser(null);
       
@@ -206,10 +201,33 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       // Also invalidate any project or note data
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       
+      // Get a fresh instance of the Supabase client
+      const supabase = await getSupabaseClient();
+      
+      console.log("Calling Supabase API to sign out");
+      const { error } = await supabase.auth.signOut({
+        scope: 'global' // Sign out from all devices
+      });
+      
+      if (error) {
+        console.error("Supabase signOut API error:", error);
+        throw error;
+      }
+      
+      // Force clear localStorage
+      console.log("Clearing localStorage Supabase session data");
+      localStorage.removeItem('sb-' + import.meta.env.VITE_SUPABASE_URL.replace(/^https?:\/\//, '').split('.')[0] + '-auth-token');
+      
+      console.log("Sign-out completed successfully");
       toast({
         title: "Logged out",
         description: "You have been successfully logged out.",
       });
+      
+      // Force refresh the page to clear any remaining state
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 500);
     } catch (error: any) {
       console.error("Logout error:", error);
       setError(error);
@@ -220,7 +238,10 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
       });
       
-      throw error;
+      // Even if API call fails, try to clear state and refresh page
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     } finally {
       setIsLoading(false);
     }

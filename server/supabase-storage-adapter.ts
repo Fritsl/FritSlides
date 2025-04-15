@@ -254,7 +254,7 @@ export class SupabaseStorage implements IStorage {
         .insert({
           id: userId, // Use string ID directly
           username: user.username,
-          password: 'supabase_auth_user', // Required non-null value
+          password: null, // Password is now optional
           lastopenedprojectid: user.lastOpenedProjectId // Match database column name
         })
         .select()

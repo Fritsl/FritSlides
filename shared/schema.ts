@@ -6,7 +6,7 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // Supabase uses UUID strings (text) for user IDs
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),  // Required for schema but not used with Supabase auth
+  password: text("password"), // Make password nullable for Supabase auth users
   lastOpenedProjectId: integer("lastopenedprojectid"),
 });
 

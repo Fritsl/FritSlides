@@ -99,8 +99,8 @@ export function setupAuth(app: Express) {
                 id: supabaseUserId, // Using the UUID directly as the database uses text type for id
                 username: userEmail || `user_${supabaseUserId.substring(0, 8)}@example.com`, 
                 // Using our schema column names instead of Supabase defaults
-                password: 'supabase_auth_user', // Required non-null value (we don't use this for Supabase auth)
-                lastOpenedProjectId: null
+                password: null, // Password is optional now for Supabase auth users
+                lastopenedprojectid: null // Using lowercase to match database
               })
               .select()
               .single();
