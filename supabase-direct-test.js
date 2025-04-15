@@ -99,11 +99,11 @@ async function runTest() {
       console.log('SUCCESS! Test user created:', userData);
       
       // 2. Second test: Create a test project with the new user ID
-      // Let's try with only required fields to avoid schema cache issues
+      // Using ONLY the required fields we confirmed in SQL
       const testProject = {
-        userid: userData[0].id, // lowercase column name - required
-        name: 'Test Project ' + Date.now(), // required
-        islocked: false // required
+        userid: userData[0].id,
+        name: 'Test Project ' + Date.now(),
+        islocked: false
       };
       
       console.log('Attempting to create test project:', testProject);
