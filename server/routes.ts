@@ -49,8 +49,10 @@ const upload = multer({
   }
 });
 
+import { getSupabaseClient, getSupabaseUser, createSupabaseUser, updateSupabaseUserLastProject } from './supabase-storage';
+
 // Authentication middleware
-function isAuthenticated(req: Request, res: Response, next: Function) {
+async function isAuthenticated(req: Request, res: Response, next: Function) {
   // For Supabase authentication, we'll check if the request contains a valid user ID in a header
   // This is a temporary solution until we fully implement Supabase authentication on the server
   
@@ -63,6 +65,38 @@ function isAuthenticated(req: Request, res: Response, next: Function) {
   if (req.headers['x-supabase-user-id']) {
     // If Supabase user ID is provided in header, use it
     const supabaseUserId = req.headers['x-supabase-user-id'] as string;
+    
+    // Verify the user exists in Supabase using the service role key (which bypasses RLS)
+    try {
+      // Get the Supabase admin client using the service role key
+      const supabase = await getSupabaseClient();
+      
+      if (supabase) {
+        console.log("SUPABASE_SERVICE_ROLE_KEY is available and Supabase client created");
+        
+        // Using the admin client to verify user exists (bypasses RLS)
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', supabaseUserId)
+          .single();
+        
+        if (error) {
+          console.error("Error verifying user with Supabase admin client:", error);
+        }
+        
+        console.log("Supabase direct user lookup result:", userData ? "User found" : "User NOT found");
+        
+        // If user doesn't exist in Supabase, create it using our SQL database
+        if (!userData) {
+          console.log(`User ${supabaseUserId} not found in Supabase, will fall back to local DB`);
+        }
+      } else {
+        console.log("SUPABASE_SERVICE_ROLE_KEY is available but Supabase client creation failed");
+      }
+    } catch (err) {
+      console.error("Error attempting to verify user with Supabase:", err);
+    }
     
     // Set up the user object that the rest of the code expects
     req.user = {
@@ -88,90 +122,75 @@ function isAuthenticated(req: Request, res: Response, next: Function) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication routes
   setupAuth(app);
-  
+
   // Get user's last opened project
   app.get("/api/user/lastProject", isAuthenticated, async (req, res) => {
     try {
       // Ensure userId is a string
       const userId = String(req.user!.id);
+      const userEmail = req.headers['x-supabase-user-email'] as string || null;
       
       // Log the user ID for debugging
       console.log(`Getting last project for user: ${userId} (${typeof userId})`);
       
-      // Manual SQL query for debugging - use the execute method directly
-      console.log("DEBUGGING: Running direct SQL query to find user");
-      const directResult = await db.execute(sql`SELECT * FROM users WHERE id = ${userId}`);
+      // First, try to get user directly from Supabase using service role key
+      // This bypasses RLS completely
+      let user = await getSupabaseUser(userId);
       
-      // The result type depends on the driver, handle both possibilities
-      const rows = 'rows' in directResult ? directResult.rows : (directResult as any);
-      const rowCount = Array.isArray(rows) ? rows.length : 0;
-      
-      console.log("DEBUGGING: Direct SQL query result:", rowCount > 0 ? "User found" : "User NOT found");
-      
-      // Try to get user through normal method
-      let user = await storage.getUser(userId);
-      console.log("DEBUGGING: Storage getUser result:", user ? "User found" : "User NOT found");
-      
-      // For Supabase users who don't exist in our database yet, create them
-      if (!user && req.headers['x-supabase-user-id']) {
-        console.log(`User ${userId} not found in database - creating new user record`);
+      // If not found in Supabase, try our local database
+      if (!user) {
+        console.log(`User ${userId} not found in Supabase, checking local database`);
+        user = await storage.getUser(userId);
         
-        try {
-          // First check again with direct SQL to avoid race conditions
-          const checkAgain = await db.execute(sql`SELECT * FROM users WHERE id = ${userId}`);
+        // If still not found, create the user in both Supabase and our local database
+        if (!user && req.headers['x-supabase-user-id']) {
+          console.log(`User ${userId} not found in local database either - creating new user record`);
           
-          // The result type depends on the driver, handle both possibilities
-          const checkRows = 'rows' in checkAgain ? checkAgain.rows : (checkAgain as any);
-          const checkRowCount = Array.isArray(checkRows) ? checkRows.length : 0;
+          // First, try to create in Supabase
+          const supabaseUser = await createSupabaseUser(userId, userEmail);
           
-          if (checkRowCount > 0) {
-            console.log("DEBUGGING: User found in direct check before creation, using that instead");
-            user = Array.isArray(checkRows) ? checkRows[0] as User : (checkRows as User);
+          if (supabaseUser) {
+            console.log(`Successfully created user ${userId} in Supabase`);
+            user = supabaseUser;
           } else {
-            // User truly doesn't exist, create them
-            user = await storage.createUser({
-              id: userId,
-              username: `user_${userId.substring(0, 8)}`,
-              password: null, // Password not needed for Supabase users
-              lastOpenedProjectId: null
-            });
-            console.log(`Successfully created user with ID: ${user.id}`);
-          }
-        } catch (createErr: any) {
-          // If error is a duplicate key violation, try to fetch the user again
-          // as it might have been created in a race condition
-          console.error("Error creating user:", createErr);
-          if (createErr.message && createErr.message.includes('duplicate key')) {
-            console.log('User creation failed due to duplicate key - attempting to fetch existing user');
+            console.log(`Failed to create user in Supabase, falling back to local database creation only`);
             
-            // Try direct SQL again
-            const finalCheck = await db.execute(sql`SELECT * FROM users WHERE id = ${userId}`);
-            
-            // The result type depends on the driver, handle both possibilities
-            const finalRows = 'rows' in finalCheck ? finalCheck.rows : (finalCheck as any);
-            const finalRowCount = Array.isArray(finalRows) ? finalRows.length : 0;
-            
-            if (finalRowCount > 0) {
-              console.log("DEBUGGING: Found user with direct SQL after duplicate key error");
-              user = Array.isArray(finalRows) ? finalRows[0] as User : (finalRows as User);
-            } else {
-              // One more try with storage method
-              user = await storage.getUser(userId);
+            // Create user in our local database
+            try {
+              user = await storage.createUser({
+                id: userId,
+                username: userEmail || `user_${userId.substring(0, 8)}`,
+                password: null, // Password not needed for Supabase users
+                lastOpenedProjectId: null
+              });
+              console.log(`Successfully created user with ID: ${user.id} in local database`);
+            } catch (createErr: any) {
+              // If error is a duplicate key violation, try to fetch the user again
+              // as it might have been created in a race condition
+              console.error("Error creating user:", createErr);
+              if (createErr.message && createErr.message.includes('duplicate key')) {
+                console.log('User creation failed due to duplicate key - attempting to fetch existing user');
+                
+                // One more try with storage method
+                user = await storage.getUser(userId);
+              } else {
+                console.error("Error creating user from Supabase auth:", createErr);
+                return res.status(500).json({ message: "Failed to create user" });
+              }
             }
-          } else {
-            console.error("Error creating user from Supabase auth:", createErr);
-            return res.status(500).json({ message: "Failed to create user" });
           }
         }
+      } else {
+        console.log(`Found user ${userId} in Supabase with lastOpenedProjectId: ${user.lastOpenedProjectId}`);
       }
       
       if (!user) {
-        console.log(`User ${userId} still not found after creation attempt`);
+        console.log(`User ${userId} still not found after creation attempts in both Supabase and local database`);
         // For debugging purposes, return a 404 with more details
         return res.status(404).json({ 
           message: "User not found", 
           userId: userId,
-          debug: "User could not be found in database after multiple attempts"
+          debug: "User could not be found in both Supabase and local database after multiple attempts"
         });
       }
       

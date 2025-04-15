@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import type { User } from '@shared/schema';
 
 // The name of the bucket where we'll store images
 export const IMAGES_BUCKET = 'images';
@@ -24,11 +25,140 @@ export async function getSupabaseClient() {
   
   try {
     // Create the Supabase client with the service role key for admin privileges
-    supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+    supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+    
+    console.log('Supabase admin client initialized with service role key');
     return supabaseClient;
   } catch (error) {
     console.error('Error creating Supabase client:', error);
     return null;
+  }
+}
+
+// Direct user operations with Supabase (bypassing RLS)
+export async function getSupabaseUser(userId: string): Promise<User | null> {
+  try {
+    const supabase = await getSupabaseClient();
+    
+    if (!supabase) {
+      console.error('Cannot access Supabase client to fetch user');
+      return null;
+    }
+    
+    console.log(`Fetching user ${userId} directly from Supabase using admin client`);
+    
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching user from Supabase:', error);
+      return null;
+    }
+    
+    if (!data) {
+      console.log(`User ${userId} not found in Supabase`);
+      return null;
+    }
+    
+    console.log(`User ${userId} found in Supabase:`, JSON.stringify(data));
+    
+    // Convert data to our User type
+    return {
+      id: data.id,
+      username: data.email || `user_${data.id.substring(0, 8)}`,
+      password: null,
+      lastOpenedProjectId: data.last_opened_project_id
+    } as User;
+  } catch (error) {
+    console.error('Exception in getSupabaseUser:', error);
+    return null;
+  }
+}
+
+// Create user directly in Supabase
+export async function createSupabaseUser(userId: string, email: string | null, lastProjectId: number | null = null): Promise<User | null> {
+  try {
+    const supabase = await getSupabaseClient();
+    
+    if (!supabase) {
+      console.error('Cannot access Supabase client to create user');
+      return null;
+    }
+    
+    console.log(`Creating user ${userId} directly in Supabase using admin client`);
+    
+    const { data, error } = await supabase
+      .from('users')
+      .insert({
+        id: userId,
+        email: email || `user_${userId.substring(0, 8)}@example.com`,
+        last_opened_project_id: lastProjectId
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error creating user in Supabase:', error);
+      return null;
+    }
+    
+    if (!data) {
+      console.log(`Failed to create user ${userId} in Supabase`);
+      return null;
+    }
+    
+    console.log(`User ${userId} created in Supabase:`, JSON.stringify(data));
+    
+    // Convert data to our User type
+    return {
+      id: data.id,
+      username: data.email || `user_${data.id.substring(0, 8)}`,
+      password: null,
+      lastOpenedProjectId: data.last_opened_project_id
+    } as User;
+  } catch (error) {
+    console.error('Exception in createSupabaseUser:', error);
+    return null;
+  }
+}
+
+// Update lastOpenedProject for user
+export async function updateSupabaseUserLastProject(userId: string, projectId: number | null): Promise<boolean> {
+  try {
+    const supabase = await getSupabaseClient();
+    
+    if (!supabase) {
+      console.error('Cannot access Supabase client to update user');
+      return false;
+    }
+    
+    console.log(`Updating lastOpenedProject for user ${userId} to ${projectId} in Supabase using admin client`);
+    
+    const { error } = await supabase
+      .from('users')
+      .update({
+        last_opened_project_id: projectId
+      })
+      .eq('id', userId);
+    
+    if (error) {
+      console.error('Error updating user in Supabase:', error);
+      return false;
+    }
+    
+    console.log(`Successfully updated lastOpenedProject for user ${userId} to ${projectId}`);
+    return true;
+  } catch (error) {
+    console.error('Exception in updateSupabaseUserLastProject:', error);
+    return false;
   }
 }
 
