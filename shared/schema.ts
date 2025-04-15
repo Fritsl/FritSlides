@@ -2,17 +2,18 @@ import { pgTable, text, serial, integer, timestamp, jsonb, numeric, boolean } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Define tables with foreign key references - updated for Supabase with lowercase column names
+// Users table with text ID for Supabase (UUID) compatibility
 export const users = pgTable("users", {
   id: text("id").primaryKey(), // Supabase uses UUID strings (text) for user IDs
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),  // NOT NULL in database schema
+  password: text("password").notNull(),  // Required for schema but not used with Supabase auth
   lastOpenedProjectId: integer("lastopenedprojectid"),
 });
 
+// Projects table with consistent naming
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: text("userid").notNull().references(() => users.id, { onDelete: "cascade" }), // Changed to text to match users.id
+  userId: text("userid").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   startSlogan: text("startslogan"),
   endSlogan: text("endslogan"),
@@ -20,10 +21,9 @@ export const projects = pgTable("projects", {
   lastViewedSlideIndex: integer("lastviewedslideindex").default(0),
   isLocked: boolean("islocked").default(false).notNull(),
   createdAt: timestamp("createdat").defaultNow().notNull(),
-  // No updatedAt field in the database
 });
 
-// Fixed the notes table with proper type annotation to avoid self-reference error
+// Notes table with consistent lowercase column names
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
   projectId: integer("projectid").notNull().references(() => projects.id, { onDelete: "cascade" }),
