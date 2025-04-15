@@ -70,7 +70,7 @@ export class SupabaseStorage implements IStorage {
     // Make sure we work with clean data
     const id = String(data.id || ''); // Ensure id is a string
     const username = data.username || `user_${id.substring(0, 8)}`;
-    const lastProjectId = data.lastopenedprojectid ? Number(data.lastopenedprojectid) : null;
+    const lastProjectId = data.lastOpenedProjectId ? Number(data.lastOpenedProjectId) : null;
     
     // Use UUID string directly as the database uses text type for id
     return {
@@ -315,7 +315,7 @@ export class SupabaseStorage implements IStorage {
           id: userId, // Use string ID directly
           username: user.username,
           password: null, // Password is now optional
-          lastopenedprojectid: user.lastOpenedProjectId // Match database column name
+          "lastOpenedProjectId": user.lastOpenedProjectId // Use camelCase to match database column name
         })
         .select()
         .single();
@@ -347,7 +347,7 @@ export class SupabaseStorage implements IStorage {
       
       const { error } = await supabase
         .from('users')
-        .update({ lastopenedprojectid: projectId }) // Using lowercase to match database column
+        .update({ "lastOpenedProjectId": projectId }) // Using camelCase to match database column
         .eq('id', stringUserId);
       
       if (error) {
@@ -375,8 +375,8 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('userid', stringUserId) // Using lowercase to match database column
-        .order('createdat', { ascending: false }); // Using lowercase to match database column
+        .eq('"userId"', stringUserId) // Using camelCase to match database column
+        .order('"createdAt"', { ascending: false }); // Using camelCase to match database column
       
       if (error) {
         console.error('Error getting projects from Supabase:', error);
@@ -422,9 +422,9 @@ export class SupabaseStorage implements IStorage {
       
       const supabaseProject = this.convertToSupabaseProject(project);
       
-      // Add timestamps with lowercase names to match database columns
-      supabaseProject.createdat = new Date().toISOString();
-      // createdat is the only timestamp column in the projects table
+      // Add timestamps with camelCase names to match database columns
+      supabaseProject["createdAt"] = new Date().toISOString();
+      // createdAt is the only timestamp column in the projects table
       
       console.log('Creating project with data:', JSON.stringify(supabaseProject, null, 2));
       
@@ -489,7 +489,7 @@ export class SupabaseStorage implements IStorage {
       const { error } = await supabase
         .from('projects')
         .update({ 
-          lastviewedslideindex: slideIndex // lowercase to match database column
+          "lastViewedSlideIndex": slideIndex // camelCase to match database column
           // No updatedAt field in projects table
         })
         .eq('id', projectId);
