@@ -42,7 +42,7 @@ export const notes = pgTable("notes", {
 
 // Define schemas for data insertion/validation
 export const insertUserSchema = createInsertSchema(users).extend({
-  id: z.union([z.number(), z.string().transform(id => parseInt(id, 10))]).optional(), // Handle both string and number IDs
+  id: z.string().optional(), // Use string directly for UUID compatibility 
   password: z.string().nullable().optional() // Make password optional for Supabase auth
 });
 
