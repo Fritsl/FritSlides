@@ -635,8 +635,8 @@ export class SupabaseStorage implements IStorage {
         // If not deleting children, set their parentId to null
         const { error: updateError } = await supabase
           .from('notes')
-          .update({ parentId: null })
-          .eq('parentId', id);
+          .update({ parentid: null }) // lowercase to match database column
+          .eq('parentid', id); // lowercase to match database column
         
         if (updateError) {
           console.error('Error updating child notes in Supabase:', updateError);
@@ -862,8 +862,8 @@ export class SupabaseStorage implements IStorage {
       // Get all unique parent IDs
       const parentIds = new Set<number | null>();
       data.forEach(note => {
-        if (note && note.parentId !== undefined) {
-          parentIds.add(note.parentId as number | null);
+        if (note && note.parentid !== undefined) { // lowercase to match database column
+          parentIds.add(note.parentid as number | null); // lowercase to match database column
         }
       });
       
