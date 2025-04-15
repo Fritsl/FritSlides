@@ -81,35 +81,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user's last opened project
   app.get("/api/user/lastProject", isAuthenticated, async (req, res) => {
     try {
-      // Log the user ID for debugging
-      console.log(`Getting last project for user: ${req.user!.id} (${typeof req.user!.id})`);
+      // Ensure userId is a string
+      const userId = String(req.user!.id);
       
-      const user = await storage.getUser(req.user!.id);
-      if (!user) {
-        console.log(`User ${req.user!.id} not found in database`);
+      // Log the user ID for debugging
+      console.log(`Getting last project for user: ${userId} (${typeof userId})`);
+      
+      let user = await storage.getUser(userId);
+      
+      // For Supabase users who don't exist in our database yet, create them
+      if (!user && req.headers['x-supabase-user-id']) {
+        console.log(`User ${userId} not found in database - creating new user record`);
         
-        // For Supabase users, we might not have them in our DB yet, so auto-create
-        if (req.headers['x-supabase-user-id']) {
-          console.log(`Creating user record for Supabase user: ${req.user!.id}`);
+        try {
+          user = await storage.createUser({
+            id: userId,
+            username: `user_${userId.substring(0, 8)}`,
+            password: null, // Password not needed for Supabase users
+            lastOpenedProjectId: null
+          });
           
-          try {
-            await storage.createUser({
-              id: String(req.user!.id),
-              username: `user_${String(req.user!.id).substring(0, 8)}`,
-              password: null, // Password not needed for Supabase users
-              lastOpenedProjectId: null
-            });
-            
-            // After creating user, respond with empty project
-            return res.json({ lastOpenedProjectId: null });
-          } catch (createErr) {
+          console.log(`Successfully created user with ID: ${user.id}`);
+        } catch (createErr: any) {
+          // If error is a duplicate key violation, try to fetch the user again
+          // as it might have been created in a race condition
+          if (createErr.message && createErr.message.includes('duplicate key')) {
+            console.log('User creation failed due to duplicate key - attempting to fetch existing user');
+            user = await storage.getUser(userId);
+          } else {
             console.error("Error creating user from Supabase auth:", createErr);
             return res.status(500).json({ message: "Failed to create user" });
           }
         }
-        
+      }
+      
+      if (!user) {
+        console.log(`User ${userId} still not found after creation attempt`);
         return res.status(404).json({ message: "User not found" });
       }
+      
+      // Log the result for debugging
+      console.log(`Found user ${user.id} with lastOpenedProjectId: ${user.lastOpenedProjectId}`);
       
       res.json({ lastOpenedProjectId: user.lastOpenedProjectId });
     } catch (err) {
