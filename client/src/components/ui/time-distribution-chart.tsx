@@ -97,11 +97,14 @@ export const TimeDistributionChart: React.FC<TimeDistributionChartProps> = ({ no
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      const totalMinutes = timeSegments.reduce((sum, segment) => sum + segment.minutes, 0);
+      const percent = totalMinutes > 0 ? (data.minutes / totalMinutes * 100).toFixed(0) : 0;
+      
       return (
         <div className="bg-background p-4 rounded border shadow-sm">
           <p className="font-medium">{data.name}</p>
           <p>Duration: {formatMinutes(data.minutes)}</p>
-          <p>Percentage: {payload[0].percent.toFixed(0)}%</p>
+          <p>Percentage: {percent}%</p>
         </div>
       );
     }
@@ -142,7 +145,10 @@ export const TimeDistributionChart: React.FC<TimeDistributionChartProps> = ({ no
             innerRadius={60}
             dataKey="minutes"
             nameKey="name"
-            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+            label={(entry) => {
+              const percentage = (entry.value / totalMinutes * 100).toFixed(0);
+              return `${entry.name} (${percentage}%)`;
+            }}
             labelLine={false}
           >
             {timeSegments.map((entry, index) => (
