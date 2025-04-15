@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label } from 'recharts';
 import { Note } from '@shared/schema';
 import { formatTimeString, parseTimeString, formatDuration } from '@/lib/time-utils';
 
@@ -14,6 +14,7 @@ type TimeChartData = {
   duration: number;
   startTime: number;
   displayTime: string;
+  title: string;
 };
 
 export default function TimeGanttChart({ notes, projectName }: TimeGanttChartProps) {
@@ -86,14 +87,29 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
           durationSeconds = nextSeconds - currentSeconds;
         }
       }
+
+      // Get the note title from content (first line)
+      let noteTitle = '';
+      if (currentNote.content) {
+        // Extract first line of content as title
+        const firstLine = currentNote.content.split('\n')[0];
+        noteTitle = firstLine.trim();
+      }
+      
+      // Truncate long titles
+      let displayTitle = noteTitle || `Note ${currentNote.id}`;
+      if (displayTitle.length > 30) {
+        displayTitle = displayTitle.substring(0, 27) + '...';
+      }
       
       // Create data point
       data.push({
-        name: currentNote.title || `Note ${currentNote.id}`,
+        name: displayTitle, // Use actual titles
         id: currentNote.id,
         duration: durationSeconds,
         startTime: currentSeconds,
-        displayTime: formatTimeString(currentNote.time || '')
+        displayTime: formatTimeString(currentNote.time || ''),
+        title: noteTitle || `Note ${currentNote.id}`
       });
     }
     
@@ -108,15 +124,46 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
     return hours * 3600 + minutes * 60;
   }, []);
 
+  // Calculate chart bounds
+  const chartBounds = useMemo(() => {
+    if (chartData.length === 0) return { min: 0, max: 86400 }; // Default to full day
+    
+    // Find earliest and latest time
+    let minTime = Number.MAX_SAFE_INTEGER;
+    let maxTime = 0;
+    
+    chartData.forEach(item => {
+      const startTime = item.startTime;
+      const endTime = startTime + item.duration;
+      
+      if (startTime < minTime) minTime = startTime;
+      if (endTime > maxTime) maxTime = endTime;
+    });
+    
+    // Add padding (10% on each side)
+    const range = maxTime - minTime;
+    const padding = Math.max(1800, range * 0.1); // At least 30 min padding
+    
+    minTime = Math.max(0, minTime - padding);
+    maxTime = maxTime + padding;
+    
+    return { min: minTime, max: maxTime };
+  }, [chartData]);
+
   // Custom tooltip to display note information
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
         <div className="p-2 bg-white dark:bg-slate-800 shadow rounded border border-slate-200 dark:border-slate-600">
-          <p className="font-semibold">{data.name}</p>
-          <p className="text-sm">Start: {data.displayTime}</p>
+          <p className="font-semibold">{data.title}</p>
+          <p className="text-sm">Start time: {data.displayTime}</p>
           <p className="text-sm">Duration: {formatDuration(data.duration)}</p>
+          <p className="text-sm">End time: {formatTimeString(
+            new Date(
+              new Date(`2023-01-01T${data.displayTime}`).getTime() + data.duration * 1000
+            ).toTimeString().slice(0, 5)
+          )}</p>
         </div>
       );
     }
@@ -131,42 +178,74 @@ export default function TimeGanttChart({ notes, projectName }: TimeGanttChartPro
     );
   }
 
+  // Format time for ticks
+  const formatTimeLabel = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="w-full h-[500px] px-2">
-      <ResponsiveContainer width="100%" height="100%">
+      <div className="text-center text-sm text-slate-500 mb-2">
+        Timeline shows scheduled notes and their approximate durations
+      </div>
+      <ResponsiveContainer width="100%" height="90%">
         <BarChart
           layout="vertical"
           data={chartData}
-          margin={{ top: 20, right: 30, left: 150, bottom: 20 }}
+          margin={{ top: 30, right: 30, left: 150, bottom: 30 }}
+          barGap={0}
+          barCategoryGap={5}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             type="number" 
-            domain={['dataMin', 'dataMax']} 
-            tickFormatter={(seconds) => {
-              const hours = Math.floor(seconds / 3600);
-              const minutes = Math.floor((seconds % 3600) / 60);
-              return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-            }}
+            domain={[chartBounds.min, chartBounds.max]} 
+            tickFormatter={formatTimeLabel}
+            padding={{ left: 20, right: 20 }}
+          >
+            <Label value="Time (24-hour format)" position="bottom" offset={10} />
+          </XAxis>
+          <YAxis 
+            type="category" 
+            dataKey="name" 
+            width={150}
+            tick={{ fontSize: 12 }}
+            tickFormatter={(value) => value}
           />
-          <YAxis type="category" dataKey="name" width={140} />
           <Tooltip content={<CustomTooltip />} />
-          <Bar dataKey="duration" background={{ fill: '#eee' }} barSize={24}>
+          <Bar 
+            dataKey="duration" 
+            background={{ fill: '#eee' }} 
+            barSize={28}
+            radius={[4, 4, 4, 4]}
+          >
             {chartData.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`} 
                 fill={index % 2 === 0 ? '#4f46e5' : '#6366f1'} 
+                stroke="#3730a3"
+                strokeWidth={1}
               />
             ))}
           </Bar>
           
-          {/* Add current time reference line */}
-          <ReferenceLine 
-            x={currentTime} 
-            stroke="red" 
-            strokeWidth={2} 
-            label={{ value: 'Now', position: 'insideTopRight', fill: 'red' }} 
-          />
+          {/* Add current time reference line if it's within chart bounds */}
+          {currentTime >= chartBounds.min && currentTime <= chartBounds.max && (
+            <ReferenceLine 
+              x={currentTime} 
+              stroke="red" 
+              strokeWidth={2}
+              strokeDasharray="3 3"
+              label={{ 
+                value: 'Current Time', 
+                position: 'insideBottomRight', 
+                fill: 'red',
+                fontSize: 12
+              }} 
+            />
+          )}
         </BarChart>
       </ResponsiveContainer>
     </div>
