@@ -360,6 +360,9 @@ export default function HomePage() {
   // State for time distribution dialog
   const [isTimeDistributionOpen, setIsTimeDistributionOpen] = useState(false);
   
+  // State for time gantt chart dialog
+  const [isTimeGanttOpen, setIsTimeGanttOpen] = useState(false);
+  
   // Main export function that will show a dialog to choose format
   const handleExportNotes = () => {
     if (!selectedProjectId || !selectedProject) {
@@ -426,6 +429,30 @@ export default function HomePage() {
     
     // Open the time distribution dialog
     setIsTimeDistributionOpen(true);
+  };
+  
+  // Show time gantt chart dialog
+  const showTimeGantt = () => {
+    if (!selectedProjectId || !selectedProject) {
+      toast({
+        title: "No project selected",
+        description: "Please select a project to view timeline",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!notes || notes.length === 0 || !notes.some(note => note.time)) {
+      toast({
+        title: "No timed notes",
+        description: "This project has no notes with time information",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Open the time gantt chart dialog
+    setIsTimeGanttOpen(true);
   };
 
   // Display loading state
@@ -517,6 +544,7 @@ export default function HomePage() {
         }}
         showOnlyTimedNotes={showOnlyTimedNotes}
         onShowTimeDistribution={showTimeDistribution}
+        onShowTimeGantt={showTimeGantt}
       />
       
       <div className="flex-1 flex overflow-hidden">
@@ -643,6 +671,16 @@ export default function HomePage() {
         <TimeDistributionDialog
           isOpen={isTimeDistributionOpen}
           onClose={() => setIsTimeDistributionOpen(false)}
+          notes={notes}
+          projectName={selectedProject.name}
+        />
+      )}
+      
+      {/* Time Gantt Chart Dialog */}
+      {selectedProjectId && selectedProject && notes && (
+        <TimeGanttDialog
+          isOpen={isTimeGanttOpen}
+          onClose={() => setIsTimeGanttOpen(false)}
           notes={notes}
           projectName={selectedProject.name}
         />

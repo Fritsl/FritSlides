@@ -60,6 +60,7 @@ interface HeaderProps {
   onToggleTimedNotes?: () => void; // For toggling timed notes filter
   showOnlyTimedNotes?: boolean; // Current state of timed notes filter
   onShowTimeDistribution?: () => void; // For showing time distribution chart
+  onShowTimeGantt?: () => void; // For showing time gantt chart
 }
 
 export default function Header({ 
@@ -77,7 +78,8 @@ export default function Header({
   onPresentMode,
   onToggleTimedNotes,
   showOnlyTimedNotes = false,
-  onShowTimeDistribution
+  onShowTimeDistribution,
+  onShowTimeGantt
 }: HeaderProps) {
   const { user: supabaseUser, signOut: supabaseSignOut } = useSupabaseAuth();
   const { toast } = useToast();
@@ -457,6 +459,26 @@ export default function Header({
                     >
                       <PieChart className="h-4 w-4 mr-2" />
                       <span>Show Time as Cake Diagram</span>
+                    </DropdownMenuItem>
+                  )}
+                  
+                  {/* Show Time Gantt Chart */}
+                  {currentProject && notes && notes.length > 0 && notes.some(note => note.time) && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (currentProject && onShowTimeGantt) {
+                          onShowTimeGantt();
+                        } else if (!currentProject) {
+                          toast({
+                            title: "Select a project first",
+                            description: "You need to select a project before viewing timeline",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <BarChart className="h-4 w-4 mr-2" />
+                      <span>Show Timeline View</span>
                     </DropdownMenuItem>
                   )}
                   
