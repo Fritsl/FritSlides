@@ -107,16 +107,19 @@ export class SupabaseStorage implements IStorage {
       console.error('Null or undefined data passed to convertSupabaseNote');
       throw new Error('Invalid note data');
     }
+    // Log the raw data for debugging
+    console.log('Raw note data from Supabase:', JSON.stringify(data, null, 2));
+    
     return {
       id: data.id || 0,
-      projectId: data.projectid || 0, // lowercase to match database column
-      parentId: data.parentid, // lowercase to match database column, can be null
+      projectId: data.projectId || 0, // Using camelCase to match database column 
+      parentId: data.parentId, // Using camelCase to match database column, can be null
       content: data.content || '',
       url: data.url || null,
-      linkText: data.linktext || null, // lowercase to match database column
-      youtubeLink: data.youtubelink || null, // lowercase to match database column
+      linkText: data.linkText || null, // Using camelCase to match database column
+      youtubeLink: data.youtubeLink || null, // Using camelCase to match database column
       time: data.time || null,
-      isDiscussion: typeof data.isDiscussion === 'boolean' ? data.isDiscussion : false, // camelCase to match database column
+      isDiscussion: typeof data.isDiscussion === 'boolean' ? data.isDiscussion : false,
       images: Array.isArray(data.images) ? data.images : [],
       order: data.order !== null && data.order !== undefined ? Number(data.order) : 0 // Keep as number consistently
       // Removed createdAt and updatedAt as they don't exist in the Supabase table
