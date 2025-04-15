@@ -40,9 +40,9 @@ export class SupabaseStorage implements IStorage {
   private convertSupabaseUser(data: any): User {
     return {
       id: data.id,
-      username: data.email || `user_${data.id.substring(0, 8)}`,
-      password: null, // Password not needed when using Supabase Auth
-      lastOpenedProjectId: data.last_opened_project_id
+      username: data.username || `user_${data.id.substring(0, 8)}`,
+      password: data.password, // May be null when using Supabase Auth
+      lastOpenedProjectId: data.lastOpenedProjectId
     };
   }
   
@@ -50,14 +50,14 @@ export class SupabaseStorage implements IStorage {
   private convertSupabaseProject(data: any): Project {
     return {
       id: data.id,
-      userId: data.user_id,
+      userId: data.userId,
       name: data.name,
-      startSlogan: data.start_slogan,
-      endSlogan: data.end_slogan,
+      startSlogan: data.startSlogan,
+      endSlogan: data.endSlogan,
       author: data.author,
-      lastViewedSlideIndex: data.last_viewed_slide_index,
-      isLocked: data.is_locked,
-      createdAt: new Date(data.created_at)
+      lastViewedSlideIndex: data.lastViewedSlideIndex,
+      isLocked: data.isLocked,
+      createdAt: new Date(data.createdAt)
     };
   }
   
@@ -65,32 +65,32 @@ export class SupabaseStorage implements IStorage {
   private convertSupabaseNote(data: any): Note {
     return {
       id: data.id,
-      projectId: data.project_id,
-      parentId: data.parent_id,
+      projectId: data.projectId,
+      parentId: data.parentId,
       content: data.content,
       url: data.url,
-      linkText: data.link_text,
-      youtubeLink: data.youtube_link,
+      linkText: data.linkText,
+      youtubeLink: data.youtubeLink,
       time: data.time,
-      isDiscussion: data.is_discussion,
+      isDiscussion: data.isDiscussion,
       images: data.images || [],
       order: data.order.toString(), // Convert to string as our schema expects
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at)
+      createdAt: new Date(data.createdAt),
+      updatedAt: new Date(data.updatedAt)
     };
   }
   
   // Helper: Convert our schema note to Supabase format
   private convertToSupabaseNote(note: InsertNote): any {
     return {
-      project_id: note.projectId,
-      parent_id: note.parentId,
+      projectId: note.projectId,
+      parentId: note.parentId,
       content: note.content,
       url: note.url,
-      link_text: note.linkText,
-      youtube_link: note.youtubeLink,
+      linkText: note.linkText,
+      youtubeLink: note.youtubeLink,
       time: note.time,
-      is_discussion: note.isDiscussion,
+      isDiscussion: note.isDiscussion,
       images: note.images,
       order: typeof note.order === 'string' ? parseFloat(note.order) : note.order
     };
@@ -99,12 +99,12 @@ export class SupabaseStorage implements IStorage {
   // Helper: Convert our schema project to Supabase format
   private convertToSupabaseProject(project: InsertProject): any {
     return {
-      user_id: project.userId,
+      userId: project.userId,
       name: project.name,
-      start_slogan: project.startSlogan,
-      end_slogan: project.endSlogan,
+      startSlogan: project.startSlogan,
+      endSlogan: project.endSlogan,
       author: project.author,
-      is_locked: project.isLocked
+      isLocked: project.isLocked
     };
   }
   
@@ -112,11 +112,11 @@ export class SupabaseStorage implements IStorage {
   private convertToSupabaseProjectUpdate(project: UpdateProject): any {
     return {
       name: project.name,
-      start_slogan: project.startSlogan,
-      end_slogan: project.endSlogan,
+      startSlogan: project.startSlogan,
+      endSlogan: project.endSlogan,
       author: project.author,
-      is_locked: project.isLocked,
-      last_viewed_slide_index: project.lastViewedSlideIndex
+      isLocked: project.isLocked,
+      lastViewedSlideIndex: project.lastViewedSlideIndex
     };
   }
   
@@ -125,19 +125,19 @@ export class SupabaseStorage implements IStorage {
     const update: any = {};
     
     if (note.content !== undefined) update.content = note.content;
-    if (note.parentId !== undefined) update.parent_id = note.parentId;
+    if (note.parentId !== undefined) update.parentId = note.parentId;
     if (note.url !== undefined) update.url = note.url;
-    if (note.linkText !== undefined) update.link_text = note.linkText;
-    if (note.youtubeLink !== undefined) update.youtube_link = note.youtubeLink;
+    if (note.linkText !== undefined) update.linkText = note.linkText;
+    if (note.youtubeLink !== undefined) update.youtubeLink = note.youtubeLink;
     if (note.time !== undefined) update.time = note.time;
-    if (note.isDiscussion !== undefined) update.is_discussion = note.isDiscussion;
+    if (note.isDiscussion !== undefined) update.isDiscussion = note.isDiscussion;
     if (note.images !== undefined) update.images = note.images;
     if (note.order !== undefined) {
       update.order = typeof note.order === 'string' ? parseFloat(note.order) : note.order;
     }
     
     // Always update the updated_at timestamp
-    update.updated_at = new Date().toISOString();
+    update.updatedAt = new Date().toISOString();
     
     return update;
   }
@@ -176,7 +176,7 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('email', username)
+        .eq('username', username)
         .single();
       
       if (error) {
@@ -198,13 +198,15 @@ export class SupabaseStorage implements IStorage {
       const supabase = await getSupabaseClient();
       if (!supabase) throw new Error('Failed to get Supabase client');
       
-      // In Supabase, the "username" field in our schema maps to "email" in Supabase
+      // Create a new user record with the Supabase user ID
+      console.log(`Creating user record with ID: ${user.id}`);
+      
       const { data, error } = await supabase
         .from('users')
         .insert({
           id: user.id, // Use provided id if there is one (for Supabase auth)
-          email: user.username,
-          last_opened_project_id: user.lastOpenedProjectId
+          username: user.username,
+          lastOpenedProjectId: user.lastOpenedProjectId
         })
         .select()
         .single();
@@ -260,8 +262,8 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .eq('userId', userId)
+        .order('createdAt', { ascending: false });
       
       if (error) {
         console.error('Error getting projects from Supabase:', error);
