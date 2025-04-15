@@ -621,8 +621,57 @@ export class SupabaseStorage implements IStorage {
       
       const supabaseNote = this.convertToSupabaseNote(note);
       
-      // Removed createdAt and updatedAt timestamps as they don't exist in the Supabase table
+      // Add extensive debugging
+      console.log('=========== DETAILED NOTE CREATION DEBUG ===========');
+      console.log('1. Raw note data received:', JSON.stringify(note, null, 2));
+      console.log('2. Converted note data:', JSON.stringify(supabaseNote, null, 2));
+      console.log('3. isDiscussion field type:', typeof supabaseNote.isDiscussion);
+      console.log('4. isDiscussion field value:', supabaseNote.isDiscussion);
       
+      // Let's try to directly query the database schema to verify column names
+      try {
+        const { data: schemaData, error: schemaError } = await supabase
+          .from('information_schema.columns')
+          .select('column_name')
+          .eq('table_name', 'notes')
+          .eq('table_schema', 'public');
+          
+        if (schemaError) {
+          console.log('Schema query error:', schemaError);
+        } else {
+          console.log('5. Actual database columns for notes table:', schemaData);
+        }
+      } catch (schemaQueryError) {
+        console.log('Error querying schema:', schemaQueryError);
+      }
+      
+      // Try with a simplified note data first to isolate the issue
+      try {
+        console.log('6. Attempting minimal note insert with only required fields');
+        const minimalNote = {
+          projectId: supabaseNote.projectId,
+          content: supabaseNote.content || ''
+        };
+        
+        const { data: testData, error: testError } = await supabase
+          .from('notes')
+          .insert(minimalNote)
+          .select()
+          .single();
+          
+        if (testError) {
+          console.log('7. Error with minimal insert:', testError);
+        } else {
+          console.log('7. Minimal insert succeeded:', testData);
+          // Clean up test note
+          await supabase.from('notes').delete().eq('id', testData.id);
+        }
+      } catch (testError) {
+        console.log('Test note error:', testError);
+      }
+      
+      console.log('8. Now attempting full note insert');
+      // Now try the real insert
       const { data, error } = await supabase
         .from('notes')
         .insert(supabaseNote)
@@ -630,13 +679,16 @@ export class SupabaseStorage implements IStorage {
         .single();
       
       if (error) {
-        console.error('Error creating note in Supabase:', error);
+        console.error('9. Error creating note in Supabase:', error);
         throw error;
       }
       
       if (!data) {
         throw new Error('Failed to create note in Supabase');
       }
+      
+      console.log('10. Note created successfully:', data);
+      console.log('=========== END NOTE CREATION DEBUG ===========');
       
       return this.convertSupabaseNote(data);
     } catch (error) {

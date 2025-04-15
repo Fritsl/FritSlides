@@ -547,6 +547,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Record validation time
       const validationTime = Date.now() - startTime - projectCheckTime;
       
+      // Add extensive debugging for schema cache issues
+      const rawData = result.data;
+      console.log('About to create note with schema-validated data:', JSON.stringify(rawData));
+      console.log('Data type of isDiscussion field:', typeof rawData.isDiscussion);
+      console.log('Is fastCreate field present?', rawData.fastCreate !== undefined);
+      
       // Performance enhancement: Use Promise.resolve().then() to make the actual database
       // operation asynchronous while immediately sending back the response
       // This reduces perceived latency dramatically
