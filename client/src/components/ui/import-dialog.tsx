@@ -356,60 +356,6 @@ export function ImportDialog({
                 <p className="text-xs text-muted-foreground mt-1">
                   Supports JSON files exported from FritSlides
                 </p>
-                <Button 
-                  variant="link" 
-                  className="text-xs text-muted-foreground p-0 h-auto mt-2 underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const testData = {
-                      project: {
-                        name: "Sample Project"
-                      },
-                      notes: [
-                        {
-                          id: 1,
-                          content: "Parent note 1",
-                          order: 0
-                        },
-                        {
-                          id: 2,
-                          content: "Child note 1.1",
-                          parentId: 1, // This is a child of note with id=1
-                          order: 0
-                        },
-                        {
-                          id: 3,
-                          content: "Child note 1.2",
-                          parentId: 1, // This is a child of note with id=1
-                          order: 1
-                        },
-                        {
-                          id: 4,
-                          content: "Parent note 2",
-                          order: 1
-                        },
-                        {
-                          id: 5,
-                          content: "Child note 2.1",
-                          parentId: 4, // This is a child of note with id=4
-                          order: 0
-                        },
-                        {
-                          id: 6,
-                          content: "Grandchild note 2.1.1",
-                          parentId: 5, // This is a child of note with id=5
-                          order: 0
-                        }
-                      ]
-                    };
-                    const blob = new Blob([JSON.stringify(testData, null, 2)], {type: 'application/json'});
-                    const file = new File([blob], 'test-import.json', {type: 'application/json'});
-                    setSelectedFile(file);
-                    setParseError(null);
-                  }}
-                >
-                  Create sample file
-                </Button>
               </div>
             )}
           </div>
