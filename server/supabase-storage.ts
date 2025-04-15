@@ -40,20 +40,6 @@ export async function getSupabaseClient() {
   }
 }
 
-// Helper function: Convert UUID string to integer
-function hashStringToInteger(str: string): number {
-  // Simple hash function to convert UUID to a numeric ID
-  // Same implementation as in auth-supabase.ts and SupabaseStorage
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  // Ensure positive number with reasonable range (0 to 2^31-1)
-  return Math.abs(hash) % 2147483647;
-}
-
 // Direct user operations with Supabase (bypassing RLS)
 export async function getSupabaseUser(userId: string): Promise<User | null> {
   try {
@@ -64,14 +50,13 @@ export async function getSupabaseUser(userId: string): Promise<User | null> {
       return null;
     }
     
-    // Convert UUID string to numeric ID for database lookup
-    const numericUserId = hashStringToInteger(userId);
-    console.log(`Fetching user with numeric ID: ${numericUserId} (from UUID: ${userId}) using admin client`);
+    // Use UUID string directly (database stores IDs as text)
+    console.log(`Fetching user with UUID: ${userId} using admin client`);
     
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('id', numericUserId)
+      .eq('id', userId)
       .single();
     
     if (error) {
@@ -80,15 +65,15 @@ export async function getSupabaseUser(userId: string): Promise<User | null> {
     }
     
     if (!data) {
-      console.log(`User ${numericUserId} not found in Supabase`);
+      console.log(`User ${userId} not found in Supabase`);
       return null;
     }
     
-    console.log(`User ${numericUserId} found in Supabase:`, JSON.stringify(data));
+    console.log(`User ${userId} found in Supabase:`, JSON.stringify(data));
     
-    // Convert data to our User type
+    // Convert data to our User type - using UUID string directly
     return {
-      id: numericUserId,
+      id: userId,
       username: data.username || `user_${userId.substring(0, 8)}`,
       password: null,
       lastOpenedProjectId: data.lastopenedprojectid || null
@@ -109,14 +94,13 @@ export async function createSupabaseUser(userId: string, email: string | null, l
       return null;
     }
     
-    // Convert UUID string to numeric ID 
-    const numericUserId = hashStringToInteger(userId);
-    console.log(`Creating user with numeric ID: ${numericUserId} (from UUID: ${userId}) in Supabase using admin client`);
+    // Use UUID string directly (database stores IDs as text)
+    console.log(`Creating user with UUID: ${userId} in Supabase using admin client`);
     
     const { data, error } = await supabase
       .from('users')
       .insert({
-        id: numericUserId, // Using the numeric ID for database consistency
+        id: userId, // Using the UUID directly as the database uses text type for id
         username: email || `user_${userId.substring(0, 8)}`,
         password: 'supabase_auth_user', // Required non-null value (we don't use this for Supabase auth)
         lastopenedprojectid: lastProjectId
@@ -130,15 +114,15 @@ export async function createSupabaseUser(userId: string, email: string | null, l
     }
     
     if (!data) {
-      console.log(`Failed to create user ${numericUserId} in Supabase`);
+      console.log(`Failed to create user ${userId} in Supabase`);
       return null;
     }
     
-    console.log(`User ${numericUserId} created in Supabase:`, JSON.stringify(data));
+    console.log(`User ${userId} created in Supabase:`, JSON.stringify(data));
     
-    // Convert data to our User type with numeric ID
+    // Convert data to our User type - using UUID string directly
     return {
-      id: numericUserId,
+      id: userId,
       username: data.username || `user_${userId.substring(0, 8)}`,
       password: null,
       lastOpenedProjectId: data.lastopenedprojectid || null
@@ -159,23 +143,22 @@ export async function updateSupabaseUserLastProject(userId: string, projectId: n
       return false;
     }
     
-    // Convert UUID string to numeric ID
-    const numericUserId = hashStringToInteger(userId);
-    console.log(`Updating lastOpenedProject for user ${numericUserId} (from UUID: ${userId}) to ${projectId} in Supabase`);
+    // Use UUID string directly (database stores IDs as text)
+    console.log(`Updating lastOpenedProject for user ${userId} to ${projectId} in Supabase`);
     
     const { error } = await supabase
       .from('users')
       .update({
         lastopenedprojectid: projectId
       })
-      .eq('id', numericUserId);
+      .eq('id', userId);
     
     if (error) {
       console.error('Error updating user in Supabase:', error);
       return false;
     }
     
-    console.log(`Successfully updated lastOpenedProject for user ${numericUserId} to ${projectId}`);
+    console.log(`Successfully updated lastOpenedProject for user ${userId} to ${projectId}`);
     return true;
   } catch (error) {
     console.error('Exception in updateSupabaseUserLastProject:', error);

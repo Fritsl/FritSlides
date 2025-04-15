@@ -4,15 +4,15 @@ import { z } from "zod";
 
 // Define tables with foreign key references - updated for Supabase with lowercase column names
 export const users = pgTable("users", {
-  id: integer("id").primaryKey(), // Supabase seems to expect integer IDs
+  id: text("id").primaryKey(), // Supabase uses UUID strings (text) for user IDs
   username: text("username").notNull().unique(),
-  password: text("password"),  // Optional for Supabase auth
+  password: text("password").notNull(),  // NOT NULL in database schema
   lastOpenedProjectId: integer("lastopenedprojectid"),
 });
 
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: integer("userid").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("userid").notNull().references(() => users.id, { onDelete: "cascade" }), // Changed to text to match users.id
   name: text("name").notNull(),
   startSlogan: text("startslogan"),
   endSlogan: text("endslogan"),
