@@ -415,9 +415,9 @@ export class SupabaseStorage implements IStorage {
       
       const supabaseProject = this.convertToSupabaseProject(project);
       
-      // Add timestamps
-      supabaseProject.createdAt = new Date().toISOString();
-      supabaseProject.updatedAt = new Date().toISOString();
+      // Add timestamps with lowercase names to match database columns
+      supabaseProject.createdat = new Date().toISOString();
+      // createdat is the only timestamp column in the projects table
       
       console.log('Creating project with data:', JSON.stringify(supabaseProject, null, 2));
       
@@ -537,7 +537,7 @@ export class SupabaseStorage implements IStorage {
       const notesResponse = await supabase
         .from('notes')
         .delete()
-        .eq('projectId', id);
+        .eq('projectid', id); // lowercase to match database column
       
       if (notesResponse.error) {
         console.error('Error deleting project notes from Supabase:', notesResponse.error);
@@ -758,7 +758,7 @@ export class SupabaseStorage implements IStorage {
         .from('notes')
         .update({ 
           order: numericOrder,
-          updatedAt: new Date().toISOString()
+          updatedat: new Date().toISOString() // lowercase to match database column
         })
         .eq('id', id);
       
