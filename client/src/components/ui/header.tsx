@@ -28,6 +28,7 @@ import {
   Download, 
   Upload,
   PlayCircle,
+  BarChart,
   Presentation,
   Search,
   Clock,

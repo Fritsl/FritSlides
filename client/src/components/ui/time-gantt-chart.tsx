@@ -1,183 +1,182 @@
-import React, { useState, useEffect } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
-import { Note } from "@shared/schema";
-import { timeToMinutes } from "@/lib/time-utils";
+import React, { useEffect, useState } from 'react';
+import { 
+  BarChart as RechartsBarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts';
+import { Note } from '@shared/schema';
+import { parseTimeString, formatDuration } from '@/lib/time-utils';
 
 interface TimeGanttChartProps {
   notes: Note[];
+  projectName: string;
 }
 
-// Color palette for bars
-const COLORS = [
-  "#8884d8", "#83a6ed", "#8dd1e1", "#82ca9d", 
-  "#a4de6c", "#d0ed57", "#ffc658", "#ff8042", 
-  "#ff6361", "#bc5090", "#58508d", "#003f5c",
-  "#444e86", "#955196", "#dd5182", "#ff6e54", 
-  "#ffa600", "#ffc658", "#f95d6a", "#00cc96"
-];
-
-interface GanttBarData {
-  id: number;
+type TimeChartData = {
   name: string;
-  startTime: number;
-  endTime: number;
+  id: number;
   duration: number;
-  color: string;
-}
+  startTime: number;
+  displayTime: string;
+};
 
-export const TimeGanttChart: React.FC<TimeGanttChartProps> = ({ notes }) => {
-  const [ganttData, setGanttData] = useState<GanttBarData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<{min: number, max: number}>({ min: 0, max: 0 });
-  
+export default function TimeGanttChart({ notes, projectName }: TimeGanttChartProps) {
+  const [chartData, setChartData] = useState<TimeChartData[]>([]);
+  const [minStartTime, setMinStartTime] = useState<number>(0);
+  const [maxEndTime, setMaxEndTime] = useState<number>(0);
+
   useEffect(() => {
-    if (!notes || notes.length === 0) {
-      setLoading(false);
-      return;
-    }
-
-    // Get all notes with time markers
-    const timedNotes = notes
-      .filter(note => note.time && note.time.trim() !== '')
-      .sort((a, b) => {
-        const timeA = timeToMinutes(a.time || '');
-        const timeB = timeToMinutes(b.time || '');
-        return timeA - timeB;
+    // Filter notes with time values
+    const timedNotes = notes.filter(note => note.time);
+    
+    // Process notes to create chart data
+    const processedData: TimeChartData[] = [];
+    let minStart = Number.MAX_SAFE_INTEGER;
+    let maxEnd = 0;
+    
+    timedNotes.forEach(note => {
+      if (!note.time) return;
+      
+      const timeValue = parseTimeString(note.time);
+      if (!timeValue || timeValue.seconds === undefined) return;
+      
+      // Get the start time in seconds
+      const startTimeInSeconds = timeValue.seconds;
+      
+      // Determine the duration by looking for the next timed note in sequence
+      const noteId = note.id;
+      const parentId = note.parentId;
+      
+      // Find siblings (notes with the same parentId) or children if this is a parent
+      const relatedNotes = notes.filter(n => 
+        n.parentId === parentId || // siblings
+        (noteId === n.parentId) // children
+      );
+      
+      // Sort by order
+      const sortedNotes = [...relatedNotes].sort((a, b) => {
+        // Use string comparison for order, as it can be a string or number
+        const orderA = String(a.order);
+        const orderB = String(b.order);
+        return orderA.localeCompare(orderB);
       });
-
-    if (timedNotes.length < 2) {
-      setLoading(false);
-      setGanttData([]);
-      return;
-    }
-
-    // Calculate time segments between markers for the Gantt chart
-    const ganttBars: GanttBarData[] = [];
-    let minTime = Number.MAX_SAFE_INTEGER;
-    let maxTime = 0;
-    
-    for (let i = 0; i < timedNotes.length - 1; i++) {
-      const currentNote = timedNotes[i];
-      const nextNote = timedNotes[i + 1];
       
-      const startTimeMinutes = timeToMinutes(currentNote.time || '');
-      const endTimeMinutes = timeToMinutes(nextNote.time || '');
+      // Find the index of the current note
+      const currentIndex = sortedNotes.findIndex(n => n.id === noteId);
       
-      // Handle overnight segments
-      let adjustedEndTime = endTimeMinutes;
-      if (endTimeMinutes < startTimeMinutes) {
-        adjustedEndTime += 24 * 60; // Add a day if end time is before start time
+      // Find the next note with time after the current note
+      let nextTimeInSeconds = null;
+      for (let i = currentIndex + 1; i < sortedNotes.length; i++) {
+        if (sortedNotes[i].time) {
+          const nextTimeValue = parseTimeString(sortedNotes[i].time!);
+          if (nextTimeValue && nextTimeValue.seconds !== undefined) {
+            nextTimeInSeconds = nextTimeValue.seconds;
+            break;
+          }
+        }
       }
       
-      // Track min and max times for axis scaling
-      minTime = Math.min(minTime, startTimeMinutes);
-      maxTime = Math.max(maxTime, adjustedEndTime);
-      
-      // Only add segments with actual duration
-      if (adjustedEndTime > startTimeMinutes) {
-        const segmentName = currentNote.content?.split('\n')[0].trim() || `Segment ${i+1}`;
-        
-        ganttBars.push({
-          id: currentNote.id,
-          name: segmentName.length > 25 ? segmentName.substring(0, 25) + '...' : segmentName,
-          startTime: startTimeMinutes,
-          endTime: adjustedEndTime,
-          duration: adjustedEndTime - startTimeMinutes,
-          color: COLORS[i % COLORS.length]
-        });
+      // Calculate duration
+      let duration = 60; // Default duration (1 minute) if no next note with time
+      if (nextTimeInSeconds !== null) {
+        duration = Math.max(nextTimeInSeconds - startTimeInSeconds, 10); // Minimum 10 seconds
       }
-    }
+      
+      // Create chart data entry
+      processedData.push({
+        name: note.content.substring(0, 30) + (note.content.length > 30 ? '...' : ''),
+        id: note.id,
+        duration: duration,
+        startTime: startTimeInSeconds,
+        displayTime: note.time
+      });
+      
+      // Update min and max times
+      minStart = Math.min(minStart, startTimeInSeconds);
+      maxEnd = Math.max(maxEnd, startTimeInSeconds + duration);
+    });
     
-    setGanttData(ganttBars);
-    setTimeRange({ min: minTime, max: maxTime });
-    setLoading(false);
+    // Sort by start time
+    const sortedData = processedData.sort((a, b) => a.startTime - b.startTime);
+    
+    setChartData(sortedData);
+    setMinStartTime(minStart === Number.MAX_SAFE_INTEGER ? 0 : minStart);
+    setMaxEndTime(maxEnd);
   }, [notes]);
 
-  // Format minutes for display
-  const formatMinutes = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.floor(minutes % 60);
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-  };
-
-  // Custom tooltip for Gantt bars
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      const duration = Math.floor(data.duration);
-      const hours = Math.floor(duration / 60);
-      const mins = duration % 60;
-      
       return (
-        <div className="bg-background p-4 rounded border shadow-sm">
-          <p className="font-medium">{data.name}</p>
-          <p>Start: {formatMinutes(data.startTime)}</p>
-          <p>End: {formatMinutes(data.endTime)}</p>
-          <p>Duration: {hours > 0 ? `${hours}h ${mins}m` : `${mins} min`}</p>
+        <div className="bg-slate-800 p-3 rounded shadow-lg border border-slate-700 text-white">
+          <p className="font-semibold">{data.name}</p>
+          <p>Time: {data.displayTime}</p>
+          <p>Duration: {formatDuration(data.duration)}</p>
+          <p className="text-xs text-slate-400">Note ID: {data.id}</p>
         </div>
       );
     }
     return null;
   };
 
-  // Render loading state or empty state
-  if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading chart...</div>;
-  }
-
-  if (ganttData.length === 0) {
-    return (
-      <div className="flex flex-col justify-center items-center h-64 p-4 text-center">
-        <p className="text-lg font-semibold mb-2">No time data available</p>
-        <p className="text-muted-foreground">Add time markers to at least two notes to see the timeline.</p>
-      </div>
-    );
-  }
-
-  // Calculate total time for context
-  const totalMinutes = timeRange.max - timeRange.min;
-  const totalHours = (totalMinutes / 60).toFixed(1);
-
   return (
-    <div className="w-full h-[500px] mt-4">
-      <h3 className="text-center text-lg font-semibold mb-2">Timeline View</h3>
-      <p className="text-center text-sm text-muted-foreground mb-4">
-        Total presentation time: {totalHours} hours
-      </p>
-      <ResponsiveContainer width="100%" height="80%">
-        <BarChart
-          data={ganttData}
-          layout="vertical"
-          margin={{ top: 20, right: 30, left: 120, bottom: 20 }}
-        >
-          <XAxis 
-            type="number" 
-            domain={[timeRange.min, timeRange.max]} 
-            tickFormatter={formatMinutes} 
-          />
-          <YAxis 
-            type="category" 
-            dataKey="name" 
-            width={120} 
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Bar 
-            dataKey="endTime" 
-            stackId="a" 
-            fill="#8884d8" 
-            background={{ fill: 'transparent' }}
-            barSize={20}
+    <div className="w-full h-full min-h-[400px]">
+      {chartData.length > 0 ? (
+        <ResponsiveContainer width="100%" height="100%">
+          <RechartsBarChart
+            data={chartData}
+            layout="vertical"
+            margin={{
+              top: 20,
+              right: 30,
+              left: 120,
+              bottom: 5,
+            }}
           >
-            {ganttData.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={entry.color} 
-              />
-            ))}
-          </Bar>
-          <ReferenceLine x={timeRange.min} stroke="#666" />
-        </BarChart>
-      </ResponsiveContainer>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              type="number"
+              domain={[minStartTime, maxEndTime]}
+              tickFormatter={(value) => formatDuration(value - minStartTime)}
+              label={{ value: 'Timeline (relative)', position: 'insideBottom', offset: -5 }}
+            />
+            <YAxis
+              dataKey="name"
+              type="category"
+              width={120}
+              tick={{ fontSize: 12 }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend />
+            <Bar
+              dataKey="duration"
+              name="Duration"
+              fill="#8884d8"
+              background={{ fill: '#eee' }}
+              barSize={20}
+              // Position each bar at its start time
+              // @ts-ignore - recharts allows this prop even though it's not in the types
+              stackId="a"
+              // @ts-ignore - recharts allows this prop even though it's not in the types
+              barGap={0}
+              // @ts-ignore - recharts allows this prop even though it's not in the types
+              barCategoryGap={10}
+              // Used for positioning
+              // @ts-ignore - recharts allows this custom prop
+              startTime={chartData.map(d => d.startTime - minStartTime)}
+            />
+          </RechartsBarChart>
+        </ResponsiveContainer>
+      ) : (
+        <div className="flex items-center justify-center h-full w-full">
+          <p className="text-slate-500">No timed notes found to display in the chart.</p>
+        </div>
+      )}
     </div>
   );
-};
+}

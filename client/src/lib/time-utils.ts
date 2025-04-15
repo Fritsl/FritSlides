@@ -14,6 +14,63 @@ export interface PacingInfo {
 }
 
 /**
+ * Parse a time string into its components and calculate total seconds
+ * @param timeString Time in format "HH:MM" or similar
+ * @returns Object with hours, minutes, and total seconds, or null if invalid
+ */
+export function parseTimeString(timeString: string | null): { hours: number, minutes: number, seconds: number } | null {
+  if (!timeString) return null;
+  
+  // First ensure we have a valid format by formatting the string
+  const formattedTime = formatTimeString(timeString);
+  if (!formattedTime) return null;
+  
+  try {
+    const [hours, minutes] = formattedTime.split(':').map(n => parseInt(n, 10));
+    
+    if (isNaN(hours) || isNaN(minutes)) return null;
+    
+    return {
+      hours,
+      minutes,
+      seconds: hours * 3600 + minutes * 60
+    };
+  } catch (e) {
+    console.warn('Error parsing time string:', timeString, e);
+    return null;
+  }
+}
+
+/**
+ * Format a duration in seconds to a human-readable string
+ * @param seconds Total seconds
+ * @returns Formatted string like "1h 30m" or "45m" or "30s"
+ */
+export function formatDuration(seconds: number): string {
+  if (seconds < 0) seconds = 0;
+  
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+  
+  let result = '';
+  
+  if (hours > 0) {
+    result += `${hours}h `;
+  }
+  
+  if (minutes > 0 || hours > 0) {
+    result += `${minutes}m `;
+  }
+  
+  if (remainingSeconds > 0 && hours === 0) {
+    result += `${remainingSeconds}s`;
+  }
+  
+  return result.trim();
+}
+
+/**
  * Ensures time is in HH:MM format with colon
  * This function FORCES a colon into the time string regardless of input format
  */
