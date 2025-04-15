@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useSupabaseAuth } from "@/hooks/use-supabase-auth";
 import { useNoteEditing } from "@/hooks/use-notes";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,7 @@ export default function Header({
   onShowTimeDistribution,
   onShowTimeGantt
 }: HeaderProps) {
+  const navigate = useNavigate();
   const { user: supabaseUser, signOut: supabaseSignOut } = useSupabaseAuth();
   const { toast } = useToast();
   const { editingNoteId, setEditingNoteId, isEditing } = useNoteEditing();
@@ -290,7 +292,7 @@ export default function Header({
                     {supabaseUser?.email || "User"}
                   </span></span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/account-settings")}>
                   <Settings className="h-4 w-4 mr-2" />
                   <span>Account Settings</span>
                 </DropdownMenuItem>

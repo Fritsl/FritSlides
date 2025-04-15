@@ -35,7 +35,12 @@ export default function AccountSettingsPage() {
   // If not authenticated, redirect to home
   if (!user) {
     navigate("/");
-    return null;
+    // Return a loading element instead of null to avoid type errors
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   const form = useForm<PasswordChangeValues>({
