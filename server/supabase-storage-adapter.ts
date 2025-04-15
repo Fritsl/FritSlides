@@ -93,18 +93,18 @@ export class SupabaseStorage implements IStorage {
     }
     return {
       id: data.id || 0,
-      projectId: data.projectId || 0,
-      parentId: data.parentId, // Can be null
+      projectId: data.projectid || 0, // lowercase to match database column
+      parentId: data.parentid, // lowercase to match database column, can be null
       content: data.content || '',
       url: data.url || null,
-      linkText: data.linkText || null,
-      youtubeLink: data.youtubeLink || null,
+      linkText: data.linktext || null, // lowercase to match database column
+      youtubeLink: data.youtubelink || null, // lowercase to match database column
       time: data.time || null,
-      isDiscussion: typeof data.isDiscussion === 'boolean' ? data.isDiscussion : false,
+      isDiscussion: typeof data.isdiscussion === 'boolean' ? data.isdiscussion : false, // lowercase to match database column
       images: Array.isArray(data.images) ? data.images : [],
       order: data.order ? data.order.toString() : "0", // Convert to string as our schema expects
-      createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
-      updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date()
+      createdAt: data.createdat ? new Date(data.createdat) : new Date(), // lowercase to match database column
+      updatedAt: data.updatedat ? new Date(data.updatedat) : new Date() // lowercase to match database column
     };
   }
   
@@ -113,14 +113,14 @@ export class SupabaseStorage implements IStorage {
     console.log('Converting note to Supabase format:', JSON.stringify(note, null, 2));
     
     return {
-      projectId: note.projectId,
-      parentId: note.parentId,
+      projectid: note.projectId, // lowercase to match database column
+      parentid: note.parentId, // lowercase to match database column
       content: note.content || '',
       url: note.url || null,
-      linkText: note.linkText || null,
-      youtubeLink: note.youtubeLink || null,
+      linktext: note.linkText || null, // lowercase to match database column
+      youtubelink: note.youtubeLink || null, // lowercase to match database column
       time: note.time || null,
-      isDiscussion: note.isDiscussion || false,
+      isdiscussion: note.isDiscussion || false, // lowercase to match database column
       images: note.images || [],
       order: typeof note.order === 'string' ? parseFloat(note.order) : (note.order || 0)
     };
@@ -146,11 +146,11 @@ export class SupabaseStorage implements IStorage {
   private convertToSupabaseProjectUpdate(project: UpdateProject): any {
     return {
       name: project.name,
-      startSlogan: project.startSlogan,
-      endSlogan: project.endSlogan,
+      startslogan: project.startSlogan, // lowercase to match database column
+      endslogan: project.endSlogan, // lowercase to match database column
       author: project.author,
-      isLocked: project.isLocked,
-      lastViewedSlideIndex: project.lastViewedSlideIndex
+      islocked: project.isLocked, // lowercase to match database column
+      lastviewedslideindex: project.lastViewedSlideIndex // lowercase to match database column
     };
   }
   
@@ -159,19 +159,19 @@ export class SupabaseStorage implements IStorage {
     const update: any = {};
     
     if (note.content !== undefined) update.content = note.content;
-    if (note.parentId !== undefined) update.parentId = note.parentId;
+    if (note.parentId !== undefined) update.parentid = note.parentId; // lowercase to match database column
     if (note.url !== undefined) update.url = note.url;
-    if (note.linkText !== undefined) update.linkText = note.linkText;
-    if (note.youtubeLink !== undefined) update.youtubeLink = note.youtubeLink;
+    if (note.linkText !== undefined) update.linktext = note.linkText; // lowercase to match database column
+    if (note.youtubeLink !== undefined) update.youtubelink = note.youtubeLink; // lowercase to match database column
     if (note.time !== undefined) update.time = note.time;
-    if (note.isDiscussion !== undefined) update.isDiscussion = note.isDiscussion;
+    if (note.isDiscussion !== undefined) update.isdiscussion = note.isDiscussion; // lowercase to match database column
     if (note.images !== undefined) update.images = note.images;
     if (note.order !== undefined) {
       update.order = typeof note.order === 'string' ? parseFloat(note.order) : note.order;
     }
     
     // Always update the updated_at timestamp
-    update.updatedAt = new Date().toISOString();
+    update.updatedat = new Date().toISOString(); // lowercase to match database column
     
     return update;
   }
@@ -420,7 +420,7 @@ export class SupabaseStorage implements IStorage {
       const { error } = await supabase
         .from('projects')
         .update({ 
-          lastViewedSlideIndex: slideIndex
+          lastviewedslideindex: slideIndex // lowercase to match database column
           // No updatedAt field in projects table
         })
         .eq('id', projectId);
@@ -445,7 +445,7 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('projects')
         .update({ 
-          isLocked: lockStatus.isLocked
+          islocked: lockStatus.isLocked // lowercase to match database column
           // No updatedAt field in projects table
         })
         .eq('id', id)
@@ -509,7 +509,7 @@ export class SupabaseStorage implements IStorage {
       const { data, error } = await supabase
         .from('notes')
         .select('*')
-        .eq('projectId', projectId)
+        .eq('projectid', projectId) // lowercase to match database column
         .order('order', { ascending: true });
       
       if (error) {
@@ -556,9 +556,9 @@ export class SupabaseStorage implements IStorage {
       
       const supabaseNote = this.convertToSupabaseNote(note);
       
-      // Add timestamps
-      supabaseNote.createdAt = new Date().toISOString();
-      supabaseNote.updatedAt = new Date().toISOString();
+      // Add timestamps - lowercase to match database column names
+      supabaseNote.createdat = new Date().toISOString();
+      supabaseNote.updatedat = new Date().toISOString();
       
       const { data, error } = await supabase
         .from('notes')
