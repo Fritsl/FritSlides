@@ -1492,66 +1492,111 @@ export default function PresentMode() {
                         />
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="top" className="bg-black/90 text-white text-[10px] sm:text-xs p-2 sm:p-3">
-                    <div className="text-center">
-                      <div>
-                        <span className="opacity-80">Current:</span> {currentNote?.time ? 
-                          <>
-                            {currentNote.time}
-                            {currentNote.timeBorrowed && 
-                              <span className="ml-1 text-[9px] italic text-amber-400">(borrowed from {isStartSlide ? 'first' : 'last'} note)</span>
-                            }
-                          </> 
-                          : 'No time marker'
-                        } 
-                      </div>
+                  <TooltipContent side="top" className="bg-black/90 text-white text-sm p-2 sm:p-3">
+                    <div className="text-center font-sans">
                       {(() => {
-                        // Store the value to avoid multiple calls
-                        const nextSlide = getNextTimedSlide();
-                        return nextSlide ? (
-                          <div>
-                            <span className="opacity-80">Next time point:</span> {nextSlide.content?.slice(0, 20) || ''}
-                            {nextSlide.content && nextSlide.content.length > 20 ? '...' : ''} 
-                            {nextSlide.time ? `@ ${nextSlide.time}` : ''}
-                          </div>
-                        ) : null;
-                      })()}
-                      
-                      {/* Debug information - ALWAYS VISIBLE */}
-                      <div className="mt-2 p-1 bg-slate-900 rounded text-[9px] text-left border border-slate-700">
-                        <div className="grid grid-cols-2 gap-x-1 font-mono">
-                          <div className="text-slate-400">Start:</div>
-                          <div>{pacingInfo.previousTimedNote?.time || '—'}</div>
-                          <div className="text-slate-400">End:</div>
-                          <div>{pacingInfo.nextTimedNote?.time || '—'}</div>
-                          <div className="text-slate-400">Total Time:</div>
-                          <div>{(() => {
-                            if (!pacingInfo.previousTimedNote || !pacingInfo.nextTimedNote) return '—';
-                            const startMin = timeToMinutes(pacingInfo.previousTimedNote.time || '');
-                            const endMin = timeToMinutes(pacingInfo.nextTimedNote.time || '');
-                            let totalMin = endMin - startMin;
-                            if (totalMin < 0) totalMin += 24 * 60; // Adjust for time wrapping to next day
-                            const hours = Math.floor(totalMin / 60);
-                            const mins = Math.floor(totalMin % 60);
-                            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-                          })()}</div>
-                          <div className="text-slate-400">Notes:</div>
-                          <div>{(() => {
-                            if (!pacingInfo.previousTimedNote || !pacingInfo.nextTimedNote) return '—';
+                        // Get the current time
+                        const now = new Date();
+                        const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+                        const currentTimeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                        
+                        // Default status
+                        let status = `Current: ${currentTimeFormatted}`;
+                        
+                        try {
+                          // If we're on a timed slide
+                          if (currentNote?.time) {
+                            const slideTimeInMinutes = timeToMinutes(currentNote.time);
+                            let diffMinutes = currentTimeInMinutes - slideTimeInMinutes;
+                            
+                            // Handle crossing midnight
+                            if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                            else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                            
+                            // Format as human-readable time difference
+                            if (Math.abs(diffMinutes) >= 60) {
+                              const hours = Math.floor(Math.abs(diffMinutes) / 60);
+                              const mins = Math.abs(diffMinutes) % 60;
+                              
+                              if (diffMinutes > 0) {
+                                status = `${hours} hour${hours !== 1 ? 's' : ''} ${mins} minute${mins !== 1 ? 's' : ''} behind (Current: ${currentTimeFormatted}, Should view at: ${currentNote.time})`;
+                              } else {
+                                status = `${hours} hour${hours !== 1 ? 's' : ''} ${mins} minute${mins !== 1 ? 's' : ''} ahead (Current: ${currentTimeFormatted}, Should view at: ${currentNote.time})`;
+                              }
+                            } else {
+                              // Less than an hour difference
+                              if (diffMinutes > 1) {
+                                status = `${diffMinutes} minutes behind (Current: ${currentTimeFormatted}, Should view at: ${currentNote.time})`;
+                              } else if (diffMinutes < -1) {
+                                status = `${Math.abs(diffMinutes)} minutes ahead (Current: ${currentTimeFormatted}, Should view at: ${currentNote.time})`;
+                              } else {
+                                status = `Right on time (Current: ${currentTimeFormatted})`;
+                              }
+                            }
+                          }
+                          // Between two timed notes (interpolation)
+                          else if (pacingInfo.previousTimedNote?.time && pacingInfo.nextTimedNote?.time) {
+                            const prevTimeInMinutes = timeToMinutes(pacingInfo.previousTimedNote.time);
+                            const nextTimeInMinutes = timeToMinutes(pacingInfo.nextTimedNote.time);
                             const prevIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.previousTimedNote?.id);
                             const nextIndex = flattenedNotes.findIndex(n => n.id === pacingInfo.nextTimedNote?.id);
-                            const currIndex = currentSlideIndex;
-                            if (prevIndex < 0 || nextIndex < 0) return '—';
-                            // Add 1 to convert from 0-based to 1-based position
-                            return `${currIndex - prevIndex + 1}/${nextIndex - prevIndex}`;
-                          })()}</div>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-1 text-[9px] sm:text-xs">
-                        <span className="text-white/80">White dot:</span> Your current position
-                        <br />
-                        <span className="text-gray-700">Black dot:</span> Schedule status - 
+                            
+                            if (prevIndex >= 0 && nextIndex >= 0) {
+                              // Calculate total time span
+                              let totalTimeSpan = nextTimeInMinutes - prevTimeInMinutes;
+                              if (totalTimeSpan < 0) totalTimeSpan += 24 * 60; // Handle crossing midnight
+                              
+                              // Calculate total slides and our position
+                              const totalSlides = nextIndex - prevIndex;
+                              if (totalSlides > 1) { // Avoid division by zero
+                                // Calculate our position (fraction) between the two timed slides
+                                const slideProgress = (currentSlideIndex - prevIndex) / totalSlides;
+                                
+                                // Calculate the expected time at our position using linear interpolation
+                                const expectedTimeInMinutes = prevTimeInMinutes + (totalTimeSpan * slideProgress);
+                                
+                                // Format the expected time
+                                const expectedHours = Math.floor(expectedTimeInMinutes / 60) % 24;
+                                const expectedMinutes = Math.floor(expectedTimeInMinutes % 60);
+                                const expectedTimeFormatted = `${String(expectedHours).padStart(2, '0')}:${String(expectedMinutes).padStart(2, '0')}`;
+                                
+                                // Calculate difference between current time and expected time
+                                let diffMinutes = currentTimeInMinutes - expectedTimeInMinutes;
+                                
+                                // Handle crossing midnight
+                                if (diffMinutes < -12 * 60) diffMinutes += 24 * 60;
+                                else if (diffMinutes > 12 * 60) diffMinutes -= 24 * 60;
+                                
+                                // Format as human-readable time difference
+                                if (Math.abs(diffMinutes) >= 60) {
+                                  const hours = Math.floor(Math.abs(diffMinutes) / 60);
+                                  const mins = Math.abs(diffMinutes) % 60;
+                                  
+                                  if (diffMinutes > 0) {
+                                    status = `${hours} hour${hours !== 1 ? 's' : ''} ${mins} minute${mins !== 1 ? 's' : ''} behind (Current: ${currentTimeFormatted}, Should view at: ${expectedTimeFormatted})`;
+                                  } else {
+                                    status = `${hours} hour${hours !== 1 ? 's' : ''} ${mins} minute${mins !== 1 ? 's' : ''} ahead (Current: ${currentTimeFormatted}, Should view at: ${expectedTimeFormatted})`;
+                                  }
+                                } else {
+                                  // Less than an hour difference
+                                  if (diffMinutes > 1) {
+                                    status = `${Math.round(diffMinutes)} minutes behind (Current: ${currentTimeFormatted}, Should view at: ${expectedTimeFormatted})`;
+                                  } else if (diffMinutes < -1) {
+                                    status = `${Math.abs(Math.round(diffMinutes))} minutes ahead (Current: ${currentTimeFormatted}, Should view at: ${expectedTimeFormatted})`;
+                                  } else {
+                                    status = `Right on time (Current: ${currentTimeFormatted})`;
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        } catch (err) {
+                          console.error("Error calculating status:", err);
+                        }
+                        
+                        return status;
+                      })()}
+
                         {(() => {
                           // Always calculate a status even if not on a timed slide
                           try {
