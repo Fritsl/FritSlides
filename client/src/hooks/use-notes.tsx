@@ -43,7 +43,7 @@ const createOptimisticNote = (note: Partial<InsertNote>, projectId: number, exis
   }
   
   // New note should have an order value higher than any existing note
-  const newOrder = (maxOrder + 1).toString();
+  const newOrder = maxOrder + 1;
   
   // Create an optimistic note with explicit type casting to fix type errors
   return {
@@ -57,7 +57,9 @@ const createOptimisticNote = (note: Partial<InsertNote>, projectId: number, exis
     time: typeof note.time === 'string' ? note.time : null,
     isDiscussion: typeof note.isDiscussion === 'boolean' ? note.isDiscussion : null,
     images: Array.isArray(note.images) ? note.images.filter(img => typeof img === 'string') as string[] : null,
-    order: (typeof note.order === 'number' || typeof note.order === 'string') ? String(note.order) : newOrder,
+    order: typeof note.order === 'number' ? note.order : 
+           typeof note.order === 'string' ? parseFloat(note.order) || newOrder : 
+           newOrder,
     createdAt: now,
     updatedAt: now
   };

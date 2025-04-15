@@ -501,7 +501,7 @@ export default function NoteTree({
     }
     
     // Use an order value higher than any existing note to place it at the end
-    const newOrderValue = (maxOrder + 1).toString();
+    const newOrderValue = maxOrder + 1;
     console.log(`Creating new root note with order ${newOrderValue} (max order was ${maxOrder})`);
     
     // Cast as any to avoid TypeScript errors from TanStack Query
@@ -514,7 +514,7 @@ export default function NoteTree({
       youtubeLink: "",
       time: "",
       images: [],
-      order: newOrderValue // Send as string to match the server's expected type
+      order: newOrderValue // Send as number to match the server's expected type
     });
   };
 
