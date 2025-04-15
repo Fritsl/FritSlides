@@ -42,11 +42,12 @@ export class SupabaseStorage implements IStorage {
       console.error('Null or undefined data passed to convertSupabaseUser');
       throw new Error('Invalid user data');
     }
+    const userId = data.id as string;
     return {
-      id: data.id || '',
-      username: data.username || `user_${typeof data.id === 'string' ? data.id.substring(0, 8) : 'unknown'}`,
+      id: userId || '',
+      username: data.username || `user_${typeof userId === 'string' ? userId.substring(0, 8) : 'unknown'}`,
       password: data.password || null, // May be null when using Supabase Auth
-      lastOpenedProjectId: data.lastOpenedProjectId || null
+      lastOpenedProjectId: data.lastopenedprojectid || null
     };
   }
   
@@ -58,14 +59,14 @@ export class SupabaseStorage implements IStorage {
     }
     return {
       id: data.id || 0,
-      userId: data.userId || '',
+      userId: data.userid || '',
       name: data.name || '',
-      startSlogan: data.startSlogan || '',
-      endSlogan: data.endSlogan || '',
+      startSlogan: data.startslogan || '',
+      endSlogan: data.endslogan || '',
       author: data.author || '',
-      lastViewedSlideIndex: typeof data.lastViewedSlideIndex === 'number' ? data.lastViewedSlideIndex : 0,
-      isLocked: typeof data.isLocked === 'boolean' ? data.isLocked : false,
-      createdAt: data.createdAt ? new Date(data.createdAt) : new Date()
+      lastViewedSlideIndex: typeof data.lastviewedslideindex === 'number' ? data.lastviewedslideindex : 0,
+      isLocked: typeof data.islocked === 'boolean' ? data.islocked : false,
+      createdAt: data.createdat ? new Date(data.createdat) : new Date()
     };
   }
   
@@ -795,13 +796,13 @@ export class SupabaseStorage implements IStorage {
         if (data[i] && data[i].id) {
           const noteUpdate: Record<string, any> = { 
             order: newOrder,
-            updatedAt: new Date().toISOString()
+            updatedat: new Date().toISOString()
           };
           
           const { error: updateError } = await supabase
             .from('notes')
             .update(noteUpdate)
-            .eq('id', data[i].id);
+            .eq('id', data[i].id as number);
           
           if (updateError) {
             console.error(`Error normalizing order for note ${data[i].id}:`, updateError);

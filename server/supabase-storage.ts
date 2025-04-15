@@ -71,11 +71,12 @@ export async function getSupabaseUser(userId: string): Promise<User | null> {
     console.log(`User ${userId} found in Supabase:`, JSON.stringify(data));
     
     // Convert data to our User type
+    const safeId = data.id as string;
     return {
-      id: data.id,
-      username: data.email || `user_${data.id.substring(0, 8)}`,
+      id: safeId,
+      username: data.username || `user_${safeId.substring(0, 8)}`,
       password: null,
-      lastOpenedProjectId: data.last_opened_project_id
+      lastOpenedProjectId: data.lastopenedprojectid || null
     } as User;
   } catch (error) {
     console.error('Exception in getSupabaseUser:', error);
@@ -99,7 +100,7 @@ export async function createSupabaseUser(userId: string, email: string | null, l
       .from('users')
       .insert({
         id: userId,
-        username: email || `user_${userId.substring(0, 8)}@example.com`,
+        username: email || `user_${userId.substring(0, 8)}`,
         lastopenedprojectid: lastProjectId
       })
       .select()
@@ -118,11 +119,12 @@ export async function createSupabaseUser(userId: string, email: string | null, l
     console.log(`User ${userId} created in Supabase:`, JSON.stringify(data));
     
     // Convert data to our User type
+    const safeId = data.id as string;
     return {
-      id: data.id,
-      username: data.email || `user_${data.id.substring(0, 8)}`,
+      id: safeId,
+      username: data.username || `user_${safeId.substring(0, 8)}`,
       password: null,
-      lastOpenedProjectId: data.last_opened_project_id
+      lastOpenedProjectId: data.lastopenedprojectid || null
     } as User;
   } catch (error) {
     console.error('Exception in createSupabaseUser:', error);
@@ -145,7 +147,7 @@ export async function updateSupabaseUserLastProject(userId: string, projectId: n
     const { error } = await supabase
       .from('users')
       .update({
-        last_opened_project_id: projectId
+        lastopenedprojectid: projectId
       })
       .eq('id', userId);
     
