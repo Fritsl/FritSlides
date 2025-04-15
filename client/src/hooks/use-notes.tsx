@@ -514,40 +514,25 @@ export function useNotes(projectId: number | null) {
 
   const uploadImage = useMutation({
     mutationFn: async (file: File) => {
-      // Get Supabase authentication headers
-      const supabase = await getSupabaseClient();
-      const { data } = await supabase.auth.getSession();
-      
-      // Create FormData and append the file
-      const formData = new FormData();
-      formData.append("image", file);
-      
-      // Set up headers with authentication
-      const headers: Record<string, string> = {};
-      
-      // Add Supabase auth headers
-      if (data.session) {
-        headers['x-supabase-user-id'] = data.session.user.id;
-        if (data.session.user.email) {
-          headers['x-supabase-user-email'] = data.session.user.email;
-        }
+      try {
+        // Import the storage utility - dynamic import to avoid circular dependencies
+        const { uploadToSupabaseStorage } = await import("@/lib/supabase-storage");
+        
+        // Upload directly to Supabase storage
+        console.log('Uploading image to Supabase storage...');
+        const imageUrl = await uploadToSupabaseStorage(file);
+        console.log('Image uploaded successfully:', imageUrl);
+        
+        // Return the image URL in the same format expected by consumers
+        return { imageUrl };
+      } catch (error) {
+        console.error('Failed to upload image to Supabase storage:', error);
+        throw new Error(error instanceof Error ? error.message : "Failed to upload image to Supabase storage");
       }
-      
-      // Make the request with proper headers
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers,
-        body: formData,
-        credentials: "include",
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Upload failed:', errorText);
-        throw new Error(errorText || "Failed to upload image");
-      }
-      
-      return res.json();
+    },
+    onSuccess: (data) => {
+      console.log('Image upload success, URL:', data.imageUrl);
+      // No toast for successful upload to avoid cluttering the UI
     },
     onError: (error) => {
       console.error('Upload error:', error);
