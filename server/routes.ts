@@ -196,6 +196,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/projects", isAuthenticated, async (req, res) => {
     try {
+      // First, ensure the user exists in our database
+      let user = await storage.getUser(req.user!.id);
+      
+      // If the user doesn't exist yet (first time Supabase user), create them
+      if (!user && req.headers['x-supabase-user-id']) {
+        console.log(`Creating user record for Supabase user: ${req.user!.id}`);
+        try {
+          user = await storage.createUser({
+            id: String(req.user!.id),
+            username: `user_${String(req.user!.id).substring(0, 8)}`,
+            password: null, // Password not needed for Supabase users
+            lastOpenedProjectId: null
+          });
+          console.log(`Successfully created user record for Supabase user: ${req.user!.id}`);
+        } catch (createErr) {
+          console.error("Error creating user from Supabase auth:", createErr);
+          return res.status(500).json({ message: "Failed to create user record" });
+        }
+      }
+      
       // Check if we're duplicating from an existing project
       if (req.body.duplicateFromId) {
         const sourceId = parseInt(req.body.duplicateFromId);
