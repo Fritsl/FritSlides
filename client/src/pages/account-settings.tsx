@@ -34,7 +34,7 @@ export default function AccountSettingsPage() {
 
   // If not authenticated, redirect to home
   if (!user) {
-    navigate("/");
+    setLocation("/");
     // Return a loading element instead of null to avoid type errors
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -89,7 +89,7 @@ export default function AccountSettingsPage() {
     <div className="container max-w-2xl py-8">
       <Button 
         variant="ghost" 
-        onClick={() => navigate("/")}
+        onClick={() => setLocation("/")}
         className="mb-4"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -220,7 +220,7 @@ export default function AccountSettingsPage() {
         <CardFooter className="flex justify-between">
           <Button 
             variant="outline" 
-            onClick={() => navigate("/")}
+            onClick={() => setLocation("/")}
           >
             Cancel
           </Button>
@@ -228,7 +228,7 @@ export default function AccountSettingsPage() {
             variant="destructive" 
             onClick={() => {
               signOut();
-              navigate("/");
+              setLocation("/");
             }}
           >
             Log Out
